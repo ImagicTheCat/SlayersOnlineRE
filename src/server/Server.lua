@@ -40,6 +40,7 @@ function Server:tick()
     elseif event.type == "disconnect" then
       local client = self.clients[event.peer]
       client:onDisconnect()
+      self.clients[event.peer] = nil
     end
 
     event = self.host:service()
