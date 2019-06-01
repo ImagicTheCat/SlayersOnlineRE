@@ -1,12 +1,17 @@
 local enet = require("enet")
+local msgpack = require("MessagePack")
 
 local Client = class("Client")
+
+local net = {
+  PROTOCOL = 0
+}
 
 function Client:__construct(cfg)
   self.cfg = cfg
 
   self.host = enet.host_create()
-  self.host:connect(self.cfg.remote)
+  self.peer = self.host:connect(self.cfg.remote)
 end
 
 function Client:tick(dt)
@@ -15,8 +20,29 @@ function Client:tick(dt)
   while event do
     print(event.type, event.peer)
 
+    if event.type == "receive" then
+      local packet = msgpack.unpack(event.data)
+      self:onPacket(packet[1], packet[2])
+    elseif event.type == "disconnect" then
+      self:onDisconnect()
+    end
+
     event = self.host:service()
   end
+end
+
+function Client:onPacket(protocol, data)
+  if protocol == net.PROTOCOL then
+    net = protocol
+  end
+end
+
+-- unsequenced: unsequenced if true/passed, reliable otherwise
+function Client:sendPacket(protocol, data, unsequenced)
+  self.peer:send(msgpack.pack({protocol, data}), 0, (unsequenced and "unsequenced" or "reliable"))
+end
+
+function Client:onDisconnect()
 end
 
 function Client:draw()
