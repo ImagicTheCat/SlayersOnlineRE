@@ -1,9 +1,9 @@
 local msgpack = require("MessagePack")
 local net = require("protocol")
-local Entity = require("Entity")
+local LivingEntity = require("entities/LivingEntity")
 
 -- server-side client
-local Client = class("Client", Entity)
+local Client = class("Client", LivingEntity)
 
 -- STATICS
 
@@ -14,7 +14,7 @@ end
 -- METHODS
 
 function Client:__construct(server, peer)
-  Entity.__construct(self)
+  LivingEntity.__construct(self)
 
   self.nettype = "entity"
 
@@ -30,6 +30,13 @@ function Client:__construct(server, peer)
 end
 
 function Client:onPacket(protocol, data)
+  if protocol == net.INPUT_ORIENTATION then
+    self:setOrientation(tonumber(data) or 0)
+  end
+
+  if protocol == net.INPUT_MOVE_FORWARD then
+    self:setMoveForward(not not data)
+  end
 end
 
 -- unsequenced: unsequenced and unreliable if true/passed, reliable otherwise

@@ -52,10 +52,7 @@ function Map:addEntity(entity)
 
   -- send entity packet to all map clients
   if entity.nettype then
-    local packet = Client.makePacket(net.ENTITY_ADD, entity:serializeNet())
-    for client in pairs(self.clients) do
-      client:send(packet)
-    end
+    self:broadcastPacket(net.ENTITY_ADD, entity:serializeNet())
   end
 
   -- reference
@@ -87,13 +84,18 @@ function Map:removeEntity(entity)
 
     -- send entity packet to all map clients
     if entity.nettype then
-      local packet = Client.makePacket(net.ENTITY_REMOVE, id)
-      for client in pairs(self.clients) do
-        client:send(packet)
-      end
+      self:broadcastPacket(net.ENTITY_REMOVE, id)
     end
 
     entity:onMapChange() -- removal event
+  end
+end
+
+-- broadcast to all map clients
+function Map:broadcastPacket(protocol, data)
+  local packet = Client.makePacket(protocol, data)
+  for client in pairs(self.clients) do
+    client:send(packet)
   end
 end
 

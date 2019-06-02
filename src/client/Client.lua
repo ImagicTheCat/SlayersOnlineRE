@@ -13,6 +13,9 @@ function Client:__construct(cfg)
 
   self.host = enet.host_create()
   self.peer = self.host:connect(self.cfg.remote)
+
+  self.move_forward = false
+  self.orientation = 0
 end
 
 function Client:tick(dt)
@@ -46,6 +49,13 @@ function Client:onPacket(protocol, data)
     if self.map then
       self.map:removeEntity(data)
     end
+  elseif protocol == net.ENTITY_PACKET then
+    if self.map then
+      local entity = self.map.entities[data.id]
+      if entity then
+        entity:onPacket(data.act, data.data)
+      end
+    end
   end
 end
 
@@ -76,6 +86,20 @@ function Client:draw()
     self.map:draw()
 
     love.graphics.pop()
+  end
+end
+
+function Client:setOrientation(orientation)
+  if self.orientation ~= orientation then
+    self.orientation = orientation
+    self:sendPacket(net.INPUT_ORIENTATION, orientation)
+  end
+end
+
+function Client:setMoveForward(move_forward)
+  if self.move_forward ~= move_forward then
+    self.move_forward = move_forward
+    self:sendPacket(net.INPUT_MOVE_FORWARD, move_forward)
   end
 end
 
