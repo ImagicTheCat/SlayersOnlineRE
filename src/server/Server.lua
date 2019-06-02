@@ -10,9 +10,15 @@ function Server:__construct(cfg)
   self.clients = {} -- map of peer => client
   self.maps = {} -- map of id => map instances
 
+  self.last_time = clock()
+
   -- register tick callback
   self.tick_task = itask(1/self.cfg.tickrate, function()
-    self:tick()
+    local time = clock()
+    local dt = time-self.last_time
+    self.last_time = time
+
+    self:tick(dt)
   end)
 
   -- create host
@@ -26,7 +32,7 @@ function Server:close()
   print("shutdown.")
 end
 
-function Server:tick()
+function Server:tick(dt)
   -- net
   local event = self.host:service()
   while event do
@@ -46,6 +52,11 @@ function Server:tick()
     end
 
     event = self.host:service()
+  end
+
+  -- maps tick
+  for id, map in pairs(self.maps) do
+    map:tick(dt)
   end
 end
 

@@ -1,6 +1,5 @@
-local Entity = require("Entity")
-
 -- map of nettype => Entity class
 return {
-  entity = Entity
+  Entity = require("Entity"),
+  LivingEntity = require("entities/LivingEntity")
 }

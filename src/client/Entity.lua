@@ -14,6 +14,9 @@ function Entity:onPacket(action, data)
   end
 end
 
+function Entity:tick(dt)
+end
+
 function Entity:draw()
   love.graphics.rectangle("line", self.x, self.y, 16 ,16)
 end
