@@ -1,6 +1,7 @@
 local enet = require("enet")
 local msgpack = require("MessagePack")
 local Map = require("Map")
+local LivingEntity = require("entities/LivingEntity")
 
 local Client = class("Client")
 
@@ -33,6 +34,11 @@ function Client:tick(dt)
 
     event = self.host:service()
   end
+
+  -- map
+  if self.map then
+    self.map:tick(dt)
+  end
 end
 
 function Client:onPacket(protocol, data)
@@ -41,6 +47,8 @@ function Client:onPacket(protocol, data)
   elseif protocol == net.MAP then
     self.map = Map(data.map)
     self.id = data.id -- entity id
+
+    self:setMoveForward(true)
   elseif protocol == net.ENTITY_ADD then
     if self.map then
       self.map:createEntity(data)
@@ -54,6 +62,16 @@ function Client:onPacket(protocol, data)
       local entity = self.map.entities[data.id]
       if entity then
         entity:onPacket(data.act, data.data)
+      end
+    end
+  elseif protocol == net.MAP_MOVEMENTS then
+    if self.map then
+      for _, entry in ipairs(data) do
+        local id, x, y = unpack(entry)
+        local entity = self.map.entities[id]
+        if entity and class.is(entity, LivingEntity) then
+          entity:onUpdatePosition(x,y)
+        end
       end
     end
   end

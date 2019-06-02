@@ -34,6 +34,8 @@ function Map:__construct(server, id)
   self.entities = {} -- map of entity => id
   self.clients = {} -- map of clients
 
+  self.living_entity_updates = {} -- map of living entity
+
   -- load map data
   self.w = 10
   self.h = 10
@@ -50,16 +52,16 @@ function Map:addEntity(entity)
     entity.map:removeEntity(entity)
   end
 
-  -- send entity packet to all map clients
-  if entity.nettype then
-    self:broadcastPacket(net.ENTITY_ADD, entity:serializeNet())
-  end
-
   -- reference
   local id = self.ids:gen()
   self.entities[entity] = id
   entity.id = id
   entity.map = self
+
+  -- send entity packet to all map clients
+  if entity.nettype then
+    self:broadcastPacket(net.ENTITY_ADD, entity:serializeNet())
+  end
 
   if class.is(entity, Client) then
     self.clients[entity] = true
@@ -92,10 +94,10 @@ function Map:removeEntity(entity)
 end
 
 -- broadcast to all map clients
-function Map:broadcastPacket(protocol, data)
+function Map:broadcastPacket(protocol, data, unsequenced)
   local packet = Client.makePacket(protocol, data)
   for client in pairs(self.clients) do
-    client:send(packet)
+    client:send(packet, unsequenced)
   end
 end
 
@@ -116,6 +118,23 @@ function Map:serializeNet()
   end
 
   return data
+end
+
+function Map:tick(dt)
+  -- build continuous movement packet
+  local data = {}
+
+  for entity in pairs(self.living_entity_updates) do
+    if entity.map == self then
+      table.insert(data, {entity.id, entity.x, entity.y})
+    end
+  end
+  
+  if next(data) then
+    self:broadcastPacket(net.MAP_MOVEMENTS, data, true) -- unsequenced
+  end
+
+  self.living_entity_updates = {}
 end
 
 return Map

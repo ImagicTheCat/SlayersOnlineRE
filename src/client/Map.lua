@@ -38,7 +38,7 @@ function Map:__construct(data)
   self.quads = {} -- empty quad references
 
   -- build entities
-  self.entities = {}
+  self.entities = {} -- map of id => entity
 
   for _, edata in pairs(data.entities) do
     self:createEntity(edata)
@@ -60,6 +60,13 @@ function Map:getQuad(x, y)
   end
 
   return quad
+end
+
+function Map:tick(dt)
+  -- entities
+  for id, entity in pairs(self.entities) do
+    entity:tick(dt)
+  end
 end
 
 function Map:draw()

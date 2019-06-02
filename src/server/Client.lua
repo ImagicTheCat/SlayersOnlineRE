@@ -16,8 +16,6 @@ end
 function Client:__construct(server, peer)
   LivingEntity.__construct(self)
 
-  self.nettype = "entity"
-
   self.server = server
   self.peer = peer
 
