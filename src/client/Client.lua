@@ -60,8 +60,21 @@ end
 function Client:draw()
   if self.map then
     love.graphics.push()
-    love.graphics.scale(4)
+    local w,h = love.graphics.getDimensions()
+
+    -- center map render
+    love.graphics.translate(math.floor(w/2), math.floor(h/2))
+
+    love.graphics.scale(4) -- pixel scale
+
+    -- center on player
+    local player = self.map.entities[self.id]
+    if player then
+      love.graphics.translate(-player.x-8, -player.y-8)
+    end
+
     self.map:draw()
+
     love.graphics.pop()
   end
 end
