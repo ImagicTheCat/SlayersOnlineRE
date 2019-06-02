@@ -60,7 +60,7 @@ function Map:addEntity(entity)
 
   -- reference
   local id = self.ids:gen()
-  self.entities[entity] = id
+  self.entities[entity] = id
   entity.id = id
   entity.map = self
 
