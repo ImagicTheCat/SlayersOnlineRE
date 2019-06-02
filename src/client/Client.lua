@@ -34,6 +34,8 @@ end
 function Client:onPacket(protocol, data)
   if protocol == net.PROTOCOL then
     net = protocol
+  elseif protocol == net.MAP then
+    self:loadMap(data)
   end
 end
 
@@ -46,6 +48,9 @@ function Client:onDisconnect()
 end
 
 function Client:draw()
+end
+
+function Client:loadMap(data)
 end
 
 return Client
