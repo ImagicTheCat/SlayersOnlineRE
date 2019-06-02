@@ -55,6 +55,7 @@ function Server:getMap(id)
 
   if not map then -- load
     map = Map(self, id)
+    self.maps[id] = map
   end
 
   return map
