@@ -1,12 +1,14 @@
 local enet = require("enet")
 local msgpack = require("MessagePack")
 local Client = require("Client")
+local Map = require("Map")
 
 local Server = class("Server")
 
 function Server:__construct(cfg)
   self.cfg = cfg
   self.clients = {} -- map of peer => client
+  self.maps = {} -- map of id => map instances
 
   -- register tick callback
   self.tick_task = itask(1/self.cfg.tickrate, function()
@@ -45,6 +47,17 @@ function Server:tick()
 
     event = self.host:service()
   end
+end
+
+-- return map instance or nil
+function Server:getMap(id)
+  local map = self.maps[id]
+
+  if not map then -- load
+    map = Map(self, id)
+  end
+
+  return map
 end
 
 return Server
