@@ -34,9 +34,18 @@ end
 
 function Client:onPacket(protocol, data)
   if protocol == net.PROTOCOL then
-    net = protocol
+    net = data
   elseif protocol == net.MAP then
-    self.map = Map(data)
+    self.map = Map(data.map)
+    self.id = data.id -- entity id
+  elseif protocol == net.ENTITY_ADD then
+    if self.map then
+      self.map:createEntity(data)
+    end
+  elseif protocol == net.ENTITY_REMOVE then
+    if self.map then
+      self.map:removeEntity(data)
+    end
   end
 end
 
@@ -50,7 +59,10 @@ end
 
 function Client:draw()
   if self.map then
+    love.graphics.push()
+    love.graphics.scale(4)
     self.map:draw()
+    love.graphics.pop()
   end
 end
 

@@ -16,10 +16,17 @@ end
 function Client:__construct(server, peer)
   Entity.__construct(self)
 
+  self.nettype = "entity"
+
   self.server = server
   self.peer = peer
 
   self:send(Client.makePacket(net.PROTOCOL, net)) -- send protocol
+
+  local map = server:getMap("test")
+  self.x = math.random(1,100)
+  self.y = math.random(1,100)
+  map:addEntity(self)
 end
 
 function Client:onPacket(protocol, data)
@@ -31,12 +38,15 @@ function Client:send(packet, unsequenced)
 end
 
 function Client:onDisconnect()
+  if self.map then
+    self.map:removeEntity(self)
+  end
 end
 
 -- overload
 function Client:onMapChange()
   if self.map then
-    self:send(Client.makePacket(net.MAP), self.map:serializeNet())
+    self:send(Client.makePacket(net.MAP, {map = self.map:serializeNet(), id = self.id}))
   end
 end
 

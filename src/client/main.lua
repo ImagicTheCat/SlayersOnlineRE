@@ -7,6 +7,7 @@ local cfg = require("config")
 local client
 
 function love.load()
+  love.graphics.setDefaultFilter("nearest", "nearest")
   client = Client(cfg)
 end
 
