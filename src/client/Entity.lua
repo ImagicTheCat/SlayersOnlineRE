@@ -8,6 +8,12 @@ function Entity:__construct(data)
   self.y = data.y
 end
 
+function Entity:onPacket(action, data)
+  if action == "teleport" then
+    self.x, self.y = unpack(data)
+  end
+end
+
 function Entity:draw()
   love.graphics.rectangle("line", self.x, self.y, 16 ,16)
 end
