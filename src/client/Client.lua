@@ -17,6 +17,8 @@ function Client:__construct(cfg)
 
   self.move_forward = false
   self.orientation = 0
+
+  self.orientation_stack = {}
 end
 
 function Client:tick(dt)
@@ -124,6 +126,24 @@ function Client:setMoveForward(move_forward)
   if self.move_forward ~= move_forward then
     self.move_forward = move_forward
     self:sendPacket(net.INPUT_MOVE_FORWARD, move_forward)
+  end
+end
+
+function Client:pressOrientation(orientation)
+  table.insert(self.orientation_stack, orientation)
+  self:setOrientation(orientation)
+end
+
+function Client:releaseOrientation(orientation)
+  for i=#self.orientation_stack,1,-1 do
+    if self.orientation_stack[i] == orientation then
+      table.remove(self.orientation_stack, i)
+    end
+  end
+
+  local last = #self.orientation_stack
+  if last > 0 then
+    self:setOrientation(self.orientation_stack[last])
   end
 end
 

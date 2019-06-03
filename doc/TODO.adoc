@@ -1,4 +1,4 @@
 
 = TODO
 
-* better player movement and controls (move keypressed stack LIFO for better confort)
+* better player movement
