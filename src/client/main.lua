@@ -4,15 +4,13 @@ local Client = require("Client")
 
 local cfg = require("config")
 
-local client
-
 function love.threaderror(thread, err)
   print("thread error: "..err)
 end
 
 function love.load()
   love.graphics.setDefaultFilter("nearest", "nearest")
-  client = Client(cfg)
+  client = Client(cfg) -- global
 end
 
 function love.update(dt)

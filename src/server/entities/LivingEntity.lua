@@ -29,6 +29,15 @@ function LivingEntity:__construct()
   self.attacking = false
 end
 
+-- overload
+function LivingEntity:serializeNet()
+  local data = Entity.serializeNet(self)
+
+  data.orientation = self.orientation
+
+  return data
+end
+
 function LivingEntity:setOrientation(orientation)
   if self.orientation ~= orientation and orientation >= 0 and orientation < 4 then
     self.orientation = orientation

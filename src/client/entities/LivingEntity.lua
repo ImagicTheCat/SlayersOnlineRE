@@ -1,6 +1,7 @@
 local TextureAtlas = require("TextureAtlas")
 local Entity = require("Entity")
 local utils = require("lib/utils")
+local URL = require("socket.url")
 
 local LivingEntity = class("LivingEntity", Entity)
 
@@ -17,7 +18,7 @@ LivingEntity.charaset_atlas = TextureAtlas(9*24, 32*4, 24, 32)
 function LivingEntity:__construct(data)
   Entity.__construct(self, data)
 
-  self.orientation = 0
+  self.orientation = data.orientation
   self.tx = self.x
   self.ty = self.y
 
@@ -28,6 +29,14 @@ function LivingEntity:__construct(data)
   self.attacking = false
 
   self.charaset = love.graphics.newImage("resources/textures/sets/charaset.png")
+  local skin = "Kitazuro_Elfe"
+  client.net_manager:request("http://chipset.slayersonline.net/"..skin, function(data)
+    if data then
+      local filedata = love.filesystem.newFileData(data, "charaset.png")
+      local image = love.graphics.newImage(love.image.newImageData(filedata))
+      self.charaset = image
+    end
+  end)
 end
 
 -- overload
