@@ -30,10 +30,10 @@ end
 function Client:onPacket(protocol, data)
   if protocol == net.INPUT_ORIENTATION then
     self:setOrientation(tonumber(data) or 0)
-  end
-
-  if protocol == net.INPUT_MOVE_FORWARD then
+  elseif protocol == net.INPUT_MOVE_FORWARD then
     self:setMoveForward(not not data)
+  elseif protocol == net.INPUT_ATTACK then
+    self:attack()
   end
 end
 

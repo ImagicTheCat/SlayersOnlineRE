@@ -1,5 +1,6 @@
 local TextureAtlas = require("TextureAtlas")
 local Entity = require("Entity")
+local utils = require("lib/utils")
 
 local LivingEntity = class("LivingEntity", Entity)
 
@@ -24,6 +25,8 @@ function LivingEntity:__construct(data)
   self.anim_index = 1 -- movement animation frame index
   self.anim_step_length = 15 -- pixel length for a movement step
 
+  self.attacking = false
+
   self.charaset = love.graphics.newImage("resources/textures/sets/charaset.png")
 end
 
@@ -37,6 +40,10 @@ function LivingEntity:onPacket(action, data)
     self.anim_index = 1
   elseif action == "ch_orientation" then
     self.orientation = data
+  elseif action == "attack" then
+    self.attacking = true
+    self.attack_duration = data
+    self.attack_time = 0
   end
 end
 
@@ -51,13 +58,23 @@ function LivingEntity:tick(dt)
   local x = math.floor(LivingEntity.lerp(self.x, self.tx, 0.5))
   local y = math.floor(LivingEntity.lerp(self.y, self.ty, 0.5))
 
-  -- compute movement animation
-  local dist = math.abs(x-self.x)+math.abs(y-self.y)
-  self.anim_traveled = self.anim_traveled+dist
+  if self.attacking then
+    -- compute attack animation
+    self.attack_time = self.attack_time+dt
+    self.anim_index = 3+math.floor(self.attack_time/self.attack_duration*3)%3
+    if self.attack_time >= self.attack_duration then -- stop
+      self.attacking = false
+      self.anim_index = 1
+    end
+  else
+    -- compute movement animation
+    local dist = math.abs(x-self.x)+math.abs(y-self.y)
+    self.anim_traveled = self.anim_traveled+dist
 
-  local steps = math.floor(self.anim_traveled/self.anim_step_length)
-  self.anim_traveled = self.anim_traveled-self.anim_step_length*steps
-  self.anim_index = (self.anim_index+steps)%3
+    local steps = math.floor(self.anim_traveled/self.anim_step_length)
+    self.anim_traveled = self.anim_traveled-self.anim_step_length*steps
+    self.anim_index = (self.anim_index+steps)%3
+  end
 
   -- apply new position
   self.x = x

@@ -129,6 +129,10 @@ function Client:setMoveForward(move_forward)
   end
 end
 
+function Client:inputAttack()
+  self:sendPacket(net.INPUT_ATTACK)
+end
+
 function Client:pressOrientation(orientation)
   table.insert(self.orientation_stack, orientation)
   self:setOrientation(orientation)

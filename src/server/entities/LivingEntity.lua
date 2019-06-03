@@ -24,6 +24,9 @@ function LivingEntity:__construct()
   self.move_forward = false
   self.speed = 50 -- pixels per seconds
   self.move_time = 0
+
+  self.attack_duration = 1 -- seconds
+  self.attacking = false
 end
 
 function LivingEntity:setOrientation(orientation)
@@ -57,6 +60,17 @@ function LivingEntity:setMoveForward(move_forward)
       self.move_task = nil
       self:teleport(self.x, self.y) -- end movement
     end
+  end
+end
+
+function LivingEntity:attack()
+  if not self.attacking then
+    self.attacking = true
+    self:broadcastPacket("attack", self.attack_duration)
+
+    task(self.attack_duration, function()
+      self.attacking = false
+    end)
   end
 end
 
