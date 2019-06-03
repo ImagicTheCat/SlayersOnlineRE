@@ -2,6 +2,7 @@ local enet = require("enet")
 local msgpack = require("MessagePack")
 local Map = require("Map")
 local LivingEntity = require("entities/LivingEntity")
+local NetManager = require("NetManager")
 
 local Client = class("Client")
 
@@ -19,6 +20,8 @@ function Client:__construct(cfg)
   self.orientation = 0
 
   self.orientation_stack = {}
+
+  self.net_manager = NetManager()
 end
 
 function Client:tick(dt)
@@ -36,6 +39,9 @@ function Client:tick(dt)
 
     event = self.host:service()
   end
+
+  -- net manager
+  self.net_manager:tick(dt)
 
   -- map
   if self.map then
