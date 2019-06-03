@@ -6,6 +6,10 @@ local cfg = require("config")
 
 local client
 
+function love.threaderror(thread, err)
+  print("thread error: "..err)
+end
+
 function love.load()
   love.graphics.setDefaultFilter("nearest", "nearest")
   client = Client(cfg)
