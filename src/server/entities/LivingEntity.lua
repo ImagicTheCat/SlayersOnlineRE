@@ -20,16 +20,9 @@ function LivingEntity:__construct()
 
   self.nettype = "LivingEntity"
 
-  itask(2, function()
-    if self.map then
-      self:teleport(math.random(0,16*self.map.w), math.random(0,16*self.map.h))
-      self:setOrientation(math.random(0,3))
-    end
-  end)
-
   self.orientation = 0 -- follow charaset directions (0 top, 1 right, 2 bottom, 3 left)
   self.move_forward = false
-  self.speed = math.random(30,50) -- pixels per seconds
+  self.speed = 50 -- pixels per seconds
   self.move_time = 0
 end
 
