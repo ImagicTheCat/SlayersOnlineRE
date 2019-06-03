@@ -1,10 +1,12 @@
+local entities = require("entities/entities")
+local TextureAtlas = require("TextureAtlas")
 
 local Map = class("Map")
-local entities = require("entities/entities")
 
 function Map:__construct(data)
   self.tileset = love.graphics.newImage("resources/textures/sets/"..data.tileset)
-  self.quads = {} -- quad pool
+  
+  local atlas = TextureAtlas(self.tileset:getWidth(), self.tileset:getHeight(), 16, 16)
 
   -- build low / high layer sprite batches
 
@@ -21,8 +23,9 @@ function Map:__construct(data)
         local index = (y*data.w+x)*4+1
         local xl, xh, yl, yh = tiledata[index] or 0, tiledata[index+1] or 0, tiledata[index+2] or 0, tiledata[index+3] or 0
 
-        local low_quad = self:getQuad(xl,yl)
-        local high_quad = self:getQuad(xh,yh)
+        -- (0 is empty tileset cell)
+        local low_quad = atlas:getQuad(xl-1,yl-1)
+        local high_quad = atlas:getQuad(xh-1,yh-1)
 
         if low_quad then
           self.low_layer:add(low_quad, x*16, y*16)
@@ -35,31 +38,12 @@ function Map:__construct(data)
     end
   end
 
-  self.quads = {} -- empty quad references
-
   -- build entities
   self.entities = {} -- map of id => entity
 
   for _, edata in pairs(data.entities) do
     self:createEntity(edata)
   end
-end
-
--- get tileset quad
--- x,y: tileset cell coordinates (start at 1)
--- return nil if invalid
-function Map:getQuad(x, y)
-  local index = y*self.tileset_wc+x
-  local quad = self.quads[index]
-
-  if not quad then -- load quad
-    if x > 0 and y > 0 and x <= self.tileset_wc and y <= self.tileset_hc then
-      quad = love.graphics.newQuad((x-1)*16, (y-1)*16, 16, 16, self.tileset:getDimensions())
-      self.quads[index] = quad
-    end
-  end
-
-  return quad
 end
 
 function Map:tick(dt)
