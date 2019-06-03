@@ -50,6 +50,8 @@ end
 
 -- overload
 function Client:onMapChange()
+  LivingEntity.onMapChange(self)
+
   if self.map then
     self:send(Client.makePacket(net.MAP, {map = self.map:serializeNet(), id = self.id}))
   end

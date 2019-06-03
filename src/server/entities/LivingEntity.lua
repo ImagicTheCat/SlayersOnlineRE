@@ -23,6 +23,7 @@ function LivingEntity:__construct()
   itask(2, function()
     if self.map then
       self:teleport(math.random(0,16*self.map.w), math.random(0,16*self.map.h))
+      self:setOrientation(math.random(0,3))
     end
   end)
 
@@ -33,7 +34,7 @@ function LivingEntity:__construct()
 end
 
 function LivingEntity:setOrientation(orientation)
-  if self.orientation ~= orientation then
+  if self.orientation ~= orientation and orientation >= 0 and orientation < 4 then
     self.orientation = orientation
 
     self:broadcastPacket("ch_orientation", orientation)
@@ -74,6 +75,10 @@ function LivingEntity:updatePosition(x, y)
   if self.map then -- reference for next net update
     self.map.living_entity_updates[self] = true
   end
+end
+
+function LivingEntity:onMapChange()
+  self:setMoveForward(false)
 end
 
 return LivingEntity
