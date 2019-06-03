@@ -20,8 +20,15 @@ function love.draw()
 end
 
 function love.keypressed(key, scancode)
-  if scancode == "w" then client:setOrientation(0)
-  elseif scancode == "d" then client:setOrientation(1)
-  elseif scancode == "s" then client:setOrientation(2)
-  elseif scancode == "a" then client:setOrientation(3) end
+  if scancode == "w" then client:pressOrientation(0)
+  elseif scancode == "d" then client:pressOrientation(1)
+  elseif scancode == "s" then client:pressOrientation(2)
+  elseif scancode == "a" then client:pressOrientation(3) end
+end
+
+function love.keyreleased(key, scancode)
+  if scancode == "w" then client:releaseOrientation(0)
+  elseif scancode == "d" then client:releaseOrientation(1)
+  elseif scancode == "s" then client:releaseOrientation(2)
+  elseif scancode == "a" then client:releaseOrientation(3) end
 end
