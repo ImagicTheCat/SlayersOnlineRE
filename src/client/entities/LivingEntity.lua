@@ -92,7 +92,7 @@ end
 
 -- overload
 function LivingEntity:draw()
-  love.graphics.draw(self.charaset, LivingEntity.charaset_atlas:getQuad(self.anim_index,self.orientation), self.x, self.y)
+  love.graphics.draw(self.charaset, LivingEntity.charaset_atlas:getQuad(self.anim_index,self.orientation), self.x-4, self.y-16)
 end
 
 return LivingEntity
