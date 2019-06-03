@@ -122,10 +122,8 @@ function Client:draw()
 end
 
 function Client:setOrientation(orientation)
-  if self.orientation ~= orientation then
-    self.orientation = orientation
-    self:sendPacket(net.INPUT_ORIENTATION, orientation)
-  end
+  self.orientation = orientation
+  self:sendPacket(net.INPUT_ORIENTATION, orientation)
 end
 
 function Client:setMoveForward(move_forward)
