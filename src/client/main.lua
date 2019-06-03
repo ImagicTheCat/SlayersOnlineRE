@@ -23,7 +23,8 @@ function love.keypressed(key, scancode)
   if scancode == "w" then client:pressOrientation(0)
   elseif scancode == "d" then client:pressOrientation(1)
   elseif scancode == "s" then client:pressOrientation(2)
-  elseif scancode == "a" then client:pressOrientation(3) end
+  elseif scancode == "a" then client:pressOrientation(3)
+  elseif scancode == "space" then client:inputAttack() end
 end
 
 function love.keyreleased(key, scancode)
