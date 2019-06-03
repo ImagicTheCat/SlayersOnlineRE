@@ -21,7 +21,7 @@ function LivingEntity:__construct(data)
   self.ty = self.y
 
   self.anim_traveled = 0 -- distance traveled (pixels) for the movement animation
-  self.anim_index = 0 -- movement animation frame index
+  self.anim_index = 1 -- movement animation frame index
   self.anim_step_length = 15 -- pixel length for a movement step
 
   self.charaset = love.graphics.newImage("resources/textures/sets/charaset.png")
@@ -34,6 +34,7 @@ function LivingEntity:onPacket(action, data)
   if action == "teleport" then
     self.tx = self.x
     self.ty = self.y
+    self.anim_index = 1
   elseif action == "ch_orientation" then
     self.orientation = data
   end
