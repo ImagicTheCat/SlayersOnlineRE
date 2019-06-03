@@ -39,6 +39,14 @@ function Client:tick(dt)
   if self.map then
     self.map:tick(dt)
   end
+
+  -- movement input
+  local key = "w"
+  if self.orientation == 1 then key = "d"
+  elseif self.orientation == 2 then key = "s"
+  elseif self.orientation == 3 then key = "a" end
+
+  self:setMoveForward(love.keyboard.isScancodeDown(key))
 end
 
 function Client:onPacket(protocol, data)
@@ -47,8 +55,6 @@ function Client:onPacket(protocol, data)
   elseif protocol == net.MAP then
     self.map = Map(data.map)
     self.id = data.id -- entity id
-
-    self:setMoveForward(true)
   elseif protocol == net.ENTITY_ADD then
     if self.map then
       self.map:createEntity(data)
