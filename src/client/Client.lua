@@ -3,6 +3,7 @@ local msgpack = require("MessagePack")
 local Map = require("Map")
 local LivingEntity = require("entities/LivingEntity")
 local NetManager = require("NetManager")
+local URL = require("socket.url")
 
 local Client = class("Client")
 
@@ -22,6 +23,10 @@ function Client:__construct(cfg)
   self.orientation_stack = {}
 
   self.net_manager = NetManager()
+
+  self.textures = {} -- map of texture path => image
+  self.skins = {} -- map of skin file => image
+  self.loading_skins = {} -- map of skin file => callbacks
 end
 
 function Client:tick(dt)
@@ -152,6 +157,50 @@ function Client:releaseOrientation(orientation)
   local last = #self.orientation_stack
   if last > 0 then
     self:setOrientation(self.orientation_stack[last])
+  end
+end
+
+function Client:loadTexture(path)
+  local image = self.textures[path]
+
+  if not image then
+    image = love.graphics.newImage(path)
+    self.textures[path] = image
+  end
+
+  return image
+end
+
+-- callback(image)
+--- image: skin texture or nil on failure
+function Client:loadSkin(file, callback)
+  local image = self.skins[file]
+  if image then
+    callback(image)
+  else
+    if self.loading_skins[file] then -- already loading
+      table.insert(self.loading_skins[file], callback)
+    else -- load
+      self.loading_skins[file] = {callback}
+
+      client.net_manager:request("http://chipset.slayersonline.net/"..file, function(data)
+        if data then
+          local filedata = love.filesystem.newFileData(data, "skin.png")
+          local image = love.graphics.newImage(love.image.newImageData(filedata))
+          self.skins[file] = image
+
+          for _, callback in ipairs(self.loading_skins[file]) do
+            callback(image)
+          end
+        else
+          for _, callback in ipairs(self.loading_skins[file]) do
+            callback()
+          end
+        end
+
+        self.loading_skins[file] = nil
+      end)
+    end
   end
 end
 

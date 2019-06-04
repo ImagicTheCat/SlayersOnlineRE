@@ -4,7 +4,7 @@ local TextureAtlas = require("TextureAtlas")
 local Map = class("Map")
 
 function Map:__construct(data)
-  self.tileset = love.graphics.newImage("resources/textures/sets/"..data.tileset)
+  self.tileset = client:loadTexture("resources/textures/sets/"..data.tileset)
   
   local atlas = TextureAtlas(self.tileset:getWidth(), self.tileset:getHeight(), 16, 16)
 

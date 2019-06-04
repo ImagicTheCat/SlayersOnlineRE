@@ -1,7 +1,6 @@
 local TextureAtlas = require("TextureAtlas")
 local Entity = require("Entity")
 local utils = require("lib/utils")
-local URL = require("socket.url")
 
 local LivingEntity = class("LivingEntity", Entity)
 
@@ -28,13 +27,13 @@ function LivingEntity:__construct(data)
 
   self.attacking = false
 
-  self.charaset = love.graphics.newImage("resources/textures/sets/charaset.png")
-  local skin = "Kitazuro_Elfe"
-  client.net_manager:request("http://chipset.slayersonline.net/"..skin, function(data)
-    if data then
-      local filedata = love.filesystem.newFileData(data, "charaset.png")
-      local image = love.graphics.newImage(love.image.newImageData(filedata))
+  self.charaset = client:loadTexture("resources/textures/sets/charaset.png")
+  local skin = "Kitazuro_Elfe.png"
+  client:loadSkin(skin, function(image)
+    if image then
       self.charaset = image
+    else
+      print("failed to load character skin \""..skin.."\"")
     end
   end)
 end
