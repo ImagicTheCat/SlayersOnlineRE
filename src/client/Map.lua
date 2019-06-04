@@ -3,6 +3,12 @@ local TextureAtlas = require("TextureAtlas")
 
 local Map = class("Map")
 
+local function sort_entities(a, b)
+  return a.y < b.y
+end
+
+-- METHODS
+
 function Map:__construct(data)
   self.tileset = client:loadTexture("resources/textures/sets/"..data.tileset)
   
@@ -40,6 +46,7 @@ function Map:__construct(data)
 
   -- build entities
   self.entities = {} -- map of id => entity
+  self.draw_list = {} -- list of entities
 
   for _, edata in pairs(data.entities) do
     self:createEntity(edata)
@@ -47,17 +54,20 @@ function Map:__construct(data)
 end
 
 function Map:tick(dt)
-  -- entities
+  -- entities tick
   for id, entity in pairs(self.entities) do
     entity:tick(dt)
   end
+
+  -- sort entities by Y (top-down sorting)
+  table.sort(self.draw_list, sort_entities)
 end
 
 function Map:draw()
   love.graphics.draw(self.low_layer)
 
   -- entities
-  for id, entity in pairs(self.entities) do
+  for _, entity in ipairs(self.draw_list) do
     entity:draw()
   end
 
@@ -69,7 +79,10 @@ function Map:createEntity(edata)
   local eclass = entities[edata.nettype]
   if eclass then
     local entity = eclass(edata)
+
     self.entities[edata.id] = entity
+    table.insert(self.draw_list, entity)
+
     return entity
   else
     print("can't instantiate entity, undefined nettype \""..edata.nettype.."\"")
@@ -79,6 +92,14 @@ end
 function Map:removeEntity(id)
   if self.entities[id] then
     self.entities[id] = nil
+
+    -- remove from draw list
+    for i, entity in ipairs(self.draw_list) do
+      if id == entity.id then
+        table.remove(self.draw_list, i)
+        break
+      end
+    end
   end
 end
 
