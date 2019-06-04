@@ -37,8 +37,8 @@ function Map:__construct(server, id)
   self.living_entity_updates = {} -- map of living entity
 
   -- load map data
-  self.w = 10
-  self.h = 10
+  self.w = 50
+  self.h = 50
   self.tileset = "test.png"
   self.tiledata = Map.loadTileData(id)
   if not self.tiledata then
