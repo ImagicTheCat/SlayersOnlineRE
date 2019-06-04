@@ -9,6 +9,7 @@ function love.threaderror(thread, err)
 end
 
 function love.load()
+  love.keyboard.setKeyRepeat(true)
   love.graphics.setDefaultFilter("nearest", "nearest")
   client = Client(cfg) -- global
 end
@@ -21,17 +22,18 @@ function love.draw()
   client:draw()
 end
 
-function love.keypressed(key, scancode)
-  if scancode == "w" then client:pressOrientation(0)
-  elseif scancode == "d" then client:pressOrientation(1)
-  elseif scancode == "s" then client:pressOrientation(2)
-  elseif scancode == "a" then client:pressOrientation(3)
-  elseif scancode == "space" then client:inputAttack() end
+function love.keypressed(key, scancode, isrepeat)
+  client:onKeyPressed(key, scancode, isrepeat)
 end
 
 function love.keyreleased(key, scancode)
-  if scancode == "w" then client:releaseOrientation(0)
-  elseif scancode == "d" then client:releaseOrientation(1)
-  elseif scancode == "s" then client:releaseOrientation(2)
-  elseif scancode == "a" then client:releaseOrientation(3) end
+  client:onKeyReleased(key, scancode)
+end
+
+function love.textinput(data)
+  client:onTextInput(data)
+end
+
+function love.resize(w, h)
+  client:onResize(w, h)
 end

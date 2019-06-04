@@ -4,6 +4,7 @@ local Map = require("Map")
 local LivingEntity = require("entities/LivingEntity")
 local NetManager = require("NetManager")
 local URL = require("socket.url")
+local TextInput = require("gui/TextInput")
 
 local Client = class("Client")
 
@@ -28,20 +29,14 @@ function Client:__construct(cfg)
   self.skins = {} -- map of skin file => image
   self.loading_skins = {} -- map of skin file => callbacks
 
-  self.system_tex = self:loadTexture("resources/textures/system.png")
-  self.system_background = love.graphics.newQuad(0,0,32,32,160,80)
+  self.font = love.graphics.newFont("resources/font.ttf", 14, "mono")
 
-  -- top
-  self.system_border_ctl = love.graphics.newQuad(32,0,5,5,160,80)
-  self.system_border_ctr = love.graphics.newQuad(64-5,0,5,5,160,80)
-  -- bottom
-  self.system_border_cbl = love.graphics.newQuad(32,32-5,5,5,160,80)
-  self.system_border_cbr = love.graphics.newQuad(64-5,32-5,5,5,160,80)
+  self.world_scale = 4
+  self.gui_scale = 2
 
-  self.system_border_mt = love.graphics.newQuad(32+5,0,32-10,5,160,80)
-  self.system_border_mb = love.graphics.newQuad(32+5,32-5,32-10,5,160,80)
-  self.system_border_ml = love.graphics.newQuad(32,5,5,32-10,160,80)
-  self.system_border_mr = love.graphics.newQuad(64-5,5,5,32-10,160,80)
+  self.input_chat = TextInput(self)
+
+  self:onResize(love.graphics.getDimensions())
 end
 
 function Client:tick(dt)
@@ -119,22 +114,33 @@ end
 function Client:onDisconnect()
 end
 
--- render system window
-function Client:renderWindow(x, y, w, h)
-  -- background
-  love.graphics.draw(self.system_tex, self.system_background, x+1, y+1, 0, (w-2)/32, (h-2)/32)
+function Client:onResize(w, h)
+  self.input_chat:update(2/self.gui_scale, (h-45-2)/self.gui_scale, (w-4)/self.gui_scale, 45/self.gui_scale)
+end
 
-  -- borders
-  --- corners
-  love.graphics.draw(self.system_tex, self.system_border_ctl, x, y)
-  love.graphics.draw(self.system_tex, self.system_border_ctr, x+w-5, y)
-  love.graphics.draw(self.system_tex, self.system_border_cbl, x, y+h-5)
-  love.graphics.draw(self.system_tex, self.system_border_cbr, x+w-5, y+h-5)
-  --- middles
-  love.graphics.draw(self.system_tex, self.system_border_mt, x+5, y, 0, (w-10)/22, 1)
-  love.graphics.draw(self.system_tex, self.system_border_mb, x+5, y+h-5, 0, (w-10)/22, 1)
-  love.graphics.draw(self.system_tex, self.system_border_ml, x, y+5, 0, 1, (h-10)/22)
-  love.graphics.draw(self.system_tex, self.system_border_mr, x+w-5, y+5, 0, 1, (h-10)/22)
+function Client:onTextInput(data)
+  self.input_chat:input(data)
+end
+
+function Client:onKeyPressed(key, scancode, isrepeat)
+  if not isrepeat then
+    if scancode == "w" then self:pressOrientation(0)
+    elseif scancode == "d" then self:pressOrientation(1)
+    elseif scancode == "s" then self:pressOrientation(2)
+    elseif scancode == "a" then self:pressOrientation(3)
+    elseif scancode == "space" then self:inputAttack() end
+  end
+
+  if scancode == "backspace" then
+    self.input_chat:erase(-1)
+  end
+end
+
+function Client:onKeyReleased(key, scancode)
+  if scancode == "w" then self:releaseOrientation(0)
+  elseif scancode == "d" then self:releaseOrientation(1)
+  elseif scancode == "s" then self:releaseOrientation(2)
+  elseif scancode == "a" then self:releaseOrientation(3) end
 end
 
 function Client:draw()
@@ -146,7 +152,7 @@ function Client:draw()
     -- center map render
     love.graphics.translate(math.floor(w/2), math.floor(h/2))
 
-    love.graphics.scale(4) -- pixel scale
+    love.graphics.scale(self.world_scale) -- pixel scale
 
     -- center on player
     local player = self.map.entities[self.id]
@@ -161,8 +167,8 @@ function Client:draw()
 
   -- interface rendering
   love.graphics.push()
-  love.graphics.scale(4)
-  self:renderWindow(10/4,10/4,400/4,400/4)
+  love.graphics.scale(self.gui_scale)
+  self.input_chat:draw()
   love.graphics.pop()
 end
 
