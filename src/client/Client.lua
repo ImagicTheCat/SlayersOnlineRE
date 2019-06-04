@@ -27,6 +27,21 @@ function Client:__construct(cfg)
   self.textures = {} -- map of texture path => image
   self.skins = {} -- map of skin file => image
   self.loading_skins = {} -- map of skin file => callbacks
+
+  self.system_tex = self:loadTexture("resources/textures/system.png")
+  self.system_background = love.graphics.newQuad(0,0,32,32,160,80)
+
+  -- top
+  self.system_border_ctl = love.graphics.newQuad(32,0,5,5,160,80)
+  self.system_border_ctr = love.graphics.newQuad(64-5,0,5,5,160,80)
+  -- bottom
+  self.system_border_cbl = love.graphics.newQuad(32,32-5,5,5,160,80)
+  self.system_border_cbr = love.graphics.newQuad(64-5,32-5,5,5,160,80)
+
+  self.system_border_mt = love.graphics.newQuad(32+5,0,32-10,5,160,80)
+  self.system_border_mb = love.graphics.newQuad(32+5,32-5,32-10,5,160,80)
+  self.system_border_ml = love.graphics.newQuad(32,5,5,32-10,160,80)
+  self.system_border_mr = love.graphics.newQuad(64-5,5,5,32-10,160,80)
 end
 
 function Client:tick(dt)
@@ -104,7 +119,26 @@ end
 function Client:onDisconnect()
 end
 
+-- render system window
+function Client:renderWindow(x, y, w, h)
+  -- background
+  love.graphics.draw(self.system_tex, self.system_background, x+1, y+1, 0, (w-2)/32, (h-2)/32)
+
+  -- borders
+  --- corners
+  love.graphics.draw(self.system_tex, self.system_border_ctl, x, y)
+  love.graphics.draw(self.system_tex, self.system_border_ctr, x+w-5, y)
+  love.graphics.draw(self.system_tex, self.system_border_cbl, x, y+h-5)
+  love.graphics.draw(self.system_tex, self.system_border_cbr, x+w-5, y+h-5)
+  --- middles
+  love.graphics.draw(self.system_tex, self.system_border_mt, x+5, y, 0, (w-10)/22, 1)
+  love.graphics.draw(self.system_tex, self.system_border_mb, x+5, y+h-5, 0, (w-10)/22, 1)
+  love.graphics.draw(self.system_tex, self.system_border_ml, x, y+5, 0, 1, (h-10)/22)
+  love.graphics.draw(self.system_tex, self.system_border_mr, x+w-5, y+5, 0, 1, (h-10)/22)
+end
+
 function Client:draw()
+  -- map rendering
   if self.map then
     love.graphics.push()
     local w,h = love.graphics.getDimensions()
@@ -124,6 +158,12 @@ function Client:draw()
 
     love.graphics.pop()
   end
+
+  -- interface rendering
+  love.graphics.push()
+  love.graphics.scale(4)
+  self:renderWindow(10/4,10/4,400/4,400/4)
+  love.graphics.pop()
 end
 
 function Client:setOrientation(orientation)
