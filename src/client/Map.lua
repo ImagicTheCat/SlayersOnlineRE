@@ -24,9 +24,10 @@ function Map:__construct(data)
 
   local tiledata = data.tiledata
   if tiledata then
-    for y=0,data.h-1 do
-      for x=0,data.w-1 do
-        local index = (y*data.w+x)*4+1
+    for x=0,data.w-1 do
+      for y=0,data.h-1 do
+        local index = (x*data.h+y)*4+1
+
         local xl, xh, yl, yh = tiledata[index] or 0, tiledata[index+1] or 0, tiledata[index+2] or 0, tiledata[index+3] or 0
 
         -- (0 is empty tileset cell)

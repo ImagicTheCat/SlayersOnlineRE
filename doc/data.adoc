@@ -3,6 +3,9 @@
 
 This documentation is about understanding the data files used by Slayers Online.
 
+.Sources
+* https://github.com/YannDub/SlayersOnline-Utils-Unity
+
 == Map
 
 A `.map` file is a list of textual integers (probably 1 byte unsigned) which defines the two render layers of the map tileset (low and high).
@@ -10,7 +13,7 @@ A `.map` file is a list of textual integers (probably 1 byte unsigned) which def
 Each (x,y) are the coordinates of a tileset cell, starting to 1 (0 is empty).
 
 ----
--- first cell, order x first (column)
+-- first cell, y first (columns, rows are x)
 x_low -- end of line
 x_high
 y_low
