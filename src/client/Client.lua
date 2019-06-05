@@ -29,7 +29,7 @@ function Client:__construct(cfg)
   self.skins = {} -- map of skin file => image
   self.loading_skins = {} -- map of skin file => callbacks
 
-  self.font = love.graphics.newFont("resources/font.ttf", 14, "mono")
+  self.font = love.graphics.newFont("resources/font.ttf", 30)
 
   self.world_scale = 4
   self.gui_scale = 2
