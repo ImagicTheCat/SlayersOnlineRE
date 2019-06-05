@@ -9,5 +9,6 @@ return {
   ENTITY_PACKET = 6,
   MAP_MOVEMENTS = 7,
   INPUT_ATTACK = 8,
-  INPUT_CHAT = 9
+  INPUT_CHAT = 9,
+  MAP_CHAT = 10
 }
