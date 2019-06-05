@@ -27,6 +27,8 @@ function LivingEntity:__construct()
 
   self.attack_duration = 1 -- seconds
   self.attacking = false
+
+  self.skin = ""
 end
 
 -- overload
@@ -34,6 +36,7 @@ function LivingEntity:serializeNet()
   local data = Entity.serializeNet(self)
 
   data.orientation = self.orientation
+  data.skin = self.skin
 
   return data
 end
@@ -81,6 +84,12 @@ function LivingEntity:attack()
       self.attacking = false
     end)
   end
+end
+
+-- skin: skin filename
+function LivingEntity:setSkin(skin)
+  self.skin = skin
+  self:broadcastPacket("ch_skin", skin)
 end
 
 -- continuous movement update (should end with a teleport)
