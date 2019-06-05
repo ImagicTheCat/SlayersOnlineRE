@@ -35,6 +35,7 @@ function Client:__construct(cfg)
   self.gui_scale = 2
 
   self.input_chat = TextInput(self)
+  self.typing = false
 
   self:onResize(love.graphics.getDimensions())
 end
@@ -63,13 +64,15 @@ function Client:tick(dt)
     self.map:tick(dt)
   end
 
-  -- movement input
-  local key = "w"
-  if self.orientation == 1 then key = "d"
-  elseif self.orientation == 2 then key = "s"
-  elseif self.orientation == 3 then key = "a" end
+  if not self.typing then
+    -- movement input
+    local key = "w"
+    if self.orientation == 1 then key = "d"
+    elseif self.orientation == 2 then key = "s"
+    elseif self.orientation == 3 then key = "a" end
 
-  self:setMoveForward(love.keyboard.isScancodeDown(key))
+    self:setMoveForward(love.keyboard.isScancodeDown(key))
+  end
 end
 
 function Client:onPacket(protocol, data)
@@ -119,28 +122,62 @@ function Client:onResize(w, h)
 end
 
 function Client:onTextInput(data)
-  self.input_chat:input(data)
+  if self.typing then
+    self.input_chat:input(data)
+  end
 end
 
 function Client:onKeyPressed(key, scancode, isrepeat)
   if not isrepeat then
-    if scancode == "w" then self:pressOrientation(0)
-    elseif scancode == "d" then self:pressOrientation(1)
-    elseif scancode == "s" then self:pressOrientation(2)
-    elseif scancode == "a" then self:pressOrientation(3)
-    elseif scancode == "space" then self:inputAttack() end
+    if not self.typing then
+      if scancode == "w" then self:pressOrientation(0)
+      elseif scancode == "d" then self:pressOrientation(1)
+      elseif scancode == "s" then self:pressOrientation(2)
+      elseif scancode == "a" then self:pressOrientation(3)
+      elseif scancode == "space" then self:inputAttack() end
+    end
   end
 
   if scancode == "backspace" then
-    self.input_chat:erase(-1)
+    if self.typing then
+      self.input_chat:erase(-1)
+    end
+  elseif scancode == "return" then
+    if self.typing then
+      self:inputChat(self.input_chat.text)
+      self.input_chat:set("")
+    end
+
+    self:setTyping(not self.typing)
   end
 end
 
 function Client:onKeyReleased(key, scancode)
-  if scancode == "w" then self:releaseOrientation(0)
-  elseif scancode == "d" then self:releaseOrientation(1)
-  elseif scancode == "s" then self:releaseOrientation(2)
-  elseif scancode == "a" then self:releaseOrientation(3) end
+  if not self.typing then
+    if scancode == "w" then self:releaseOrientation(0)
+    elseif scancode == "d" then self:releaseOrientation(1)
+    elseif scancode == "s" then self:releaseOrientation(2)
+    elseif scancode == "a" then self:releaseOrientation(3) end
+  end
+end
+
+function Client:setTyping(typing)
+  if self.typing ~= typing then
+    self.typing = typing
+
+    if self.typing then
+      self:setMoveForward(false)
+      self.typing = true
+    else
+      self.typing = false
+    end
+  end
+end
+
+function Client:inputChat(msg)
+  if string.len(msg) > 0 then
+    self:sendPacket(net.INPUT_CHAT, msg)
+  end
 end
 
 function Client:draw()
@@ -168,7 +205,11 @@ function Client:draw()
   -- interface rendering
   love.graphics.push()
   love.graphics.scale(self.gui_scale)
-  self.input_chat:draw()
+
+  if self.typing then
+    self.input_chat:draw()
+  end
+
   love.graphics.pop()
 end
 
