@@ -40,7 +40,7 @@ function Client:onPacket(protocol, data)
       if string.sub(data, 1, 1) == "/" then -- parse command
         local args = utils.split(string.sub(data, 2), " ")
         if #args > 0 then
-          self.server:onCommand(self, args)
+          self.server:processCommand(self, args)
         end
       else -- message
         self:mapChat(data)

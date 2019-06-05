@@ -14,6 +14,7 @@ client:: LÖVE 11.x
 * https://github.com/ImagicTheCat/Luaseq 
 * https://github.com/brimworks/lua-ev
 * https://github.com/leafo/lua-enet
+* https://github.com/effil/effil
 
 .Client dependencies
 * https://github.com/ImagicTheCat/Luaoop 

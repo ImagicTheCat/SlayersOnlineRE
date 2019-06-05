@@ -1,7 +1,9 @@
+local effil = require("effil")
 local enet = require("enet")
 local msgpack = require("MessagePack")
 local Client = require("Client")
 local Map = require("Map")
+local utils = require("lib/utils")
 
 local Server = class("Server")
 
@@ -19,6 +21,14 @@ end
 local function cmd_skin(self, sender, args)
   if sender then
     sender:setSkin(args[2] or "")
+  end
+end
+
+-- CONSOLE THREAD
+local function console_main(flags, channel)
+  while flags.running do
+    local line = io.stdin:read("*l")
+    channel:push(line)
   end
 end
 
@@ -49,14 +59,35 @@ function Server:__construct(cfg)
   -- register commands
   self:registerCommand("count", cmd_count)
   self:registerCommand("skin", cmd_skin)
+
+  -- console thread
+  self.console_flags = effil.table({ running = true })
+  self.console_channel = effil.channel()
+  self.console = effil.thread(console_main)(self.console_flags, self.console_channel)
 end
 
 function Server:close()
+  self.console_flags.running = false
   self.tick_task:remove()
+
   print("shutdown.")
 end
 
 function Server:tick(dt)
+  -- console
+  while self.console_channel:size() > 0 do
+    local line = self.console_channel:pop()
+
+    -- parse command
+    local args = utils.split(line, " ")
+    if #args > 0 then
+      local ok = self:processCommand(nil, args)
+      if not ok then
+        print("unknown command \""..args[1].."\"")
+      end
+    end
+  end
+
   -- net
   local event = self.host:service()
   while event do
@@ -96,11 +127,15 @@ function Server:getMap(id)
   return map
 end
 
-function Server:onCommand(sender, args)
+-- return true if the command has been processed or false
+function Server:processCommand(sender, args)
   -- dispatch command
   local command = self.commands[args[1]]
   if command then
     command(self, sender, args)
+    return true
+  else
+    return false
   end
 end
 
