@@ -2,6 +2,7 @@ local enet = require("enet")
 local msgpack = require("MessagePack")
 local Map = require("Map")
 local LivingEntity = require("entities/LivingEntity")
+local Player = require("entities/Player")
 local NetManager = require("NetManager")
 local URL = require("socket.url")
 local TextInput = require("gui/TextInput")
@@ -104,6 +105,13 @@ function Client:onPacket(protocol, data)
         if entity and class.is(entity, LivingEntity) then
           entity:onUpdatePosition(x,y)
         end
+      end
+    end
+  elseif protocol == net.MAP_CHAT then
+    if self.map then
+      local entity = self.map.entities[data.id]
+      if class.is(entity, Player) then
+        entity:onMapChat(data.msg)
       end
     end
   end

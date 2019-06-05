@@ -1,9 +1,10 @@
 local msgpack = require("MessagePack")
 local net = require("protocol")
-local LivingEntity = require("entities/LivingEntity")
+local Player = require("entities/Player")
+local utils = require("lib/utils")
 
 -- server-side client
-local Client = class("Client", LivingEntity)
+local Client = class("Client", Player)
 
 -- STATICS
 
@@ -14,7 +15,7 @@ end
 -- METHODS
 
 function Client:__construct(server, peer)
-  LivingEntity.__construct(self)
+  Player.__construct(self)
 
   self.server = server
   self.peer = peer
@@ -34,6 +35,17 @@ function Client:onPacket(protocol, data)
     self:setMoveForward(not not data)
   elseif protocol == net.INPUT_ATTACK then
     self:attack()
+  elseif protocol == net.INPUT_CHAT then
+    if type(data) == "string" and string.len(data) > 0 and string.len(data) < 1000 then
+      if string.sub(data, 1, 1) == "/" then -- parse command
+        local args = utils.split(string.sub(data, 2), " ")
+        if #args > 0 then
+          self.server:onCommand(self, args)
+        end
+      else -- message
+        self:mapChat(data)
+      end
+    end
   end
 end
 
@@ -50,7 +62,7 @@ end
 
 -- overload
 function Client:onMapChange()
-  LivingEntity.onMapChange(self)
+  Player.onMapChange(self)
 
   if self.map then
     self:send(Client.makePacket(net.MAP, {map = self.map:serializeNet(), id = self.id}))
