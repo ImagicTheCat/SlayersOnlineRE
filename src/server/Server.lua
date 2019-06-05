@@ -16,6 +16,12 @@ local function cmd_count(self, sender, args)
   print(count.." online players")
 end
 
+local function cmd_skin(self, sender, args)
+  if sender then
+    sender:setSkin(args[2] or "")
+  end
+end
+
 -- METHODS
 
 function Server:__construct(cfg)
@@ -42,6 +48,7 @@ function Server:__construct(cfg)
 
   -- register commands
   self:registerCommand("count", cmd_count)
+  self:registerCommand("skin", cmd_skin)
 end
 
 function Server:close()

@@ -27,15 +27,9 @@ function LivingEntity:__construct(data)
 
   self.attacking = false
 
+  -- skin
   self.charaset = client:loadTexture("resources/textures/sets/charaset.png")
-  local skin = "Kitazuro_Elfe.png"
-  client:loadSkin(skin, function(image)
-    if image then
-      self.charaset = image
-    else
-      print("failed to load character skin \""..skin.."\"")
-    end
-  end)
+  self:setSkin(data.skin)
 end
 
 -- overload
@@ -52,7 +46,20 @@ function LivingEntity:onPacket(action, data)
     self.attacking = true
     self.attack_duration = data
     self.attack_time = 0
+  elseif action == "ch_skin" then
+    self:setSkin(data)
   end
+end
+
+-- skin: remote skin filename
+function LivingEntity:setSkin(skin)
+  client:loadSkin(skin, function(image)
+    if image then
+      self.charaset = image
+    else
+      print("failed to load character skin \""..skin.."\"")
+    end
+  end)
 end
 
 function LivingEntity:onUpdatePosition(x,y)
