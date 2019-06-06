@@ -126,6 +126,7 @@ function Client:onDisconnect()
 end
 
 function Client:onResize(w, h)
+  self.world_scale = math.ceil(h/16/15) -- display 15 tiles max (height)
   self.input_chat:update(2/self.gui_scale, (h-45-2)/self.gui_scale, (w-4)/self.gui_scale, 45/self.gui_scale)
 end
 
