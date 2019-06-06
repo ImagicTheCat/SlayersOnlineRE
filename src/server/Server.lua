@@ -15,12 +15,18 @@ local function cmd_count(self, sender, args)
     count = count+1
   end
 
-  print(count.." online players")
+  if sender then
+    sender:sendChatMessage(count.." online players")
+  else
+    print(count.." online players")
+  end
 end
 
 local function cmd_skin(self, sender, args)
   if sender then
-    sender:setSkin(args[2] or "")
+    local skin = args[2] or ""
+    sender:setSkin(skin)
+    sender:sendChatMessage("skin set to \""..skin.."\"")
   end
 end
 
