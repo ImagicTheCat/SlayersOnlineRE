@@ -6,6 +6,7 @@ local Player = require("entities/Player")
 local NetManager = require("NetManager")
 local URL = require("socket.url")
 local TextInput = require("gui/TextInput")
+local ChatHistory = require("gui/ChatHistory")
 
 local Client = class("Client")
 
@@ -38,6 +39,8 @@ function Client:__construct(cfg)
 
   self.input_chat = TextInput(self)
   self.typing = false
+
+  self.chat_history = ChatHistory(self)
 
   self:onResize(love.graphics.getDimensions())
 end
@@ -113,8 +116,11 @@ function Client:onPacket(protocol, data)
       local entity = self.map.entities[data.id]
       if class.is(entity, Player) then
         entity:onMapChat(data.msg)
+        self.chat_history:add({{0,0.5,1}, tostring(entity.id)..": ", {1,1,1}, data.msg})
       end
     end
+  elseif protocol == net.CHAT_MESSAGE_SERVER then
+    self.chat_history:add({{0,1,0.5}, data})
   end
 end
 
@@ -129,6 +135,7 @@ end
 function Client:onResize(w, h)
   self.world_scale = math.ceil(h/16/15) -- display 15 tiles max (height)
   self.input_chat:update(2/self.gui_scale, (h-45-2)/self.gui_scale, (w-4)/self.gui_scale, 45/self.gui_scale)
+  self.chat_history:update(self.input_chat.x, self.input_chat.y-(2+200)/self.gui_scale, self.input_chat.w, 200/self.gui_scale)
 end
 
 function Client:onTextInput(data)
@@ -218,6 +225,7 @@ function Client:draw()
 
   if self.typing then
     self.input_chat:draw()
+    self.chat_history:draw()
   end
 
   love.graphics.pop()

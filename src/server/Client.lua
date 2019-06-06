@@ -40,7 +40,10 @@ function Client:onPacket(protocol, data)
       if string.sub(data, 1, 1) == "/" then -- parse command
         local args = utils.split(string.sub(data, 2), " ")
         if #args > 0 then
-          self.server:processCommand(self, args)
+          local ok = self.server:processCommand(self, args)
+          if not ok then
+            self:sendChatMessage("unknown command \""..args[1].."\"")
+          end
         end
       else -- message
         self:mapChat(data)
@@ -52,6 +55,10 @@ end
 -- unsequenced: unsequenced and unreliable if true/passed, reliable otherwise
 function Client:send(packet, unsequenced)
   self.peer:send(packet, 0, (unsequenced and "unsequenced" or "reliable"))
+end
+
+function Client:sendChatMessage(msg)
+  self:send(Client.makePacket(net.CHAT_MESSAGE_SERVER, msg))
 end
 
 function Client:onDisconnect()
