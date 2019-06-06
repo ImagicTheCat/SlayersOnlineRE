@@ -1,4 +1,5 @@
 local enet = require("enet")
+local utils = require("lib/utils")
 local msgpack = require("MessagePack")
 local Map = require("Map")
 local LivingEntity = require("entities/LivingEntity")
@@ -49,7 +50,7 @@ function Client:__construct(cfg)
   self.phials_time = 0
   self.phials_delay = 2/3 -- animation step duration (anim_duration/3)
   self.phials_index = 0
-  self.phials_scale = 1.5
+  self.phials_scale = 3/self.gui_scale
   self.phials_ps = 21/72 -- empty progress display shift
   self.phials_h = 0
   self.phials_w = 0
@@ -62,7 +63,7 @@ function Client:__construct(cfg)
   self.mana = 100
 
   self.xp_tex = self:loadTexture("resources/textures/xp.png")
-  self.xp_scale = 1.5
+  self.xp_scale = 3/self.gui_scale
   self.xp_w = 0
   self.xp_h = 0
   self.xp_y = 0
@@ -173,6 +174,8 @@ end
 
 function Client:onResize(w, h)
   self.world_scale = math.ceil(h/16/15) -- display 15 tiles max (height)
+
+  self.xp_scale = utils.clamp(math.floor(w/self.xp_tex:getWidth()), 1, 3)/self.gui_scale
 
   self.input_chat:update(2/self.gui_scale, (h-45-2)/self.gui_scale, (w-4)/self.gui_scale, 45/self.gui_scale)
 
