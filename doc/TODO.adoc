@@ -2,3 +2,5 @@
 = TODO
 
 * better player movement
+* sanitize client inputs
+* chat scrolling

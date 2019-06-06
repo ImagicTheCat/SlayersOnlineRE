@@ -41,6 +41,7 @@ function Client:__construct(cfg)
   self.typing = false
 
   self.chat_history = ChatHistory(self)
+  self.chat_history_time = 0
 
   self:onResize(love.graphics.getDimensions())
 end
@@ -77,6 +78,10 @@ function Client:tick(dt)
     elseif self.orientation == 3 then key = "a" end
 
     self:setMoveForward(love.keyboard.isScancodeDown(key))
+  end
+
+  if self.chat_history_time > 0 then
+    self.chat_history_time = self.chat_history_time-dt
   end
 end
 
@@ -117,10 +122,12 @@ function Client:onPacket(protocol, data)
       if class.is(entity, Player) then
         entity:onMapChat(data.msg)
         self.chat_history:add({{0,0.5,1}, tostring(entity.id)..": ", {1,1,1}, data.msg})
+        self.chat_history_time = 10
       end
     end
   elseif protocol == net.CHAT_MESSAGE_SERVER then
     self.chat_history:add({{0,1,0.5}, data})
+    self.chat_history_time = 10
   end
 end
 
@@ -187,6 +194,7 @@ function Client:setTyping(typing)
       self.typing = true
     else
       self.typing = false
+      self.chat_history_time = 0
     end
   end
 end
@@ -225,6 +233,9 @@ function Client:draw()
 
   if self.typing then
     self.input_chat:draw()
+  end
+
+  if self.typing or self.chat_history_time > 0 then
     self.chat_history:draw()
   end
 
