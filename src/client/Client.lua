@@ -174,6 +174,14 @@ function Client:onKeyPressed(key, scancode, isrepeat)
 
     self:setTyping(not self.typing)
   end
+
+  if self.typing and love.keyboard.isDown("lctrl") and not isrepeat then -- input chat copy/paste
+    if key == "c" then
+      love.system.setClipboardText(self.input_chat.text)
+    elseif key == "v" then
+      self.input_chat:set(self.input_chat.text..love.system.getClipboardText())
+    end
+  end
 end
 
 function Client:onKeyReleased(key, scancode)
