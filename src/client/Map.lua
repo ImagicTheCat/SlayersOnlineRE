@@ -73,6 +73,11 @@ function Map:draw()
   end
 
   love.graphics.draw(self.high_layer)
+
+  -- entities HUD
+  for _, entity in ipairs(self.draw_list) do
+    entity:drawHUD()
+  end
 end
 
 -- return entity or nil on failure
