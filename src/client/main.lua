@@ -37,3 +37,7 @@ end
 function love.resize(w, h)
   client:onResize(w, h)
 end
+
+function love.quit()
+  client:close()
+end
