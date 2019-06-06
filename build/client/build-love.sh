@@ -6,4 +6,3 @@
 # build .love file
 rm game.love
 (cd raw && zip -r ../game.love *)
-rm raw -r
