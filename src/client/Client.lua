@@ -7,6 +7,7 @@ local NetManager = require("NetManager")
 local URL = require("socket.url")
 local TextInput = require("gui/TextInput")
 local ChatHistory = require("gui/ChatHistory")
+local TextureAtlas = require("TextureAtlas")
 
 local Client = class("Client")
 
@@ -42,6 +43,20 @@ function Client:__construct(cfg)
 
   self.chat_history = ChatHistory(self)
   self.chat_history_time = 0
+
+  self.phials_atlas = TextureAtlas(64,216,16,72)
+  self.phials_tex = self:loadTexture("resources/textures/phials.png")
+  self.phials_time = 0
+  self.phials_delay = 2/3 -- animation step duration (anim_duration/3)
+  self.phials_index = 0
+  self.phials_scale = 1.5
+  self.phials_ps = 21/72 -- empty progress display shift
+
+  self.health_max = 100
+  self.health = 100
+
+  self.mana_max = 100
+  self.mana = 100
 
   self:onResize(love.graphics.getDimensions())
 end
@@ -82,6 +97,14 @@ function Client:tick(dt)
 
   if self.chat_history_time > 0 then
     self.chat_history_time = self.chat_history_time-dt
+  end
+
+  -- phials animation
+  self.phials_time = self.phials_time+dt
+  if self.phials_time > self.phials_delay then
+    local steps = math.floor(self.phials_time/self.phials_delay)
+    self.phials_index = (self.phials_index+steps)%3
+    self.phials_time = self.phials_time-steps*self.phials_delay
   end
 end
 
@@ -141,7 +164,10 @@ end
 
 function Client:onResize(w, h)
   self.world_scale = math.ceil(h/16/15) -- display 15 tiles max (height)
-  self.input_chat:update(2/self.gui_scale, (h-45-2)/self.gui_scale, (w-4)/self.gui_scale, 45/self.gui_scale)
+
+  local phials_width = self.phials_atlas.cell_w*self.phials_scale
+
+  self.input_chat:update(2/self.gui_scale+phials_width, (h-45-2)/self.gui_scale, (w-4)/self.gui_scale-phials_width*2, 45/self.gui_scale)
   self.chat_history:update(self.input_chat.x, self.input_chat.y-(2+200)/self.gui_scale, self.input_chat.w, 200/self.gui_scale)
 end
 
@@ -214,10 +240,11 @@ function Client:inputChat(msg)
 end
 
 function Client:draw()
+  local w,h = love.graphics.getDimensions()
+
   -- map rendering
   if self.map then
     love.graphics.push()
-    local w,h = love.graphics.getDimensions()
 
     -- center map render
     love.graphics.translate(math.floor(w/2), math.floor(h/2))
@@ -246,6 +273,21 @@ function Client:draw()
   if self.typing or self.chat_history_time > 0 then
     self.chat_history:draw()
   end
+
+  --- phials (full pass, then empty pass)
+  local phealth_quad = self.phials_atlas:getQuad(1, self.phials_index)
+  local hx, hy, hw, hh = phealth_quad:getViewport()
+  local health_quad = love.graphics.newQuad(hx, hy, hw, hh*(self.phials_ps+(1-self.phials_ps)*(1-self.health/self.health_max)), phealth_quad:getTextureDimensions())
+
+  love.graphics.draw(self.phials_tex, self.phials_atlas:getQuad(0, self.phials_index), 0, h/self.gui_scale-self.phials_atlas.cell_h*self.phials_scale, 0, self.phials_scale)
+  love.graphics.draw(self.phials_tex, health_quad, 0, h/self.gui_scale-self.phials_atlas.cell_h*self.phials_scale, 0, self.phials_scale)
+
+  local pmana_quad = self.phials_atlas:getQuad(3, self.phials_index)
+  local mx, my, mw, mh = pmana_quad:getViewport()
+  local mana_quad = love.graphics.newQuad(mx, my, mw, mh*(self.phials_ps+(1-self.phials_ps)*(1-self.mana/self.mana_max)), pmana_quad:getTextureDimensions())
+
+  love.graphics.draw(self.phials_tex, self.phials_atlas:getQuad(2, self.phials_index), w/self.gui_scale-self.phials_atlas.cell_w*self.phials_scale, h/self.gui_scale-self.phials_atlas.cell_h*self.phials_scale, 0, self.phials_scale)
+  love.graphics.draw(self.phials_tex, mana_quad, w/self.gui_scale-self.phials_atlas.cell_w*self.phials_scale, h/self.gui_scale-self.phials_atlas.cell_h*self.phials_scale, 0, self.phials_scale)
 
   love.graphics.pop()
 end
