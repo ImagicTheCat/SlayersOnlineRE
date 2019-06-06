@@ -97,8 +97,6 @@ function Server:tick(dt)
   -- net
   local event = self.host:service()
   while event do
-    print(event.type, event.peer)
-
     if event.type == "receive" then
       local client = self.clients[event.peer]
       local packet = msgpack.unpack(event.data)
@@ -106,10 +104,14 @@ function Server:tick(dt)
     elseif event.type == "connect" then
       local client = Client(self, event.peer)
       self.clients[event.peer] = client
+
+      print("client connection "..tostring(event.peer))
     elseif event.type == "disconnect" then
       local client = self.clients[event.peer]
       client:onDisconnect()
       self.clients[event.peer] = nil
+
+      print("client disconnection "..tostring(event.peer))
     end
 
     event = self.host:service()

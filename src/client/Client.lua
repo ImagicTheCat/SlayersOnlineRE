@@ -75,8 +75,6 @@ function Client:tick(dt)
   -- net
   local event = self.host:service()
   while event do
-    print(event.type, event.peer)
-
     if event.type == "receive" then
       local packet = msgpack.unpack(event.data)
       self:onPacket(packet[1], packet[2])
@@ -170,6 +168,13 @@ function Client:sendPacket(protocol, data, unsequenced)
 end
 
 function Client:onDisconnect()
+end
+
+function Client:close()
+  self.peer:disconnect()
+  while self.peer:state() ~= "disconnected" do -- wait for disconnection
+    self.host:service(100)
+  end
 end
 
 function Client:onResize(w, h)
