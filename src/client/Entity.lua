@@ -21,4 +21,7 @@ function Entity:draw()
   love.graphics.rectangle("line", self.x, self.y, 16 ,16)
 end
 
+function Entity:drawHUD()
+end
+
 return Entity

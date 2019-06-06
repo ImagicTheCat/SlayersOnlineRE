@@ -19,4 +19,8 @@ function utils.split(str, sep)
   return t
 end
 
+function utils.clamp(x, a, b)
+  return math.max(math.min(x, b), a)
+end
+
 return utils
