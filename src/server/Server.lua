@@ -4,6 +4,7 @@ local msgpack = require("MessagePack")
 local Client = require("Client")
 local Map = require("Map")
 local utils = require("lib/utils")
+local Deserializer = require("Deserializer")
 
 local Server = class("Server")
 
@@ -42,8 +43,14 @@ end
 
 function Server:__construct(cfg)
   self.cfg = cfg
+
   self.clients = {} -- map of peer => client
   self.maps = {} -- map of id => map instances
+
+  -- load project
+  self.project = Deserializer.loadProject(self.cfg.project_name)
+
+  print(self.project.map_count.." project maps loaded.")
 
   self.commands = {} -- map of id => callback
 
@@ -60,7 +67,7 @@ function Server:__construct(cfg)
 
   -- create host
   self.host = enet.host_create(self.cfg.host, self.cfg.max_clients)
-  print("listening to \""..self.cfg.host.."\"...")
+  print("Listening to \""..self.cfg.host.."\"...")
 
   -- register commands
   self:registerCommand("count", cmd_count)
