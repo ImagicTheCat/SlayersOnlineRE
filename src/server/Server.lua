@@ -44,13 +44,12 @@ end
 function Server:__construct(cfg)
   self.cfg = cfg
 
-  self.clients = {} -- map of peer => client
-  self.maps = {} -- map of id => map instances
-
   -- load project
   self.project = Deserializer.loadProject(self.cfg.project_name)
-
   print(self.project.map_count.." project maps loaded.")
+
+  self.clients = {} -- map of peer => client
+  self.maps = {} -- map of id => map instances
 
   self.commands = {} -- map of id => callback
 
@@ -135,8 +134,11 @@ function Server:getMap(id)
   local map = self.maps[id]
 
   if not map then -- load
-    map = Map(self, id)
-    self.maps[id] = map
+    local map_data = self:loadMapData(id)
+    if map_data then
+      map = Map(self, id, map_data)
+      self.maps[id] = map
+    end
   end
 
   return map
@@ -160,6 +162,15 @@ end
 --- args: command arguments (first is command id/name)
 function Server:registerCommand(id, callback)
   self.commands[id] = callback
+end
+
+function Server:loadMapData(id)
+  local map = self.project.maps[id]
+  if map then
+    map.tiledata = Deserializer.loadMapTiles(id)
+
+    return map
+  end
 end
 
 return Server

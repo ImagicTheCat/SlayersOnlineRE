@@ -66,13 +66,12 @@ end
 
 function Map:draw()
   love.graphics.draw(self.low_layer)
+  love.graphics.draw(self.high_layer)
 
   -- entities
   for _, entity in ipairs(self.draw_list) do
     entity:draw()
   end
-
-  love.graphics.draw(self.high_layer)
 
   -- entities HUD
   for _, entity in ipairs(self.draw_list) do
