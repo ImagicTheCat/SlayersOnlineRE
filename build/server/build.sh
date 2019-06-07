@@ -1,3 +1,3 @@
 #!/bin/bash
 rsync -av ../../src/shared/ .
-rsync -av ../../src/server/ .
+rsync -av --exclude "config.lua" ../../src/server/ .
