@@ -6,27 +6,9 @@ local Map = class("Map")
 
 -- STATICS
 
--- return list of x_low, x_high, y_low, y_high... from the tileset for each map tile (or nil)
-function Map.loadTileData(id)
-  local file, err = io.open("resources/maps/"..id..".map")
-  if file then
-    local tiledata = {}
-
-    local line
-    repeat
-      line = file:read("*l")
-      if line then
-        table.insert(tiledata, tonumber(line))
-      end
-    until not line
-
-    return tiledata
-  end
-end
-
 -- METHODS
 
-function Map:__construct(server, id)
+function Map:__construct(server, id, map_data)
   self.server = server
   self.id = id
   self.ids = IdManager()
@@ -37,13 +19,12 @@ function Map:__construct(server, id)
   self.living_entity_updates = {} -- map of living entity
 
   -- load map data
-  self.w = 50
-  self.h = 50
-  self.tileset = "test.png"
-  self.tiledata = Map.loadTileData(id)
-  if not self.tiledata then
-    print("error loading tiledata for map \""..self.id.."\"")
-  end
+  self.map_data = map_data
+
+  self.w = self.map_data.width
+  self.h = self.map_data.height
+  self.tileset = string.sub(self.map_data.tileset, 9) -- remove Chipset/ part
+  self.tiledata = self.map_data.tiledata
 end
 
 function Map:addEntity(entity)

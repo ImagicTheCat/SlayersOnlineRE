@@ -52,4 +52,24 @@ function Deserializer.loadProject(name)
   end
 end
 
+-- return list of x_low, x_high, y_low, y_high... from the tileset for each map tile (or nil)
+function Deserializer.loadMapTiles(id)
+  local file, err = io.open("resources/project/Maps/"..id..".map", "r")
+  if file then
+    local tiledata = {}
+
+    local line
+    repeat
+      line = file:read("*l")
+      if line then
+        table.insert(tiledata, tonumber(line))
+      end
+    until not line
+
+    return tiledata
+  else
+    print("error loading tiledata for map \""..id.."\"")
+  end
+end
+
 return Deserializer
