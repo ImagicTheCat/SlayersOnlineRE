@@ -168,6 +168,7 @@ function Server:loadMapData(id)
   local map = self.project.maps[id]
   if map then
     map.tiledata = Deserializer.loadMapTiles(id)
+    map.events = Deserializer.loadMapEvents(id)
 
     return map
   end
