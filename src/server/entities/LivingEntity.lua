@@ -96,6 +96,7 @@ end
 function LivingEntity:updatePosition(x, y)
   self.x = x
   self.y = y
+  self:updateCell()
 
   if self.map then -- reference for next net update
     self.map.living_entity_updates[self] = true

@@ -14,7 +14,8 @@ function Map:__construct(server, id, data)
   self.ids = IdManager()
 
   self.entities = {} -- map of entity
-  self.clients = {} -- map of clients
+  self.clients = {} -- map of client
+  self.cells = {} -- map space partitioning (16x16 cells), map of cell index => map of entity
 
   self.living_entity_updates = {} -- map of living entity
 
@@ -24,6 +25,40 @@ function Map:__construct(server, id, data)
   self.h = self.data.height
   self.tileset = string.sub(self.data.tileset, 9) -- remove Chipset/ part
   self.tiledata = self.data.tiledata
+end
+
+-- return cell (map of entity) or nil if invalid or empty
+function Map:getCell(x, y)
+  if x >= 0 and x < self.w and y >= 0 and y < self.h then
+    return self.cells[y*self.w+x]
+  end
+end
+
+function Map:addToCell(entity, x, y)
+  if x >= 0 and x < self.w and y >= 0 and y < self.h then
+    local index = y*self.w+x
+    local cell = self.cells[index]
+    if not cell then -- create cell
+      cell = {}
+      self.cells[index] = cell
+    end
+
+    cell[entity] = true
+  end
+end
+
+function Map:removeFromCell(entity, x, y)
+  if x >= 0 and x < self.w and y >= 0 and y < self.h then
+    local index = y*self.w+x
+    local cell = self.cells[index]
+    if cell then
+      cell[entity] = nil
+
+      if not next(cell) then -- free cell if empty
+        self.cells[index] = nil
+      end
+    end
+  end
 end
 
 function Map:addEntity(entity)
@@ -38,6 +73,7 @@ function Map:addEntity(entity)
     self.entities[entity] = id
     entity.id = id
     entity.map = self
+    self:addToCell(entity, entity.cx, entity.cy)
 
     -- reference client bound entity
     if entity.client then
@@ -72,6 +108,7 @@ function Map:removeEntity(entity)
     entity.id = nil
     entity.map = nil
     self.entities[entity] = nil
+    self:removeFromCell(entity, entity.cx, entity.cy)
 
     -- unreference client bound entity
     if entity.client then

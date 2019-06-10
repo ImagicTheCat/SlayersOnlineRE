@@ -26,8 +26,6 @@ function Client:__construct(server, peer)
   self:send(Client.makePacket(net.PROTOCOL, net)) -- send protocol
 
   local map = server:getMap(next(server.project.maps))
-  self.x = math.random(1,100)
-  self.y = math.random(1,100)
   map:addEntity(self)
 end
 
