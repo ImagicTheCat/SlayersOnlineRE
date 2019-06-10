@@ -10,6 +10,13 @@ local Server = class("Server")
 
 -- COMMANDS
 
+local function cmd_memory(self, sender, args)
+  if not sender then
+    local MB = collectgarbage("count")*1024/1000000
+    print("Lua main memory usage: "..MB.." MB")
+  end
+end
+
 local function cmd_count(self, sender, args)
   local count = 0
   for _ in pairs(self.clients) do
@@ -69,6 +76,7 @@ function Server:__construct(cfg)
   print("Listening to \""..self.cfg.host.."\"...")
 
   -- register commands
+  self:registerCommand("memory", cmd_memory)
   self:registerCommand("count", cmd_count)
   self:registerCommand("skin", cmd_skin)
 
