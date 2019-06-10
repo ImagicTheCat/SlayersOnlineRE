@@ -12,18 +12,20 @@ function Entity:__construct()
   -- .id: map id
   -- .nettype
 
-  -- position in pixels (top-left origin, the entity is a 16x16 cell)
+  -- position in pixels (top-left origin, the entity body is a 16x16 cell)
   self.x = 0
   self.y = 0
 
   -- cell coords
   self.cx = 0
   self.cy = 0
+
+  self:updateCell()
 end
 
 -- update cell coords and map space partitioning
 function Entity:updateCell()
-  local cx, cy = math.floor(self.x/16), math.floor(self.y/16)
+  local cx, cy = math.floor(self.x/16+0.5), math.floor(self.y/16+0.5)
 
   if cx ~= self.cx or cy ~= self.cy then
     if self.map then -- map cell reference update
