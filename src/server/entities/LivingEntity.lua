@@ -102,6 +102,7 @@ function LivingEntity:updatePosition(x, y)
   end
 end
 
+-- overload
 function LivingEntity:onMapChange()
   self:setMoveForward(false)
 end

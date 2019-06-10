@@ -114,27 +114,32 @@ function Deserializer.loadMapEvents(id)
 
   if f_evn and f_ev0 then
     local events = {}
-    local events_per_coords = {}
+    local events_by_coords = {}
 
     -- evn
     local count = f_evn:seek("end")/344 -- 344 bytes per event entry
     f_evn:seek("set")
     
     for i=1,count do
-      local event = Deserializer.readMapEventEntry(f_evn)
-      table.insert(events, event)
+      local page = Deserializer.readMapEventEntry(f_evn)
+      page.conditions = {}
+      page.commands = {}
 
       -- reference per coords
-      local key = event.x..","..event.y
-      local coords_events = events_per_coords[key]
-      if not coords_events then
-        coords_events = {}
-        events_per_coords[key] = coords_events
+      local key = page.x..","..page.y
+      local event = events_by_coords[key]
+      if not event then -- create event
+        event = {
+          x = page.x, 
+          y = page.y,
+          pages = {}
+        }
+
+        events_by_coords[key] = event
+        table.insert(events, event)
       end
 
-      event.conditions = {}
-      event.commands = {}
-      table.insert(coords_events, event)
+      table.insert(event.pages, page)
     end
 
     -- ev0
@@ -143,14 +148,14 @@ function Deserializer.loadMapEvents(id)
       local ltype,x,y,page,index,instruction = string.match(line, "(..)(%d+),(%d+),(%d+),(%d+)=(.*)")
 
       if ltype then -- match
-        local coords_events = events_per_coords[x..","..y] -- get events by coords
-        if coords_events then
-          local event = coords_events[tonumber(index)+1] -- get event by page
-          if event then
+        local event = events_by_coords[x..","..y] -- get events by coords
+        if event then
+          local page = event.pages[tonumber(index)+1] -- get event by page
+          if page then
             if ltype == "EV" then -- event commands
-              table.insert(event.commands, instruction)
+              table.insert(page.commands, instruction)
             elseif ltype == "CD" then -- event conditions
-              table.insert(event.conditions, instruction)
+              table.insert(page.conditions, instruction)
             end
           end
         end

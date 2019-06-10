@@ -3,7 +3,6 @@ local Luaoop = require("Luaoop")
 class = Luaoop.class
 local Luaseq = require("Luaseq")
 async = Luaseq.async
-local Server = require("Server")
 
 local config = require("config")
 
@@ -46,6 +45,7 @@ function itask(delay, cb)
 end
 
 -- create server
+local Server = require("Server")
 
 local server = Server(config)
 
