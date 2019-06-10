@@ -63,7 +63,23 @@ function LivingEntity:setMoveForward(move_forward)
         local dx, dy = LivingEntity.orientationVector(self.orientation)
         local dist = math.floor(self.speed*dt) -- pixels traveled
         if dist > 0 then
-          self:updatePosition(self.x+dx*dist, self.y+dy*dist)
+          local nx, ny = self.x+dx*dist, self.y+dy*dist
+          local dcx, dcy = nx-self.cx*16, ny-self.cy*16
+          if dcx ~= 0 then dcx = dcx/math.abs(dcx) end
+          if dcy ~= 0 then dcy = dcy/math.abs(dcy) end
+
+          local collision = (self.map and (not self.map:isCellPassable(self, self.cx+dcx, self.cy) or not self.map:isCellPassable(self, self.cx, self.cy+dcy) or not self.map:isCellPassable(self, self.cx+dcx, self.cy+dcy)))
+
+          if collision then
+            if dx ~= 0 then -- x movement
+              self:updatePosition(self.cx*16, self.y)
+            else -- y movement
+              self:updatePosition(self.x, self.cy*16)
+            end
+          else
+            self:updatePosition(nx, ny)
+          end
+
           self.move_time = self.move_time+dist/self.speed -- sub traveled time
         end
       end)

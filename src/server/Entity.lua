@@ -20,6 +20,8 @@ function Entity:__construct()
   self.cx = 0
   self.cy = 0
 
+  self.obstacle = false
+
   self:updateCell()
 end
 
