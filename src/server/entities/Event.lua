@@ -27,6 +27,8 @@ function Event:__construct(client, data, page_index)
   self.data = data -- event data
   self.page = self.data.pages[page_index or self:selectPage()]
 
+  self:teleport(self.data.x*16, self.data.y*16)
+
   -- TODO: listen to conditions of all previous and current page
 
 --  self.nettype = "Event"

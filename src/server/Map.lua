@@ -34,6 +34,7 @@ function Map:getCell(x, y)
   end
 end
 
+-- called by Map and Entity
 function Map:addToCell(entity, x, y)
   if x >= 0 and x < self.w and y >= 0 and y < self.h then
     local index = y*self.w+x
@@ -47,6 +48,7 @@ function Map:addToCell(entity, x, y)
   end
 end
 
+-- called by Map and Entity
 function Map:removeFromCell(entity, x, y)
   if x >= 0 and x < self.w and y >= 0 and y < self.h then
     local index = y*self.w+x
@@ -137,6 +139,36 @@ function Map:removeEntity(entity)
 
     entity:onMapChange() -- removal event
   end
+end
+
+-- check if the cell is passable for a specific entity
+-- return bool
+function Map:isCellPassable(entity, x, y)
+  if x >= 0 and x < self.w and y >= 0 and y < self.h then -- valid cell
+    -- entities check
+    local cell = self:getCell(x,y)
+    if cell then
+      if class.is(entity, Client) then -- Client check
+        for c_entity in pairs(cell) do
+          if c_entity.obstacle and (not c_entity.client or c_entity.client == entity) then
+            return false
+          end
+        end
+      else -- regular entity
+        for c_entity in pairs(cell) do
+          if c_entity.obstacle and (not c_entity.client or c_entity.client == entity.client) then
+            return false
+          end
+        end
+      end
+    end
+
+    -- TODO: tileset check
+
+    return true
+  end
+
+  return false
 end
 
 -- broadcast to all map clients
