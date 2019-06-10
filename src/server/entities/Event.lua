@@ -2,6 +2,22 @@ local Entity = require("Entity")
 
 local Event = class("Event", Entity)
 
+-- STATICS
+
+Event.Position = {
+  DYNAMIC = 0,
+  FRONT = 1,
+  BACK = 2
+}
+
+Event.Animation = {
+  STATIC = 0,
+  STATIC_CHARACTER = 1,
+  CHARACTER_RANDOM = 2,
+  VISUAL_EFFECT = 3,
+  CHARACTER_FOLLOW = 4
+}
+
 -- METHODS
 
 function Event:__construct(client, data, page_index)
