@@ -5,9 +5,6 @@ task(0.001, function() -- deferred modules
   Client = require("Client")
 end)
 
----task(0.001, function() -- deferred
---end)
-
 local Entity = class("Entity")
 
 function Entity:__construct()
@@ -15,9 +12,29 @@ function Entity:__construct()
   -- .id: map id
   -- .nettype
 
-  -- position in pixels
+  -- position in pixels (top-left origin, the entity is a 16x16 cell)
   self.x = 0
   self.y = 0
+
+  -- cell coords
+  self.cx = 0
+  self.cy = 0
+end
+
+-- update cell coords and map space partitioning
+function Entity:updateCell()
+  local cx, cy = math.floor(self.x/16), math.floor(self.y/16)
+
+  if cx ~= self.cx or cy ~= self.cy then
+    if self.map then -- map cell reference update
+      self.map:removeFromCell(self, self.cx, self.cy)
+      self.map:addToCell(self, cx, cy)
+    end
+
+    -- update
+    self.cx = cx
+    self.cy = cy
+  end
 end
 
 -- client: bound the entity to a specific client (nil to unbound)
@@ -32,6 +49,7 @@ end
 function Entity:teleport(x,y)
   self.x = x
   self.y = y
+  self:updateCell()
 
   self:broadcastPacket("teleport", {x,y})
 end
