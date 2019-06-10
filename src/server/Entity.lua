@@ -1,5 +1,13 @@
 local net = require("protocol")
 
+local Client
+task(0.001, function() -- deferred modules
+  Client = require("Client")
+end)
+
+---task(0.001, function() -- deferred
+--end)
+
 local Entity = class("Entity")
 
 function Entity:__construct()
@@ -12,6 +20,15 @@ function Entity:__construct()
   self.y = 0
 end
 
+-- client: bound the entity to a specific client (nil to unbound)
+-- should be called when the entity is not on a map
+function Entity:setClient(client)
+  if self.map then error("can't bind/unbind a client when the entity is on a map") end
+
+  self.client = client
+end
+
+-- position in pixels
 function Entity:teleport(x,y)
   self.x = x
   self.y = y
@@ -33,7 +50,13 @@ end
 -- action: identifier
 function Entity:broadcastPacket(action, data)
   if self.map then
-    self.map:broadcastPacket(net.ENTITY_PACKET, {id = self.id, act = action, data = data})
+    local pdata = {id = self.id, act = action, data = data}
+
+    if self.client then -- bound to client
+      client:send(Client.makePacket(net.ENTITY_PACKET, pdata))
+    else -- global map
+      self.map:broadcastPacket(net.ENTITY_PACKET, pdata)
+    end
   end
 end
 

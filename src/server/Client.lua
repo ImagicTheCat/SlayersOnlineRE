@@ -1,6 +1,7 @@
 local msgpack = require("MessagePack")
 local net = require("protocol")
 local Player = require("entities/Player")
+local Event = require("entities/Event")
 local utils = require("lib/utils")
 
 -- server-side client
@@ -19,6 +20,8 @@ function Client:__construct(server, peer)
 
   self.server = server
   self.peer = peer
+
+  self.entities = {} -- bound map entities, map of entity
 
   self:send(Client.makePacket(net.PROTOCOL, net)) -- send protocol
 
@@ -71,8 +74,14 @@ end
 function Client:onMapChange()
   Player.onMapChange(self)
 
-  if self.map then
-    self:send(Client.makePacket(net.MAP, {map = self.map:serializeNet(), id = self.id}))
+  if self.map then -- join map
+    -- send map
+    self:send(Client.makePacket(net.MAP, {map = self.map:serializeNet(self), id = self.id}))
+
+    -- build events
+    for _, event_data in ipairs(self.map.data.events) do
+      self.map:addEntity(Event(self, event_data))
+    end
   end
 end
 

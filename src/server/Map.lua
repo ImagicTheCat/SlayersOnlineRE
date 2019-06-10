@@ -8,23 +8,22 @@ local Map = class("Map")
 
 -- METHODS
 
-function Map:__construct(server, id, map_data)
+function Map:__construct(server, id, data)
   self.server = server
   self.id = id
   self.ids = IdManager()
 
-  self.entities = {} -- map of entity => id
+  self.entities = {} -- map of entity
   self.clients = {} -- map of clients
 
   self.living_entity_updates = {} -- map of living entity
 
-  -- load map data
-  self.map_data = map_data
+  self.data = data -- map data
 
-  self.w = self.map_data.width
-  self.h = self.map_data.height
-  self.tileset = string.sub(self.map_data.tileset, 9) -- remove Chipset/ part
-  self.tiledata = self.map_data.tiledata
+  self.w = self.data.width
+  self.h = self.data.height
+  self.tileset = string.sub(self.data.tileset, 9) -- remove Chipset/ part
+  self.tiledata = self.data.tiledata
 end
 
 function Map:addEntity(entity)
@@ -33,41 +32,70 @@ function Map:addEntity(entity)
     entity.map:removeEntity(entity)
   end
 
-  -- reference
-  local id = self.ids:gen()
-  self.entities[entity] = id
-  entity.id = id
-  entity.map = self
+  if not entity.client or self.clients[entity.client] then -- unbound or bound to existing client
+    -- reference
+    local id = self.ids:gen()
+    self.entities[entity] = id
+    entity.id = id
+    entity.map = self
 
-  -- send entity packet to all map clients
-  if entity.nettype then
-    self:broadcastPacket(net.ENTITY_ADD, entity:serializeNet())
+    -- reference client bound entity
+    if entity.client then
+      entity.client.entities[entity] = true
+    end
+
+    -- send entity packet to bound or all map clients
+    if entity.nettype then
+      if entity.client then
+        entity.client:send(Client.makePacket(net.ENTITY_ADD, entity:serializeNet()))
+      else
+        self:broadcastPacket(net.ENTITY_ADD, entity:serializeNet())
+      end
+    end
+
+    if class.is(entity, Client) then
+      self.clients[entity] = true
+    end
+
+    entity:onMapChange() -- add event
   end
-
-  if class.is(entity, Client) then
-    self.clients[entity] = true
-  end
-
-  entity:onMapChange() -- add event
 end
 
 function Map:removeEntity(entity)
-  local id = self.entities[entity]
+  local ok = self.entities[entity]
 
-  if id then
+  if ok then
+    local id = entity.id
+
     -- unreference
     self.ids:free(id)
     entity.id = nil
     entity.map = nil
     self.entities[entity] = nil
 
-    if class.is(entity, Client) then
-      self.clients[entity] = nil
+    -- unreference client bound entity
+    if entity.client then
+      entity.client.entities[entity] = nil
     end
 
-    -- send entity packet to all map clients
+    if class.is(entity, Client) then -- handle client removal
+      self.clients[entity] = nil
+
+      -- remove client bound entities
+      for c_entity in pairs(entity.entities) do
+        self:removeEntity(c_entity)
+      end
+
+      entity.entities = {}
+    end
+
+    -- send entity packet to bound or all map clients
     if entity.nettype then
-      self:broadcastPacket(net.ENTITY_REMOVE, id)
+      if entity.client then
+        entity.client:send(Client.makePacket(net.ENTITY_REMOVE, id))
+      else
+        self:broadcastPacket(net.ENTITY_REMOVE, id)
+      end
     end
 
     entity:onMapChange() -- removal event
@@ -82,7 +110,8 @@ function Map:broadcastPacket(protocol, data, unsequenced)
   end
 end
 
-function Map:serializeNet()
+-- serialize map data for a specific client
+function Map:serializeNet(client)
   local data = {
     w = self.w,
     h = self.h,
@@ -93,7 +122,7 @@ function Map:serializeNet()
   -- serialize entities
   data.entities = {}
   for entity in pairs(self.entities) do
-    if entity.nettype then
+    if entity.nettype and (not entity.client or entity.client == client) then
       table.insert(data.entities, entity:serializeNet())
     end
   end
