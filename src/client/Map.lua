@@ -47,7 +47,11 @@ function Map:__construct(data)
 
   -- build entities
   self.entities = {} -- map of id => entity
-  self.draw_list = {} -- list of entities
+
+  -- lists of entities
+  self.back_draw_list = {}
+  self.dynamic_draw_list = {}
+  self.front_draw_list = {}
 
   for _, edata in pairs(data.entities) do
     self:createEntity(edata)
@@ -60,21 +64,43 @@ function Map:tick(dt)
     entity:tick(dt)
   end
 
-  -- sort entities by Y (top-down sorting)
-  table.sort(self.draw_list, sort_entities)
+  -- sort dynamic entities by Y (top-down sorting)
+  table.sort(self.dynamic_draw_list, sort_entities)
 end
 
 function Map:draw()
   love.graphics.draw(self.low_layer)
   love.graphics.draw(self.high_layer)
 
-  -- entities
-  for _, entity in ipairs(self.draw_list) do
+  -- back entities
+  for _, entity in ipairs(self.back_draw_list) do
     entity:draw()
   end
 
-  -- entities HUD
-  for _, entity in ipairs(self.draw_list) do
+  -- dynamic entities
+  for _, entity in ipairs(self.dynamic_draw_list) do
+    entity:draw()
+  end
+
+  -- front entities
+  for _, entity in ipairs(self.front_draw_list) do
+    entity:draw()
+  end
+
+  -- HUD
+
+  -- back entities
+  for _, entity in ipairs(self.back_draw_list) do
+    entity:drawHUD()
+  end
+
+  -- dynamic entities
+  for _, entity in ipairs(self.dynamic_draw_list) do
+    entity:drawHUD()
+  end
+
+  -- front entities
+  for _, entity in ipairs(self.front_draw_list) do
     entity:drawHUD()
   end
 end
@@ -86,7 +112,17 @@ function Map:createEntity(edata)
     local entity = eclass(edata)
 
     self.entities[edata.id] = entity
-    table.insert(self.draw_list, entity)
+
+    -- add to draw list
+    local draw_list
+    if entity.draw_order < 0 then
+      draw_list = self.back_draw_list
+    elseif entity.draw_order > 0 then
+      draw_list = self.front_draw_list
+    else
+      draw_list = self.dynamic_draw_list
+    end
+    table.insert(draw_list, entity)
 
     return entity
   else
@@ -95,13 +131,23 @@ function Map:createEntity(edata)
 end
 
 function Map:removeEntity(id)
-  if self.entities[id] then
+  local entity = self.entities[id]
+  if entity then
     self.entities[id] = nil
 
     -- remove from draw list
-    for i, entity in ipairs(self.draw_list) do
+    local draw_list
+    if entity.draw_order < 0 then
+      draw_list = self.back_draw_list
+    elseif entity.draw_order > 0 then
+      draw_list = self.front_draw_list
+    else
+      draw_list = self.dynamic_draw_list
+    end
+
+    for i, entity in ipairs(draw_list) do
       if id == entity.id then
-        table.remove(self.draw_list, i)
+        table.remove(draw_list, i)
         break
       end
     end
