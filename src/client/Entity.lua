@@ -6,6 +6,7 @@ function Entity:__construct(data)
   self.id = data.id
   self.x = data.x
   self.y = data.y
+  self.draw_order = 0 -- 0: dynamic, -1: back, 1: front (must be set at construction)
 end
 
 function Entity:onPacket(action, data)
