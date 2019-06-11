@@ -22,6 +22,10 @@ function Client:__construct(server, peer)
   self.peer = peer
 
   self.entities = {} -- bound map entities, map of entity
+  self.vars = {} -- map of id (number)  => value (number)
+  self.var_listeners = {} -- map of id (number) => map of callback
+  self.bool_vars = {} -- map of id (number) => value (number)
+  self.bool_var_listeners = {} -- map of id (number) => map of callback
 
   self:send(Client.makePacket(net.PROTOCOL, net)) -- send protocol
 
@@ -79,6 +83,53 @@ function Client:onMapChange()
     -- build events
     for _, event_data in ipairs(self.map.data.events) do
       self.map:addEntity(Event(self, event_data))
+    end
+  end
+end
+
+function Client:setVariable(vtype, id, value)
+  if type(id) == "number" and type(value) == "number" then
+    local vars = (vtype == "bool" and self.bool_vars or self.vars)
+    local var_listeners = (vtype == "bool" and self.bool_var_listeners or self.var_listeners)
+
+    vars[id] = value
+
+    -- call listeners
+    local listeners = var_listeners[id]
+    if listeners then
+      for callback in pairs(listeners) do
+        callback(id, value)
+      end
+    end
+  end
+end
+
+function Client:getVariable(vtype, id)
+  local vars = (vtype == "bool" and self.bool_vars or self.vars)
+  return vars[id] or 0
+end
+
+function Client:listenVariable(vtype, id, callback)
+  local var_listeners = (vtype == "bool" and self.bool_var_listeners or self.var_listeners)
+
+  local listeners = var_listeners[id]
+  if not listeners then
+    listeners = {}
+    var_listeners[id] = listeners
+  end
+
+  listeners[callback] = true
+end
+
+function Client:unlistenVariable(vtype, id, callback)
+  local var_listeners = (vtype == "bool" and self.bool_var_listeners or self.var_listeners)
+
+  local listeners = var_listeners[id]
+  if listeners then
+    listeners[callback] = nil
+
+    if not next(listeners) then
+      var_listeners[id] = nil
     end
   end
 end

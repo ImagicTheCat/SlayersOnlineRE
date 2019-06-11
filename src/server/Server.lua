@@ -57,6 +57,8 @@ function Server:__construct(cfg)
 
   self.clients = {} -- map of peer => client
   self.maps = {} -- map of id => map instances
+  self.vars = {} -- server variables, map of id (str) => value (str)
+  self.var_listeners = {} -- map of id => map of callback
 
   self.commands = {} -- map of id => callback
 
@@ -179,6 +181,45 @@ function Server:loadMapData(id)
     map.events = Deserializer.loadMapEvents(id)
 
     return map
+  end
+end
+
+function Server:setVariable(id, value)
+  if type(id) == "string" and type(value) == "string" then
+    self.vars[id] = value
+
+    -- call listeners
+    local listeners = self.var_listeners[id]
+    if listeners then
+      for callback in pairs(listeners) do
+        callback(id, value)
+      end
+    end
+  end
+end
+
+function Server:getVariable(id)
+  return self.vars[id] or ""
+end
+
+function Server:listenVariable(id, callback)
+  local listeners = self.var_listeners[id]
+  if not listeners then
+    listeners = {}
+    self.var_listeners[id] = listeners
+  end
+
+  listeners[callback] = true
+end
+
+function Server:unlistenVariable(id, callback)
+  local listeners = self.var_listeners[id]
+  if listeners then
+    listeners[callback] = nil
+
+    if not next(listeners) then
+      self.var_listeners[id] = nil
+    end
   end
 end
 
