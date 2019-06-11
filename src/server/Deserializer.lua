@@ -10,6 +10,7 @@ Deserializer.string_conv = iconv.new("UTF-8", "ISO-8859-1")
 function Deserializer.readString(file, padding_size)
   local size = struct.unpack("B", file:read(1))
   local str = Deserializer.string_conv:iconv(struct.unpack("c"..size, file:read(size)))
+
   -- padding
   file:seek("cur", padding_size-size)
   return str
@@ -148,7 +149,7 @@ function Deserializer.loadMapEvents(id)
     -- ev0
     local line = f_ev0:read("*l")
     while line do
-      local ltype,x,y,page,index,instruction = string.match(line, "^(..)(%d+),(%d+),(%d+),(%d+)=(.*)$")
+      local ltype,x,y,page,index,instruction = string.match(line, "^(..)(%d+),(%d+),(%d+),(%d+)=(.*)\r$")
 
       if ltype then -- match
         local event = events_by_coords[x..","..y] -- get events by coords
