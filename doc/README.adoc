@@ -15,6 +15,7 @@ client:: LÖVE 11.x
 * https://github.com/brimworks/lua-ev
 * https://github.com/leafo/lua-enet
 * https://github.com/iryont/lua-struct
+* https://luarocks.org/modules/luarocks/lua-iconv
 
 .Client dependencies
 * https://github.com/ImagicTheCat/Luaoop 

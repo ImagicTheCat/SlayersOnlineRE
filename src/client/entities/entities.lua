@@ -2,5 +2,6 @@
 return {
   Entity = require("Entity"),
   LivingEntity = require("entities/LivingEntity"),
-  Player = require("entities/Player")
+  Player = require("entities/Player"),
+  Event = require("entities/Event")
 }

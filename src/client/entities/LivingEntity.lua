@@ -10,7 +10,7 @@ function LivingEntity.lerp(a, b, x)
   return a*(1-x)+b*x
 end
 
-LivingEntity.charaset_atlas = TextureAtlas(9*24, 32*4, 24, 32)
+LivingEntity.charaset_atlas = TextureAtlas(0, 0, 9*24, 32*4, 24, 32)
 
 -- METHODS
 
