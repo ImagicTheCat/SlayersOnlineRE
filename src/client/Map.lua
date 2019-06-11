@@ -12,7 +12,7 @@ end
 function Map:__construct(data)
   self.tileset = client:loadTexture("resources/textures/sets/"..data.tileset)
   
-  local atlas = TextureAtlas(self.tileset:getWidth(), self.tileset:getHeight(), 16, 16)
+  local atlas = TextureAtlas(0, 0, self.tileset:getWidth(), self.tileset:getHeight(), 16, 16)
 
   -- build low / high layer sprite batches
 

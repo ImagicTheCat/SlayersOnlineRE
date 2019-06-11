@@ -45,7 +45,7 @@ function Client:__construct(cfg)
   self.chat_history = ChatHistory(self)
   self.chat_history_time = 0
 
-  self.phials_atlas = TextureAtlas(64,216,16,72)
+  self.phials_atlas = TextureAtlas(0,0,64,216,16,72)
   self.phials_tex = self:loadTexture("resources/textures/phials.png")
   self.phials_time = 0
   self.phials_delay = 2/3 -- animation step duration (anim_duration/3)

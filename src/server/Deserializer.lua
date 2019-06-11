@@ -1,12 +1,15 @@
 local struct = require("struct")
+local iconv = require("iconv")
 
 local Deserializer = class("Deserializer")
 
 -- STATICS
 
+Deserializer.string_conv = iconv.new("UTF-8", "ISO-8859-1")
+
 function Deserializer.readString(file, padding_size)
   local size = struct.unpack("B", file:read(1))
-  local str = struct.unpack("c"..size, file:read(size))
+  local str = Deserializer.string_conv:iconv(struct.unpack("c"..size, file:read(size)))
   -- padding
   file:seek("cur", padding_size-size)
   return str
@@ -44,10 +47,10 @@ function Deserializer.readMapEventEntry(file)
   file:seek("cur", 2)
   event.set_y = struct.unpack("<H", file:read(2))
   file:seek("cur", 2)
-  event.active = struct.unpack("B", file:read(1))
-  event.obstacle = struct.unpack("B", file:read(1))
-  event.transparent = struct.unpack("B", file:read(1))
-  event.follow = struct.unpack("B", file:read(1))
+  event.active = struct.unpack("B", file:read(1)) > 0
+  event.obstacle = struct.unpack("B", file:read(1)) > 0
+  event.transparent = struct.unpack("B", file:read(1)) > 0
+  event.follow = struct.unpack("B", file:read(1)) > 0
   event.animation_type = struct.unpack("B", file:read(1))
   file:seek("cur", 1)
   event.animation_mod = struct.unpack("B", file:read(1)) -- (follow stop, anim top-down, look at)

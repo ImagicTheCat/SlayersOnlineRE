@@ -31,7 +31,17 @@ function Event:__construct(client, data, page_index)
 
   -- TODO: listen to conditions of all previous and current page
 
---  self.nettype = "Event"
+  self.set = string.sub(self.page.set, 9) -- remove Chipset/ part
+  self.obstacle = self.page.obstacle
+  self.orientation = 0
+
+  if self.page.animation_type <= 2 then
+    self.orientation = self.page.animation_mod
+  end
+
+  if self.page.active and string.len(self.set) > 0 then -- networked event
+    self.nettype = "Event"
+  end
 end
 
 -- check if the page conditions are valid
@@ -56,6 +66,19 @@ end
 -- overload
 function Event:serializeNet()
   local data = Entity.serializeNet(self)
+
+  data.animation_type = self.page.animation_type
+  data.position_type = self.page.position_type
+  data.set = self.set
+
+  if self.page.animation_type ~= Event.Animation.VISUAL_EFFECT then
+    data.orientation = self.orientation
+  end
+
+  data.w = self.page.w
+  data.h = self.page.h
+  data.set_x = self.page.set_x
+  data.set_y = self.page.set_y
 
   return data
 end
