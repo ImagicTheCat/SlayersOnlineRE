@@ -19,19 +19,51 @@ Event.Animation = {
 }
 
 Event.Condition = {
-  NONE = 0,
-  INTERACT = 1,
-  AUTO = 2,
-  AUTO_ONCE = 3,
-  CONTACT = 4,
-  SERVER_VAR = 5,
-  CLIENT_VAR = 6,
-  CLIENT_SPECIAL_VAR = 7,
-  EVENT_VAR = 8,
-  ATTACK = 9
+  INTERACT = 0,
+  AUTO = 1,
+  AUTO_ONCE = 2,
+  CONTACT = 3,
+  ATTACK = 4,
+  VARIABLE = 5
 }
 
--- return Event.Condition type, parameters...
+Event.Variable = {
+  SERVER_VAR = 0,
+  CLIENT_VAR = 1,
+  CLIENT_SPECIAL_VAR = 2,
+  EVENT_VAR = 3
+}
+
+Event.Command = {
+  VARIABLE = 0,
+  FUNCTION = 1
+}
+
+-- return (Event.Variable type, parameters...) or nil
+function Event.parseVariableInstruction(instruction)
+  local lhs, op, rhs = string.match(instruction, "^(.-)([<>!=]+)(.*)$")
+  if lhs then
+    -- detect variable kind
+    local id, name
+
+    id = string.match(lhs, "^Serveur%[([%w_%-]+)%]$")
+    if id then return Event.Variable.SERVER_VAR, id, op, rhs end
+
+    id = string.match(lhs, "^Variable%[(%d+)%]$")
+    if id then return Event.Variable.CLIENT_VAR, "var", tonumber(id), op, rhs end
+
+    id = string.match(lhs, "^Bool%[(%d+)%]$")
+    if id then return Event.Variable.CLIENT_VAR, "bool", tonumber(id), op, rhs end
+
+    name, id = string.match(lhs, "^%%([^%.]+)%.([^%.]+)%%$")
+    if name then return Event.Variable.EVENT_VAR, name, id, op, rhs end
+
+    id = string.match(lhs, "^%%([^%.]+)%%$")
+    if id then return Event.Variable.CLIENT_SPECIAL_VAR, id, op, rhs end
+  end
+end
+
+-- return (Event.Condition type, parameters...) or nil
 function Event.parseCondition(instruction)
   if instruction == "Appuie sur bouton" then return Event.Condition.INTERACT end
   if instruction == "Automatique" then return Event.Condition.AUTO end
@@ -40,28 +72,28 @@ function Event.parseCondition(instruction)
   if instruction == "Attaque" then return Event.Condition.ATTACK end
 
   -- variable conditions
-  local lhs, op, rhs = string.match(instruction, "^(.-)([<>!=]+)(.*)$")
-  if lhs then
-    -- detect variable kind
-    local id, name
+  local r = {Event.parseVariableInstruction(instruction)}
+  if r[1] then
+    return Event.Condition.VARIABLE, unpack(r)
+  end
+end
 
-    id = string.match(lhs, "^Serveur%[([%w_%-]+)%]$")
-    if id then return Event.Condition.SERVER_VAR, id, op, rhs end
+-- return (Event.Command type, parameters...) or nil
+function Event.parseCommand(instruction)
+  if string.sub(instruction, 2) == "//" then return end -- ignore comment
 
-    id = string.match(lhs, "^Variable%[(%d+)%]$")
-    if id then return Event.Condition.CLIENT_VAR, "var", tonumber(id), op, rhs end
-
-    id = string.match(lhs, "^Bool%[(%d+)%]$")
-    if id then return Event.Condition.CLIENT_VAR, "bool", tonumber(id), op, rhs end
-
-    name, id = string.match(lhs, "^%%([^%.]+)%.([^%.]+)%%$")
-    if name then return Event.Condition.EVENT_VAR, name, id, op, rhs end
-
-    id = string.match(lhs, "^%%([^%.]+)%%$")
-    if id then return Event.Condition.CLIENT_SPECIAL_VAR, id, op, rhs end
+  -- function
+  local id, content = string.match(instruction, "^([%w_]+)%(?(.-)%)?$")
+  if id then -- parse arguments (TODO)
+    local args = {}
+    return Event.Command.FUNCTION, id, unpack(args)
   end
 
-  return Event.Condition.NONE
+  -- variable commands
+  local r = {Event.parseVariableInstruction(instruction)}
+  if r[1] then
+    return Event.Command.VARIABLE, unpack(r)
+  end
 end
 
 -- METHODS
