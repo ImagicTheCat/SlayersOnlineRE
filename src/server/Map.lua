@@ -25,6 +25,7 @@ function Map:__construct(server, id, data)
   self.h = self.data.height
   self.tileset = string.sub(self.data.tileset, 9) -- remove Chipset/ part
   self.tiledata = self.data.tiledata
+  self.tileset_data = self.data.tileset_data
 end
 
 -- return cell (map of entity) or nil if invalid or empty
@@ -145,6 +146,26 @@ end
 -- return bool
 function Map:isCellPassable(entity, x, y)
   if x >= 0 and x < self.w and y >= 0 and y < self.h then -- valid cell
+    -- tileset check
+    --- get tile from tileset
+    local tdata = self.tileset_data
+    local index = (x*self.h+y)*4+1
+    local xl, xh, yl, yh = self.tiledata[index] or 0, self.tiledata[index+1] or 0, self.tiledata[index+2] or 0, self.tiledata[index+3] or 0
+
+    --- check passable
+    local l_passage, h_passable = true, true
+    if xl > 0 and yl > 0 then
+      l_passable = tdata.passable[(xl-1)*tdata.hc+yl]
+    end
+
+    if xh > 0 and yh > 0 then
+      h_passable = tdata.passable[tdata.wc*tdata.hc+(xh-1)*tdata.hc+yh]
+    end
+
+    if not l_passable or not h_passable then
+      return false
+    end
+
     -- entities check
     local cell = self:getCell(x,y)
     if cell then
@@ -162,8 +183,6 @@ function Map:isCellPassable(entity, x, y)
         end
       end
     end
-
-    -- TODO: tileset check
 
     return true
   end
