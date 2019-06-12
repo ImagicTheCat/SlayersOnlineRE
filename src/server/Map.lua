@@ -85,7 +85,7 @@ function Map:addEntity(entity)
 
     -- send entity packet to bound or all map clients
     if entity.nettype then
-      if entity.client then
+      if entity.client and self.clients[entity.client] then
         entity.client:send(Client.makePacket(net.ENTITY_ADD, entity:serializeNet()))
       else
         self:broadcastPacket(net.ENTITY_ADD, entity:serializeNet())
@@ -125,13 +125,11 @@ function Map:removeEntity(entity)
       for c_entity in pairs(entity.entities) do
         self:removeEntity(c_entity)
       end
-
-      entity.entities = {}
     end
 
     -- send entity packet to bound or all map clients
     if entity.nettype then
-      if entity.client then
+      if entity.client and self.clients[entity.client] then
         entity.client:send(Client.makePacket(net.ENTITY_REMOVE, id))
       else
         self:broadcastPacket(net.ENTITY_REMOVE, id)

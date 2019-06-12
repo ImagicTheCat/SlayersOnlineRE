@@ -40,6 +40,14 @@ Event.Command = {
   FUNCTION = 1
 }
 
+Event.patterns = {
+  server_var = "Serveur%[([%w_%-]+)%]", -- Serveur[string]
+  client_var = "Variable%[(%d+)%]", -- Variable[int]
+  client_bool_var = "Bool%[(%d+)%]", -- Bool[int]
+  event_var = "%%([^%.%%]+)%.([^%.%s%%]+)%%", -- %Nom Ev.Var%
+  client_special_var = "%%([^%.%s%%]+)%%" -- %Var%
+}
+
 -- return (Event.Variable type, parameters...) or nil
 function Event.parseVariableInstruction(instruction)
   local lhs, op, rhs = string.match(instruction, "^(.-)([<>!=]+)(.*)$")
@@ -47,19 +55,21 @@ function Event.parseVariableInstruction(instruction)
     -- detect variable kind
     local id, name
 
-    id = string.match(lhs, "^Serveur%[([%w_%-]+)%]$")
+    local pat = Event.patterns
+
+    id = string.match(lhs, "^"..pat.server_var.."$")
     if id then return Event.Variable.SERVER_VAR, id, op, rhs end
 
-    id = string.match(lhs, "^Variable%[(%d+)%]$")
+    id = string.match(lhs, "^"..pat.client_var.."$")
     if id then return Event.Variable.CLIENT_VAR, "var", tonumber(id), op, rhs end
 
-    id = string.match(lhs, "^Bool%[(%d+)%]$")
+    id = string.match(lhs, "^"..pat.client_bool_var.."$")
     if id then return Event.Variable.CLIENT_VAR, "bool", tonumber(id), op, rhs end
 
-    name, id = string.match(lhs, "^%%([^%.]+)%.([^%.]+)%%$")
+    name, id = string.match(lhs, "^"..pat.event_var.."$")
     if name then return Event.Variable.EVENT_VAR, name, id, op, rhs end
 
-    id = string.match(lhs, "^%%([^%.]+)%%$")
+    id = string.match(lhs, "^"..pat.client_special_var.."$")
     if id then return Event.Variable.CLIENT_SPECIAL_VAR, id, op, rhs end
   end
 end
@@ -105,6 +115,28 @@ function Event.parseCommand(instruction)
   end
 end
 
+-- PRIVATE METHODS
+
+-- vars definitions, map of id => function
+-- function(event, value): should return a number or a string on get mode
+--- value: passed string (set mode) or nil (get mode)
+
+local client_special_vars = {}
+
+function client_special_vars:Name(value)
+  if not value then
+    return self.client.id
+  end
+end
+
+local event_vars = {}
+
+function event_vars:Name(value)
+  if not value then
+    return self.page.name
+  end
+end
+
 -- METHODS
 
 -- page_index, x, y: specific state or nil
@@ -130,6 +162,46 @@ function Event:__construct(client, data, page_index, x, y)
   if self.page.active and string.len(self.set) > 0 then -- networked event
     self.nettype = "Event"
   end
+end
+
+-- process the string to substitute all event language patterns
+-- return processed string
+function Event:instructionSubstitution(str)
+  local pat = Event.patterns
+
+  -- server var
+  str = string.gsub(str, pat.server_var, function(id)
+    return self.client.server:getVariable(id)
+  end)
+
+  -- client var
+  str = string.gsub(str, pat.client_var, function(id)
+    id = tonumber(id)
+    if id then return self.client:getVariable("var", id) end
+  end)
+
+  -- client bool var
+  str = string.gsub(str, pat.client_bool_var, function(id)
+    id = tonumber(id)
+    if id then return self.client:getVariable("bool", id) end
+  end)
+
+  -- event var
+  str = string.gsub(str, pat.event_var, function(name, id)
+    local event = self.client.events_by_name[name]
+    if event then
+      local f = event_vars[id]
+      if f then return f(event) end
+    end
+  end)
+
+  -- client special var
+  str = string.gsub(str, pat.client_special_var, function(id)
+    local f = client_special_vars[id]
+    if f then return f(self) end
+  end)
+
+  return str
 end
 
 -- check if the page conditions are valid
@@ -174,6 +246,9 @@ end
 -- overload
 function Event:onMapChange()
   if self.map then -- added to map
+    -- reference event by name
+    self.client.events_by_name[self.page.name] = self
+
     -- listen to conditions of all previous and current page
     self.vars_callback = function()
       local page_index = self:selectPage()
@@ -202,6 +277,9 @@ function Event:onMapChange()
       end
     end
   else -- removed from map
+    -- unreference event by name
+    self.client.events_by_name[self.page.name] = nil
+
     -- unlisten to conditions of all previous and current page
     for i=1,self.page_index do
       local page = self.data.pages[i]

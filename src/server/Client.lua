@@ -22,6 +22,7 @@ function Client:__construct(server, peer)
   self.peer = peer
 
   self.entities = {} -- bound map entities, map of entity
+  self.events_by_name = {} -- map of name => event entity
   self.vars = {} -- map of id (number)  => value (number)
   self.var_listeners = {} -- map of id (number) => map of callback
   self.bool_vars = {} -- map of id (number) => value (number)
