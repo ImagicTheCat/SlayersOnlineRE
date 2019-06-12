@@ -5,6 +5,7 @@ local Client = require("Client")
 local Map = require("Map")
 local utils = require("lib/utils")
 local Deserializer = require("Deserializer")
+local magick = require("magick")
 
 local Server = class("Server")
 
@@ -54,6 +55,7 @@ function Server:__construct(cfg)
   -- load project
   self.project = Deserializer.loadProject(self.cfg.project_name)
   print(self.project.map_count.." project maps loaded.")
+  self.project.tilesets = {} -- map of id => tileset data
 
   self.clients = {} -- map of peer => client
   self.maps = {} -- map of id => map instances
@@ -176,12 +178,41 @@ end
 
 function Server:loadMapData(id)
   local map = self.project.maps[id]
-  if map then
+  if map and not map.loaded then
+    map.loaded = true
     map.tiledata = Deserializer.loadMapTiles(id)
     map.events = Deserializer.loadMapEvents(id)
 
+    map.tileset_id = string.sub(map.tileset, 9, string.len(map.tileset)-4)
+    map.tileset_data = self:loadTilesetData(map.tileset_id)
+
     return map
   end
+end
+
+function Server:loadTilesetData(id)
+  local data = self.project.tilesets[id]
+
+  if not data then -- load tileset data
+    local image = magick.load_image("resources/project/Chipset/"..id..".png")
+    if image then
+      data = {}
+
+      -- dimensions
+      data.w, data.h = image:get_width(), image:get_height()
+      data.wc, data.hc = data.w/16, data.h/16
+      image:destroy()
+
+      -- passable data
+      data.passable = Deserializer.loadTilesetPassableData(id)
+
+      self.project.tilesets[id] = data
+    else
+      print("error loading tileset image \""..id.."\"")
+    end
+  end
+
+  return data
 end
 
 function Server:setVariable(id, value)

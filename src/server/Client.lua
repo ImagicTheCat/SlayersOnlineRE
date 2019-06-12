@@ -30,6 +30,8 @@ function Client:__construct(server, peer)
   self:send(Client.makePacket(net.PROTOCOL, net)) -- send protocol
 
   local map = server:getMap(next(server.project.maps))
+  print("map:", map.id)
+  self:teleport(0,10*16)
   map:addEntity(self)
 end
 

@@ -92,6 +92,26 @@ function Deserializer.loadProject(name)
   end
 end
 
+-- id: tileset id
+-- return list of passable bools (for each tile, column per column/y first), first part is the low layer, second part is the high layer
+function Deserializer.loadTilesetPassableData(id)
+  local file = io.open("resources/project/Chipset/"..id..".blk", "rb")
+  if file then
+    local data = {}
+
+    local size = file:seek("end")
+    file:seek("set")
+
+    for i=1,size do
+      data[i] = (struct.unpack("B", file:read(1)) > 0)
+    end
+
+    return data
+  else
+    print("error loading passable data for tileset \""..id.."\"")
+  end
+end
+
 -- return list of x_low, x_high, y_low, y_high... from the tileset for each map tile (or nil)
 function Deserializer.loadMapTiles(id)
   local file = io.open("resources/project/Maps/"..id..".map", "r")
