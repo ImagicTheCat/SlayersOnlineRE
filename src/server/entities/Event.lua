@@ -1,3 +1,4 @@
+local utils = require("lib/utils")
 local Entity = require("Entity")
 
 local Event = class("Event", Entity)
@@ -80,12 +81,20 @@ end
 
 -- return (Event.Command type, parameters...) or nil
 function Event.parseCommand(instruction)
-  if string.sub(instruction, 2) == "//" then return end -- ignore comment
+  if string.sub(instruction, 1, 2) == "//" then return end -- ignore comment
 
   -- function
   local id, content = string.match(instruction, "^([%w_]+)%(?(.-)%)?$")
-  if id then -- parse arguments (TODO)
+  if id then -- parse arguments
     local args = {}
+    if string.sub(content, 1, 1) == "'" then -- textual
+      args = utils.split(string.sub(content, 2, string.len(content)-1), "','")
+    else -- raw
+      for arg in string.gmatch(content, "([^,]*)") do
+        table.insert(args, arg)
+      end
+    end
+
     return Event.Command.FUNCTION, id, unpack(args)
   end
 
