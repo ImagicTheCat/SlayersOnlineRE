@@ -5,18 +5,25 @@ function utils.round(num, numDecimalPlaces)
   return math.floor(num * mult + 0.5) / mult
 end
 
+-- split string
+-- sep: separator pattern word
 function utils.split(str, sep)
-  if sep == nil then sep = "%s" end
+  local r = {}
 
-  local t={}
-  local i=1
+  local cursor = 1, pos, pend
+  repeat
+    pos, pend = string.find(str, sep, cursor)
+    if pos then
+      table.insert(r, string.sub(str, cursor, pos-1))
+      cursor = pend+1
+    end
+  until not pos 
 
-  for str in string.gmatch(str, "([^"..sep.."]+)") do
-    t[i] = str
-    i = i + 1
+  if cursor ~= string.len(str) then
+    table.insert(r, string.sub(str, cursor))
   end
 
-  return t
+  return r
 end
 
 function utils.clamp(x, a, b)

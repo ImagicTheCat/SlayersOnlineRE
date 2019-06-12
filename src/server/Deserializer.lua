@@ -170,6 +170,7 @@ function Deserializer.loadMapEvents(id)
     local line = f_ev0:read("*l")
     while line do
       local ltype,x,y,page,index,instruction = string.match(line, "^(..)(%d+),(%d+),(%d+),(%d+)=(.*)\r$")
+      instruction = Deserializer.string_conv:iconv(instruction)
 
       if ltype then -- match
         local event = events_by_coords[x..","..y] -- get events by coords
