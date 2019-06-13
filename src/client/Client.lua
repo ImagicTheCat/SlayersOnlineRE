@@ -208,7 +208,8 @@ function Client:onKeyPressed(key, scancode, isrepeat)
       elseif scancode == "d" then self:pressOrientation(1)
       elseif scancode == "s" then self:pressOrientation(2)
       elseif scancode == "a" then self:pressOrientation(3)
-      elseif scancode == "space" then self:inputAttack() end
+      elseif scancode == "space" then self:inputAttack()
+      elseif scancode == "e" then self:inputInteract() end
     end
   end
 
@@ -333,6 +334,10 @@ end
 
 function Client:inputAttack()
   self:sendPacket(net.INPUT_ATTACK)
+end
+
+function Client:inputInteract()
+  self:sendPacket(net.INPUT_INTERACT)
 end
 
 function Client:pressOrientation(orientation)

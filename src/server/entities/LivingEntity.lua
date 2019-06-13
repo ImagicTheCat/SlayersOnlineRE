@@ -117,7 +117,6 @@ function LivingEntity:raycastEntities(dist)
 
       for i=self.cx, self.cx+dist*dx, dx do
         for j=self.cy,self.cy+dc,(dc ~= 0 and dc or 1) do
-          print("x",i,j)
           local cell = self.map:getCell(i,j)
           if cell then
             for entity in pairs(cell) do
@@ -132,7 +131,6 @@ function LivingEntity:raycastEntities(dist)
 
       for i=self.cy, self.cy+dist*dy, dy do
         for j=self.cx,self.cx+dc,(dc ~= 0 and dc or 1) do
-          print("y",j,i)
           local cell = self.map:getCell(j,i)
           if cell then
             for entity in pairs(cell) do
