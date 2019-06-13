@@ -102,6 +102,51 @@ function LivingEntity:attack()
   end
 end
 
+-- get all entities in sight (nearest first)
+-- dist: ray distance in cells
+-- return list of entities
+function LivingEntity:raycastEntities(dist)
+  local entities = {}
+
+  if self.map then
+    local dx, dy = LivingEntity.orientationVector(self.orientation)
+
+    if dx ~= 0 then -- x axis
+      local dc = self.y-self.cy*16
+      if dc ~= 0 then dc = dc/math.abs(dc) end
+
+      for i=self.cx, self.cx+dist*dx, dx do
+        for j=self.cy,self.cy+dc,(dc ~= 0 and dc or 1) do
+          print("x",i,j)
+          local cell = self.map:getCell(i,j)
+          if cell then
+            for entity in pairs(cell) do
+              table.insert(entities, entity)
+            end
+          end
+        end
+      end
+    else -- y axis
+      local dc = self.x-self.cx*16
+      if dc ~= 0 then dc = dc/math.abs(dc) end
+
+      for i=self.cy, self.cy+dist*dy, dy do
+        for j=self.cx,self.cx+dc,(dc ~= 0 and dc or 1) do
+          print("y",j,i)
+          local cell = self.map:getCell(j,i)
+          if cell then
+            for entity in pairs(cell) do
+              table.insert(entities, entity)
+            end
+          end
+        end
+      end
+    end
+  end
+
+  return entities
+end
+
 -- skin: skin filename
 function LivingEntity:setSkin(skin)
   self.skin = skin
