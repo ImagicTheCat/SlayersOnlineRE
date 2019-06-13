@@ -59,7 +59,7 @@ function Server:__construct(cfg)
 
   self.clients = {} -- map of peer => client
   self.maps = {} -- map of id => map instances
-  self.vars = {} -- server variables, map of id (str) => value (str)
+  self.vars = {} -- server variables, map of id (str) => value (string or number)
   self.var_listeners = {} -- map of id => map of callback
 
   self.commands = {} -- map of id => callback
@@ -216,7 +216,7 @@ function Server:loadTilesetData(id)
 end
 
 function Server:setVariable(id, value)
-  if type(id) == "string" and type(value) == "string" then
+  if type(value) == "string" or type(value) == "number" then
     self.vars[id] = value
 
     -- call listeners
@@ -230,7 +230,7 @@ function Server:setVariable(id, value)
 end
 
 function Server:getVariable(id)
-  return self.vars[id] or ""
+  return self.vars[id] or 0
 end
 
 function Server:listenVariable(id, callback)

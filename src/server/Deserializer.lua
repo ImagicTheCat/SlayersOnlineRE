@@ -175,12 +175,12 @@ function Deserializer.loadMapEvents(id)
       if ltype then -- match
         local event = events_by_coords[x..","..y] -- get events by coords
         if event then
-          local page = event.pages[tonumber(index)+1] -- get event by page
+          local page = event.pages[tonumber(page)+1] -- get event by page
           if page then
             if ltype == "EV" then -- event commands
-              table.insert(page.commands, instruction)
+              page.commands[tonumber(index)+1] = instruction
             elseif ltype == "CD" then -- event conditions
-              table.insert(page.conditions, instruction)
+              page.conditions[tonumber(index)+1] = instruction
             end
           end
         end
