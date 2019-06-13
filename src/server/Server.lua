@@ -223,7 +223,7 @@ function Server:setVariable(id, value)
     local listeners = self.var_listeners[id]
     if listeners then
       for callback in pairs(listeners) do
-        callback(id, value)
+        callback()
       end
     end
   end
