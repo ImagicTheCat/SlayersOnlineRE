@@ -11,31 +11,41 @@ local Server = class("Server")
 
 -- COMMANDS
 
-local function cmd_memory(self, sender, args)
-  if not sender then
+local function cmd_memory(self, client, args)
+  if not client then
     local MB = collectgarbage("count")*1024/1000000
     print("Lua main memory usage: "..MB.." MB")
   end
 end
 
-local function cmd_count(self, sender, args)
+local function cmd_count(self, client, args)
   local count = 0
   for _ in pairs(self.clients) do
     count = count+1
   end
 
-  if sender then
-    sender:sendChatMessage(count.." online players")
+  if client then
+    client:sendChatMessage(count.." online players")
   else
     print(count.." online players")
   end
 end
 
-local function cmd_skin(self, sender, args)
-  if sender then
+local function cmd_where(self, client, args)
+  if client then
+    if client.map then
+      client:sendChatMessage(client.map.id.." "..client.cx..","..client.cy)
+    else
+      client:sendChatMessage("not on a map")
+    end
+  end
+end
+
+local function cmd_skin(self, client, args)
+  if client then
     local skin = args[2] or ""
-    sender:setSkin(skin)
-    sender:sendChatMessage("skin set to \""..skin.."\"")
+    client:setSkin(skin)
+    client:sendChatMessage("skin set to \""..skin.."\"")
   end
 end
 
@@ -82,6 +92,7 @@ function Server:__construct(cfg)
   -- register commands
   self:registerCommand("memory", cmd_memory)
   self:registerCommand("count", cmd_count)
+  self:registerCommand("where", cmd_where)
   self:registerCommand("skin", cmd_skin)
 
   -- console thread
@@ -170,7 +181,7 @@ end
 
 -- id: string (first command argument)
 -- callback(server, sender, args)
---- sender: client or nil from the server
+--- client: client or nil if emitted from the server
 --- args: command arguments (first is command id/name)
 function Server:registerCommand(id, callback)
   self.commands[id] = callback

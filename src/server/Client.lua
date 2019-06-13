@@ -32,7 +32,6 @@ function Client:__construct(server, peer)
   self:send(Client.makePacket(net.PROTOCOL, net)) -- send protocol
 
   local map = server:getMap(next(server.project.maps))
-  print("map:", map.id)
   self:teleport(0,10*16)
   map:addEntity(self)
 end
@@ -44,6 +43,8 @@ function Client:onPacket(protocol, data)
     self:setMoveForward(not not data)
   elseif protocol == net.INPUT_ATTACK then
     self:attack()
+  elseif protocol == net.INPUT_INTERACT then
+    self:interact()
   elseif protocol == net.INPUT_CHAT then
     if type(data) == "string" and string.len(data) > 0 and string.len(data) < 1000 then
       if string.sub(data, 1, 1) == "/" then -- parse command
@@ -124,7 +125,7 @@ function Client:interact()
   local entities = self:raycastEntities(3)
 
   for _, entity in ipairs(entities) do
-    if class.is(entity, Event) and entity.client == self and entity.trigger_attack then
+    if class.is(entity, Event) and entity.client == self and entity.trigger_interact then
       entity:trigger()
     end
   end

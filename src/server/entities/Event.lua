@@ -100,7 +100,7 @@ function Event.parseCommand(instruction)
     if string.sub(content, 1, 1) == "'" then -- textual
       args = utils.split(string.sub(content, 2, string.len(content)-1), "','")
     else -- raw
-      for arg in string.gmatch(content, "([^,]*)") do
+      for arg in string.gmatch(content, "([^,]+)") do
         table.insert(args, arg)
       end
     end
@@ -116,13 +116,16 @@ function Event.parseCommand(instruction)
 end
 
 -- process/compute string expression using basic Lua features
--- return computed number or nil on failure
+-- return computed number (integer) or nil on failure
 function Event.computeExpression(str)
   local expr = "return "..string.gsub(str, "[^%.%*/%-%+%(%)%d%s]", " ") -- allowed characters
   local f = loadstring(expr)
   local ok, r = pcall(f)
   if ok then
-    return tonumber(r)
+    local n = tonumber(r)
+    if n then
+      return utils.round(n)
+    end
   end
 end
 
@@ -153,7 +156,17 @@ end
 --- args...: function arguments as string expressions (after substitution)
 local command_functions = {}
 
-function command_functions:Teleport(state, map, cx, cy)
+function command_functions:Teleport(state, map_name, cx, cy)
+  local cx = Event.computeExpression(cx)
+  local cy = Event.computeExpression(cy)
+
+  if map_name and cx and cy then
+    local map = self.client.server:getMap(map_name)
+    if map then
+      self.client:teleport(cx*16, cy*16)
+      map:addEntity(self.client)
+    end
+  end
 end
 
 -- METHODS
@@ -375,7 +388,7 @@ function Event:trigger()
     elseif args[1] == Event.Command.FUNCTION then -- function
       local f = command_functions[args[2]]
       if f then
-        f(state, unpack(args, 3))
+        f(self, state, unpack(args, 3))
       end
     end
 

@@ -64,6 +64,7 @@ function Map:removeFromCell(entity, x, y)
   end
 end
 
+-- will remove the entity from its previous map
 function Map:addEntity(entity)
   -- remove the entity from the previous map
   if entity.map then
