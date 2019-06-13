@@ -148,6 +148,14 @@ function event_special_vars:Name(value)
   end
 end
 
+-- command function definitions, map of id => function
+-- function(event, state, args...)
+--- args...: function arguments as string expressions (after substitution)
+local command_functions = {}
+
+function command_functions:Teleport(state, map, cx, cy)
+end
+
 -- METHODS
 
 -- page_index, x, y: specific state or nil
@@ -234,12 +242,16 @@ function Event:checkCondition(instruction)
     elseif args[2] == Event.Variable.CLIENT_SPECIAL then
       local f = client_special_vars[args[3]]
       if f then lhs = f(self) end
+
+      op, expr = args[4], args[5]
     elseif args[2] == Event.Variable.EVENT_SPECIAL then
       local event = self.client.events_by_name[args[3]]
       if event then
         local f = event_special_vars[args[4]]
         if f then lhs = f(event) end
       end
+
+      op, expr = args[5], args[6]
     end
 
     if not lhs then return false end
@@ -253,9 +265,6 @@ function Event:checkCondition(instruction)
     else -- number comparison
       lhs = tonumber(lhs) or 0
     end
-
-    print(instruction)
-    print(lhs, op, rhs)
 
     if op == "=" then return (lhs == rhs)
     elseif op == "<" then return (lhs < rhs)
@@ -288,6 +297,62 @@ function Event:selectPage()
     end
 
     return #self.data.pages
+  end
+end
+
+-- execute event commands
+function Event:trigger()
+  -- execution context state
+  local state = {
+    cursor = 1 -- instruction cursor
+  }
+
+  local size = #self.page.commands
+
+  -- process instructions
+  while state.cursor <= size do
+    local instruction = self.page.commands[state.cursor]
+    local args = {Event.parseCommand(instruction)}
+
+    if args[1] == Event.Command.VARIABLE then -- variable assignment
+      local op, expr
+
+      if args[2] == Event.Variable.SERVER then
+        op, expr = args[4], args[5]
+      elseif args[2] == Event.Variable.CLIENT then
+        op, expr = args[5], args[6]
+      elseif args[2] == Event.Variable.CLIENT_SPECIAL then
+        op, expr = args[4], args[5]
+      elseif args[2] == Event.Variable.EVENT_SPECIAL then
+        op, expr = args[5], args[6]
+      end
+
+      if op == "=" then
+        expr = self:instructionSubstitution(expr)
+
+        if args[2] == Event.Variable.SERVER then
+          self.client.server:setVariable(args[3], Event.computeExpression(expr) or expr)
+        elseif args[2] == Event.Variable.CLIENT then
+          self.client:setVariable(args[3], args[4], Event.computeExpression(expr) or 0)
+        elseif args[2] == Event.Variable.CLIENT_SPECIAL then
+          local f = client_special_vars[args[3]]
+          if f then f(self, expr) end
+        elseif args[2] == Event.Variable.EVENT_SPECIAL then
+          local event = self.client.events_by_name[args[3]]
+          if event then
+            local f = event_special_vars[args[4]]
+            if f then f(event, expr) end
+          end
+        end
+      end
+    elseif args[1] == Event.Command.FUNCTION then -- function
+      local f = command_functions[args[2]]
+      if f then
+        f(state, unpack(args, 3))
+      end
+    end
+
+    state.cursor = state.cursor+1
   end
 end
 
