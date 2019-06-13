@@ -29,10 +29,10 @@ Event.Condition = {
 }
 
 Event.Variable = {
-  SERVER_VAR = 0,
-  CLIENT_VAR = 1,
-  CLIENT_SPECIAL_VAR = 2,
-  EVENT_VAR = 3
+  SERVER = 0,
+  CLIENT = 1,
+  CLIENT_SPECIAL = 2,
+  EVENT = 3
 }
 
 Event.Command = {
@@ -58,19 +58,19 @@ function Event.parseVariableInstruction(instruction)
     local pat = Event.patterns
 
     id = string.match(lhs, "^"..pat.server_var.."$")
-    if id then return Event.Variable.SERVER_VAR, id, op, rhs end
+    if id then return Event.Variable.SERVER, id, op, rhs end
 
     id = string.match(lhs, "^"..pat.client_var.."$")
-    if id then return Event.Variable.CLIENT_VAR, "var", tonumber(id), op, rhs end
+    if id then return Event.Variable.CLIENT, "var", tonumber(id), op, rhs end
 
     id = string.match(lhs, "^"..pat.client_bool_var.."$")
-    if id then return Event.Variable.CLIENT_VAR, "bool", tonumber(id), op, rhs end
+    if id then return Event.Variable.CLIENT, "bool", tonumber(id), op, rhs end
 
     name, id = string.match(lhs, "^"..pat.event_var.."$")
-    if name then return Event.Variable.EVENT_VAR, name, id, op, rhs end
+    if name then return Event.Variable.EVENT, name, id, op, rhs end
 
     id = string.match(lhs, "^"..pat.client_special_var.."$")
-    if id then return Event.Variable.CLIENT_SPECIAL_VAR, id, op, rhs end
+    if id then return Event.Variable.CLIENT_SPECIAL, id, op, rhs end
   end
 end
 
@@ -115,11 +115,22 @@ function Event.parseCommand(instruction)
   end
 end
 
+-- process/compute string expression using basic Lua features
+-- return computed number or nil on failure
+function Event.computeExpression(str)
+  local expr = "return "..string.gsub(str, "[^%.%*/%-%+%(%)%d%s]", " ") -- allowed characters
+  local f = loadstring(expr)
+  local ok, r = pcall(f)
+  if ok then
+    return tonumber(r)
+  end
+end
+
 -- PRIVATE METHODS
 
 -- vars definitions, map of id => function
 -- function(event, value): should return a number or a string on get mode
---- value: passed string (set mode) or nil (get mode)
+--- value: passed string expression (set mode) or nil (get mode)
 
 local client_special_vars = {}
 
@@ -204,10 +215,53 @@ function Event:instructionSubstitution(str)
   return str
 end
 
+-- check condition instruction
+-- return bool
+function Event:checkCondition(instruction)
+  local args = {Event.parseCondition(instruction)}
+
+  if args[1] == Event.Condition.VARIABLE then -- comparison check
+    local lhs, op, expr
+
+    if args[2] == Event.Variable.SERVER then
+      lhs = self.client.server:getVariable(args[3])
+      op, expr = args[4], args[5]
+    elseif args[2] == Event.Variable.CLIENT then
+      lhs = self.client:getVariable(args[3], args[4])
+      op, expr = args[5], args[6]
+    end
+
+    if not lhs then return false end
+
+    expr = self:instructionSubstitution(expr)
+
+    local rhs = Event.computeExpression(expr)
+    if not rhs then -- string comparison
+      lhs = tostring(lhs)
+      rhs = expr
+    else -- number comparison
+      lhs = tonumber(lhs) or 0
+    end
+
+    if op == "=" then return (lhs == rhs)
+    elseif op == "<" then return (lhs < rhs)
+    elseif op == ">" then return (lhs > rhs)
+    elseif op == "<=" then return (lhs <= rhs)
+    elseif op == ">=" then return (lhs >= rhs)
+    elseif op == "!=" then return (lhs ~= rhs)
+    else return false end
+  end
+
+  return true
+end
+
 -- check if the page conditions are valid
 -- return bool
 function Event:checkConditions(page)
-  -- TODO
+  for _, instruction in ipairs(page.conditions) do
+    if not self:checkCondition(instruction) then return false end
+  end
+
   return true
 end
 
@@ -269,10 +323,12 @@ function Event:onMapChange()
       local page = self.data.pages[i]
       for _, instruction in ipairs(page.conditions) do
         local args = {Event.parseCondition(instruction)}
-        if args[1] == Event.Condition.SERVER_VAR then
-          self.client.server:listenVariable(args[2], self.vars_callback)
-        elseif args[1] == Event.Condition.CLIENT_VAR then
-          self.client:listenVariable(args[2], args[3], self.vars_callback)
+        if args[1] == Event.Condition.VARIABLE then
+          if args[2] == Event.Variable.SERVER then
+            self.client.server:listenVariable(args[3], self.vars_callback)
+          elseif args[2] == Event.Variable.CLIENT then
+            self.client:listenVariable(args[3], args[4], self.vars_callback)
+          end
         end
       end
     end
@@ -285,10 +341,12 @@ function Event:onMapChange()
       local page = self.data.pages[i]
       for _, instruction in ipairs(page.conditions) do
         local args = {Event.parseCondition(instruction)}
-        if args[1] == Event.Condition.SERVER_VAR then
-          self.client.server:unlistenVariable(args[2], self.vars_callback)
-        elseif args[1] == Event.Condition.CLIENT_VAR then
-          self.client:unlistenVariable(args[2], args[3], self.vars_callback)
+        if args[1] == Event.Condition.VARIABLE then
+          if args[2] == Event.Variable.SERVER then
+            self.client.server:listenVariable(args[3], self.vars_callback)
+          elseif args[2] == Event.Variable.CLIENT then
+            self.client:listenVariable(args[3], args[4], self.vars_callback)
+          end
         end
       end
     end
