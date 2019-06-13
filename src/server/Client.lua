@@ -27,6 +27,7 @@ function Client:__construct(server, peer)
   self.var_listeners = {} -- map of id (number) => map of callback
   self.bool_vars = {} -- map of id (number) => value (number)
   self.bool_var_listeners = {} -- map of id (number) => map of callback
+  self.special_var_listeners = {} -- map of id (string) => map of callback
 
   self:send(Client.makePacket(net.PROTOCOL, net)) -- send protocol
 
@@ -90,6 +91,8 @@ function Client:onMapChange()
   end
 end
 
+-- variables
+
 function Client:setVariable(vtype, id, value)
   if type(id) == "number" and type(value) == "number" then
     local vars = (vtype == "bool" and self.bool_vars or self.vars)
@@ -101,7 +104,7 @@ function Client:setVariable(vtype, id, value)
     local listeners = var_listeners[id]
     if listeners then
       for callback in pairs(listeners) do
-        callback(id, value)
+        callback()
       end
     end
   end
@@ -133,6 +136,40 @@ function Client:unlistenVariable(vtype, id, callback)
 
     if not next(listeners) then
       var_listeners[id] = nil
+    end
+  end
+end
+
+-- special variables
+
+-- trigger change event
+function Client:triggerSpecialVariable(id)
+  -- call listeners
+  local listeners = self.special_var_listeners[id]
+  if listeners then
+    for callback in pairs(listeners) do
+      callback()
+    end
+  end
+end
+
+function Client:listenSpecialVariable(id, callback)
+  local listeners = self.special_var_listeners[id]
+  if not listeners then
+    listeners = {}
+    self.special_var_listeners[id] = listeners
+  end
+
+  listeners[callback] = true
+end
+
+function Client:unlistenSpecialVariable(vtype, id, callback)
+  local listeners = self.special_var_listeners[id]
+  if listeners then
+    listeners[callback] = nil
+
+    if not next(listeners) then
+      self.special_var_listeners[id] = nil
     end
   end
 end

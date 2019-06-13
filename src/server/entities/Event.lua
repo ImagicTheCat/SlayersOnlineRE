@@ -32,7 +32,7 @@ Event.Variable = {
   SERVER = 0,
   CLIENT = 1,
   CLIENT_SPECIAL = 2,
-  EVENT = 3
+  EVENT_SPECIAL = 3
 }
 
 Event.Command = {
@@ -44,7 +44,7 @@ Event.patterns = {
   server_var = "Serveur%[([%w_%-]+)%]", -- Serveur[string]
   client_var = "Variable%[(%d+)%]", -- Variable[int]
   client_bool_var = "Bool%[(%d+)%]", -- Bool[int]
-  event_var = "%%([^%.%%]+)%.([^%.%s%%]+)%%", -- %Nom Ev.Var%
+  event_special_var = "%%([^%.%%]+)%.([^%.%s%%]+)%%", -- %Nom Ev.Var%
   client_special_var = "%%([^%.%s%%]+)%%" -- %Var%
 }
 
@@ -66,8 +66,8 @@ function Event.parseVariableInstruction(instruction)
     id = string.match(lhs, "^"..pat.client_bool_var.."$")
     if id then return Event.Variable.CLIENT, "bool", tonumber(id), op, rhs end
 
-    name, id = string.match(lhs, "^"..pat.event_var.."$")
-    if name then return Event.Variable.EVENT, name, id, op, rhs end
+    name, id = string.match(lhs, "^"..pat.event_special_var.."$")
+    if name then return Event.Variable.EVENT_SPECIAL, name, id, op, rhs end
 
     id = string.match(lhs, "^"..pat.client_special_var.."$")
     if id then return Event.Variable.CLIENT_SPECIAL, id, op, rhs end
@@ -128,9 +128,9 @@ end
 
 -- PRIVATE METHODS
 
--- vars definitions, map of id => function
+-- special var accessor definitions, map of id => function
 -- function(event, value): should return a number or a string on get mode
---- value: passed string expression (set mode) or nil (get mode)
+--- value: passed string expression (after substitution) on set mode (nil on get mode)
 
 local client_special_vars = {}
 
@@ -140,9 +140,9 @@ function client_special_vars:Name(value)
   end
 end
 
-local event_vars = {}
+local event_special_vars = {}
 
-function event_vars:Name(value)
+function event_special_vars:Name(value)
   if not value then
     return self.page.name
   end
@@ -158,6 +158,8 @@ function Event:__construct(client, data, page_index, x, y)
   self.data = data -- event data
   self.page_index = page_index or self:selectPage()
   self.page = self.data.pages[self.page_index]
+
+  self.special_var_listeners = {} -- map of id (string) => map of callback
 
   -- init entity stuff
   self:teleport(x or self.data.x*16, y or self.data.y*16)
@@ -198,10 +200,10 @@ function Event:instructionSubstitution(str)
   end)
 
   -- event var
-  str = string.gsub(str, pat.event_var, function(name, id)
+  str = string.gsub(str, pat.event_special_var, function(name, id)
     local event = self.client.events_by_name[name]
     if event then
-      local f = event_vars[id]
+      local f = event_special_vars[id]
       if f then return f(event) end
     end
   end)
@@ -229,6 +231,15 @@ function Event:checkCondition(instruction)
     elseif args[2] == Event.Variable.CLIENT then
       lhs = self.client:getVariable(args[3], args[4])
       op, expr = args[5], args[6]
+    elseif args[2] == Event.Variable.CLIENT_SPECIAL then
+      local f = client_special_vars[args[3]]
+      if f then lhs = f(self) end
+    elseif args[2] == Event.Variable.EVENT_SPECIAL then
+      local event = self.client.events_by_name[args[3]]
+      if event then
+        local f = event_special_vars[args[4]]
+        if f then lhs = f(event) end
+      end
     end
 
     if not lhs then return false end
@@ -242,6 +253,9 @@ function Event:checkCondition(instruction)
     else -- number comparison
       lhs = tonumber(lhs) or 0
     end
+
+    print(instruction)
+    print(lhs, op, rhs)
 
     if op == "=" then return (lhs == rhs)
     elseif op == "<" then return (lhs < rhs)
@@ -274,6 +288,38 @@ function Event:selectPage()
     end
 
     return #self.data.pages
+  end
+end
+
+-- trigger change event
+function Event:triggerSpecialVariable(id)
+  -- call listeners
+  local listeners = self.special_var_listeners[id]
+  if listeners then
+    for callback in pairs(listeners) do
+      callback()
+    end
+  end
+end
+
+function Event:listenSpecialVariable(id, callback)
+  local listeners = self.special_var_listeners[id]
+  if not listeners then
+    listeners = {}
+    self.special_var_listeners[id] = listeners
+  end
+
+  listeners[callback] = true
+end
+
+function Event:unlistenSpecialVariable(vtype, id, callback)
+  local listeners = self.special_var_listeners[id]
+  if listeners then
+    listeners[callback] = nil
+
+    if not next(listeners) then
+      self.special_var_listeners[id] = nil
+    end
   end
 end
 
@@ -328,6 +374,11 @@ function Event:onMapChange()
             self.client.server:listenVariable(args[3], self.vars_callback)
           elseif args[2] == Event.Variable.CLIENT then
             self.client:listenVariable(args[3], args[4], self.vars_callback)
+          elseif args[2] == Event.Variable.CLIENT_SPECIAL then
+            self.client:listenSpecialVariable(args[3], self.vars_callback)
+          elseif args[2] == Event.Variable.EVENT_SPECIAL then
+            local event = self.client.events_by_name[args[3]]
+            if event then event:listenSpecialVariable(args[4], self.vars_callback) end
           end
         end
       end
@@ -346,6 +397,11 @@ function Event:onMapChange()
             self.client.server:listenVariable(args[3], self.vars_callback)
           elseif args[2] == Event.Variable.CLIENT then
             self.client:listenVariable(args[3], args[4], self.vars_callback)
+          elseif args[2] == Event.Variable.CLIENT_SPECIAL then
+            self.client:unlistenSpecialVariable(args[3], self.vars_callback)
+          elseif args[2] == Event.Variable.EVENT_SPECIAL then
+            local event = self.client.events_by_name[args[3]]
+            if event then event:unlistenSpecialVariable(args[4], self.vars_callback) end
           end
         end
       end
