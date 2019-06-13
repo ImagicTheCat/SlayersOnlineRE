@@ -336,12 +336,18 @@ function Event:trigger()
           self.client:setVariable(args[3], args[4], Event.computeExpression(expr) or 0)
         elseif args[2] == Event.Variable.CLIENT_SPECIAL then
           local f = client_special_vars[args[3]]
-          if f then f(self, expr) end
+          if f then
+            f(self, expr)
+            self.client:triggerSpecialVariable(args[3])
+          end
         elseif args[2] == Event.Variable.EVENT_SPECIAL then
           local event = self.client.events_by_name[args[3]]
           if event then
             local f = event_special_vars[args[4]]
-            if f then f(event, expr) end
+            if f then
+              f(event, expr)
+              event:triggerSpecialVariable(args[4])
+            end
           end
         end
       end
