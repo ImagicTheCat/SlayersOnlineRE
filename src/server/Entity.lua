@@ -38,6 +38,8 @@ function Entity:updateCell()
     -- update
     self.cx = cx
     self.cy = cy
+
+    self:onCellChange()
   end
 end
 
@@ -84,6 +86,10 @@ end
 
 -- called when the entity is added/removed to/from a map (after)
 function Entity:onMapChange()
+end
+
+-- called when the entity cell changes
+function Entity:onCellChange()
 end
 
 return Entity

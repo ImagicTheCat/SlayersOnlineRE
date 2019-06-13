@@ -169,6 +169,27 @@ function Event:__construct(client, data, page_index, x, y)
 
   self.special_var_listeners = {} -- map of id (string) => map of callback
 
+  self.trigger_auto = false
+  self.trigger_auto_once = false
+  self.trigger_attack = false
+  self.trigger_contact = false
+  self.trigger_interact = false
+
+  for _, instruction in ipairs(self.page.conditions) do
+    local ctype = Event.parseCondition(instruction)
+    if ctype == Event.Condition.AUTO then
+      self.trigger_auto = true
+    elseif ctype == Event.Condition.AUTO_ONCE then
+      self.trigger_auto_once = true
+    elseif ctype == Event.Condition.ATTACK then
+      self.trigger_attack = true
+    elseif ctype == Event.Condition.CONTACT then
+      self.trigger_contact = true
+    elseif ctype == Event.Condition.INTERACT then
+      self.trigger_interact = true
+    end
+  end
+
   -- init entity stuff
   self:teleport(x or self.data.x*16, y or self.data.y*16)
 
@@ -454,6 +475,17 @@ function Event:onMapChange()
         end
       end
     end
+
+    -- auto trigger
+    if self.trigger_auto then
+      self.trigger_task = itask(0.03, function()
+        self:trigger()
+      end)
+    elseif self.trigger_auto_once then
+      task(0.03, function()
+        self:trigger()
+      end)
+    end
   else -- removed from map
     -- unreference event by name
     self.client.events_by_name[self.page.name] = nil
@@ -476,6 +508,12 @@ function Event:onMapChange()
           end
         end
       end
+    end
+
+    -- auto trigger
+    if self.trigger_auto then
+      self.trigger_task:remove()
+      self.trigger_task = nil
     end
   end
 end

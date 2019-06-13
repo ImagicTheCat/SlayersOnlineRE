@@ -91,6 +91,45 @@ function Client:onMapChange()
   end
 end
 
+-- overload
+function Client:onCellChange()
+  if self.map then
+    local cell = self.map:getCell(self.cx, self.cy)
+    if cell then
+      -- event contact check
+      for entity in pairs(cell) do
+        if class.is(entity, Event) and entity.client == self and entity.trigger_contact then
+          entity:trigger()
+        end
+      end
+    end
+  end
+end
+
+-- overload
+function Client:attack()
+  Player.attack(self)
+
+  -- event attack check
+  local entities = self:raycastEntities(1)
+  for _, entity in ipairs(entities) do
+    if class.is(entity, Event) and entity.client == self and entity.trigger_attack then
+      entity:trigger()
+    end
+  end
+end
+
+function Client:interact()
+  -- event interact check
+  local entities = self:raycastEntities(3)
+
+  for _, entity in ipairs(entities) do
+    if class.is(entity, Event) and entity.client == self and entity.trigger_attack then
+      entity:trigger()
+    end
+  end
+end
+
 -- variables
 
 function Client:setVariable(vtype, id, value)
