@@ -345,9 +345,12 @@ end
 -- condition: Event.Condition type triggered
 function Event:trigger(condition)
   if condition == Event.Condition.INTERACT then
-    -- look at player
-    local orientation = LivingEntity.vectorOrientation(self.client.x-self.x, self.client.y-self.y)
-    self:setOrientation(orientation)
+    local atype = self.page.animation_type
+    if atype == Event.Animation.CHARACTER_RANDOM or atype == Event.Animation.STATIC_CHARACTER then
+      -- look at player
+      local orientation = LivingEntity.vectorOrientation(self.client.x-self.x, self.client.y-self.y)
+      self:setOrientation(orientation)
+    end
   end
 
   -- execution context state
