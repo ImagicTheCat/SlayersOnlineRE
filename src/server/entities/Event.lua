@@ -359,6 +359,9 @@ function Event:trigger()
 
       if args[2] == Event.Variable.SERVER then
         op, expr = args[4], args[5]
+
+        -- concat compatibility support
+        expr = string.gsub("Concat%('(.*)'%)", "Serveur["..args[3].."]%1")
       elseif args[2] == Event.Variable.CLIENT then
         op, expr = args[5], args[6]
       elseif args[2] == Event.Variable.CLIENT_SPECIAL then
