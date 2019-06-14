@@ -176,6 +176,10 @@ function command_functions:Teleport(state, map_name, cx, cy)
   end
 end
 
+function command_functions:Message(state, msg)
+  self.client:sendEventMessage(msg)
+end
+
 -- METHODS
 
 -- page_index, x, y: specific state or nil

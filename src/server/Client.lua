@@ -71,6 +71,10 @@ function Client:sendChatMessage(msg)
   self:send(Client.makePacket(net.CHAT_MESSAGE_SERVER, msg))
 end
 
+function Client:sendEventMessage(msg)
+  self:send(Client.makePacket(net.EVENT_MESSAGE, msg))
+end
+
 function Client:onDisconnect()
   if self.map then
     self.map:removeEntity(self)

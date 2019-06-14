@@ -8,6 +8,7 @@ local NetManager = require("NetManager")
 local URL = require("socket.url")
 local TextInput = require("gui/TextInput")
 local ChatHistory = require("gui/ChatHistory")
+local MessageWindow = require("gui/MessageWindow")
 local TextureAtlas = require("TextureAtlas")
 
 local Client = class("Client")
@@ -44,6 +45,9 @@ function Client:__construct(cfg)
 
   self.chat_history = ChatHistory(self)
   self.chat_history_time = 0
+
+  self.message_window = MessageWindow(self)
+  self.message_showing = false
 
   self.phials_atlas = TextureAtlas(0,0,64,216,16,72)
   self.phials_tex = self:loadTexture("resources/textures/phials.png")
@@ -159,6 +163,9 @@ function Client:onPacket(protocol, data)
   elseif protocol == net.CHAT_MESSAGE_SERVER then
     self.chat_history:add({{0,1,0.5}, data})
     self.chat_history_time = 10
+  elseif protocol == net.EVENT_MESSAGE then
+    self.message_window:set(data)
+    self.message_showing = true
   end
 end
 
@@ -193,6 +200,8 @@ function Client:onResize(w, h)
   self.xp_w = self.xp_tex:getWidth()*self.xp_scale
   self.xp_h = self.xp_tex:getHeight()*self.xp_scale
   self.xp_y = h/self.gui_scale-self.xp_h+7*self.xp_scale
+
+  self.message_window:update(2/self.gui_scale, 2/self.gui_scale, (w-4)/self.gui_scale, 200/self.gui_scale)
 end
 
 function Client:onTextInput(data)
@@ -209,7 +218,13 @@ function Client:onKeyPressed(key, scancode, isrepeat)
       elseif scancode == "s" then self:pressOrientation(2)
       elseif scancode == "a" then self:pressOrientation(3)
       elseif scancode == "space" then self:inputAttack()
-      elseif scancode == "e" then self:inputInteract() end
+      elseif scancode == "e" then
+        if self.message_showing then
+          self.message_showing = false
+        else
+          self:inputInteract()
+        end
+      end
     end
   end
 
@@ -315,6 +330,10 @@ function Client:draw()
 
   if self.typing or self.chat_history_time > 0 then
     self.chat_history:draw()
+  end
+
+  if self.message_showing then
+    self.message_window:draw()
   end
 
   love.graphics.pop()
