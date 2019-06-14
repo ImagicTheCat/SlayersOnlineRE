@@ -42,8 +42,8 @@ Event.Command = {
 
 Event.patterns = {
   server_var = "Serveur%[([%w_%-]+)%]", -- Serveur[string]
-  client_var = "Variable%[(%d+)%]", -- Variable[int]
-  client_bool_var = "Bool%[(%d+)%]", -- Bool[int]
+  client_var = "Variable%[([%d%.]+)%]", -- Variable[int]
+  client_bool_var = "Bool%[([%d%.]+)%]", -- Bool[int]
   event_special_var = "%%([^%.%%]+)%.([^%.%s%%]+)%%", -- %Nom Ev.Var%
   client_special_var = "%%([^%.%s%%]+)%%" -- %Var%
 }
@@ -53,18 +53,24 @@ function Event.parseVariableInstruction(instruction)
   local lhs, op, rhs = string.match(instruction, "^(.-)([<>!=]+)(.*)$")
   if lhs then
     -- detect variable kind
-    local id, name
+    local id, ids, name
 
     local pat = Event.patterns
 
     id = string.match(lhs, "^"..pat.server_var.."$")
     if id then return Event.Variable.SERVER, id, op, rhs end
 
+    -- id range
     id = string.match(lhs, "^"..pat.client_var.."$")
-    if id then return Event.Variable.CLIENT, "var", tonumber(id), op, rhs end
+    ids = (id and utils.split(id, "..") or {})
+    for i=1,#ids do ids[i] = math.floor(tonumber(ids[i])) end
+    if ids[1] then return Event.Variable.CLIENT, "var", ids, op, rhs end
 
+    -- id range
     id = string.match(lhs, "^"..pat.client_bool_var.."$")
-    if id then return Event.Variable.CLIENT, "bool", tonumber(id), op, rhs end
+    ids = (id and utils.split(id, "..") or {})
+    for i=1,#ids do ids[i] = math.floor(tonumber(ids[i])) end
+    if ids[1] then return Event.Variable.CLIENT, "bool", ids, op, rhs end
 
     name, id = string.match(lhs, "^"..pat.event_special_var.."$")
     if name then return Event.Variable.EVENT_SPECIAL, name, id, op, rhs end
@@ -271,7 +277,7 @@ function Event:checkCondition(instruction)
       lhs = self.client.server:getVariable(args[3])
       op, expr = args[4], args[5]
     elseif args[2] == Event.Variable.CLIENT then
-      lhs = self.client:getVariable(args[3], args[4])
+      lhs = self.client:getVariable(args[3], args[4][1])
       op, expr = args[5], args[6]
     elseif args[2] == Event.Variable.CLIENT_SPECIAL then
       local f = client_special_vars[args[3]]
@@ -367,7 +373,10 @@ function Event:trigger()
         if args[2] == Event.Variable.SERVER then
           self.client.server:setVariable(args[3], Event.computeExpression(expr) or expr)
         elseif args[2] == Event.Variable.CLIENT then
-          self.client:setVariable(args[3], args[4], Event.computeExpression(expr) or 0)
+          local value = (Event.computeExpression(expr) or 0)
+          for id=args[4][1], (args[4][2] or args[4][1]) do -- range set
+            self.client:setVariable(args[3], id, value)
+          end
         elseif args[2] == Event.Variable.CLIENT_SPECIAL then
           local f = client_special_vars[args[3]]
           if f then
