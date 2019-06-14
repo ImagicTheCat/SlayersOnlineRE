@@ -5,12 +5,24 @@ local LivingEntity = class("LivingEntity", Entity)
 
 -- STATICS
 
--- return dx,dy (direction)
+-- return dx,dy (direction) or nil on invalid orientation (0-3)
 function LivingEntity.orientationVector(orientation)
   if orientation == 0 then return 0,-1
   elseif orientation == 1 then return 1,0
   elseif orientation == 2 then return 0,1
   elseif orientation == 3 then return -1,0 end
+end
+
+-- return orientation
+function LivingEntity.vectorOrientation(dx, dy)
+  local g_x = (math.abs(dx) > math.abs(dy))
+  dx = dx/math.abs(dx)
+  dy = dy/math.abs(dy)
+
+  if dy < 0 and not g_x then return 0
+  elseif dx > 0 and g_x then return 1
+  elseif dy > 0 and not g_x then return 2
+  else return 3 end
 end
 
 -- METHODS
