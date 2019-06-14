@@ -415,8 +415,15 @@ function Event:trigger(condition)
       end
     elseif args[1] == Event.Command.FUNCTION then -- function
       local f = command_functions[args[2]]
+
+      -- process function arguments
+      local fargs = {}
+      for i=3,#args do
+        table.insert(fargs, self:instructionSubstitution(args[i]))
+      end
+
       if f then
-        f(self, state, unpack(args, 3))
+        f(self, state, unpack(fargs))
       end
     end
 

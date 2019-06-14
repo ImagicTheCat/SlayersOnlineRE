@@ -172,6 +172,9 @@ function Deserializer.loadMapEvents(id)
       local ltype,x,y,page,index,instruction = string.match(line, "^(..)(%d+),(%d+),(%d+),(%d+)=(.*)\r$")
       instruction = Deserializer.string_conv:iconv(instruction)
 
+      -- process allowed escapes
+      instruction = string.gsub(instruction, "\\n", "\n")
+
       if ltype then -- match
         local event = events_by_coords[x..","..y] -- get events by coords
         if event then
