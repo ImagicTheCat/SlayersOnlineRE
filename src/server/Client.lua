@@ -100,7 +100,7 @@ function Client:onCellChange()
       -- event contact check
       for entity in pairs(cell) do
         if class.is(entity, Event) and entity.client == self and entity.trigger_contact then
-          entity:trigger()
+          entity:trigger(Event.Condition.CONTACT)
         end
       end
     end
@@ -115,18 +115,18 @@ function Client:attack()
   local entities = self:raycastEntities(1)
   for _, entity in ipairs(entities) do
     if class.is(entity, Event) and entity.client == self and entity.trigger_attack then
-      entity:trigger()
+      entity:trigger(Event.Condition.ATTACK)
     end
   end
 end
 
 function Client:interact()
   -- event interact check
-  local entities = self:raycastEntities(3)
+  local entities = self:raycastEntities(2)
 
   for _, entity in ipairs(entities) do
     if class.is(entity, Event) and entity.client == self and entity.trigger_interact then
-      entity:trigger()
+      entity:trigger(Event.Condition.INTERACT)
     end
   end
 end

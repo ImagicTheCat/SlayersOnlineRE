@@ -24,7 +24,7 @@ Event.Animation = {
 function Event:__construct(data)
   Entity.__construct(self, data)
 
-  self.anim_x = 0
+  self.anim_x = data.animation_number or 0
   self.anim_y = data.orientation or 0
 
   self.set = client:loadTexture("resources/textures/sets/"..data.set)
@@ -40,6 +40,10 @@ end
 -- overload
 function Event:onPacket(action, data)
   Entity.onPacket(self, action, data)
+
+  if action == "ch_orientation" then
+    self.anim_y = data
+  end
 end
 
 -- overload

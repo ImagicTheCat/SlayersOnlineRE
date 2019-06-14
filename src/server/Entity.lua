@@ -77,7 +77,7 @@ function Entity:broadcastPacket(action, data)
     local pdata = {id = self.id, act = action, data = data}
 
     if self.client then -- bound to client
-      client:send(Client.makePacket(net.ENTITY_PACKET, pdata))
+      self.client:send(Client.makePacket(net.ENTITY_PACKET, pdata))
     else -- global map
       self.map:broadcastPacket(net.ENTITY_PACKET, pdata)
     end

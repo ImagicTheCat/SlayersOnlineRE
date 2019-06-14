@@ -1,5 +1,6 @@
 local utils = require("lib/utils")
 local Entity = require("Entity")
+local LivingEntity = require("entities/LivingEntity")
 
 local Event = class("Event", Entity)
 
@@ -341,15 +342,23 @@ function Event:selectPage()
 end
 
 -- execute event commands
-function Event:trigger()
+-- condition: Event.Condition type triggered
+function Event:trigger(condition)
+  if condition == Event.Condition.INTERACT then
+    -- look at player
+    local orientation = LivingEntity.vectorOrientation(self.client.x-self.x, self.client.y-self.y)
+    self:setOrientation(orientation)
+  end
+
   -- execution context state
   local state = {
-    cursor = 1 -- instruction cursor
+    cursor = 1, -- instruction cursor
+    condition = condition
   }
 
+  -- process instructions
   local size = #self.page.commands
 
-  -- process instructions
   while state.cursor <= size do
     local instruction = self.page.commands[state.cursor]
     local args = {Event.parseCommand(instruction)}
@@ -450,6 +459,7 @@ function Event:serializeNet()
 
   if self.page.animation_type ~= Event.Animation.VISUAL_EFFECT then
     data.orientation = self.orientation
+    data.animation_number = self.page.animation_number
   end
 
   data.w = self.page.w
@@ -458,6 +468,13 @@ function Event:serializeNet()
   data.set_y = self.page.set_y
 
   return data
+end
+
+function Event:setOrientation(orientation)
+  if self.page.animation_type ~= Event.Animation.VISUAL_EFFECT then
+    self.orientation = orientation
+    self:broadcastPacket("ch_orientation", orientation)
+  end
 end
 
 -- overload
@@ -504,11 +521,11 @@ function Event:onMapChange()
     -- auto trigger
     if self.trigger_auto then
       self.trigger_task = itask(0.03, function()
-        self:trigger()
+        self:trigger(Event.Condition.AUTO)
       end)
     elseif self.trigger_auto_once then
       task(0.03, function()
-        self:trigger()
+        self:trigger(Event.Condition.AUTO_ONCE)
       end)
     end
   else -- removed from map
