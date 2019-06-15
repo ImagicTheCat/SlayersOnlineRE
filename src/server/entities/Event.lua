@@ -153,8 +153,37 @@ end
 local event_special_vars = {}
 
 function event_special_vars:Name(value)
-  if not value then
+  if value then
+    -- unreference
+    local entity = self.client.events_by_name[self.name]
+    if entity == self then
+      self.client.events_by_name[self.name] = nil
+    end
+
+    self.name = value
+
+    -- reference
+    self.client.events_by_name[self.name] = self
+  else
     return self.page.name
+  end
+end
+
+function event_special_vars:Chipset(value)
+  if value then
+    self.full_set = value
+    self.set = string.sub(self.full_set, 9) -- remove Chipset/ part
+    self:broadcastPacket("ch_set", self.set)
+  else
+    return self.full_set
+  end
+end
+
+function event_special_vars:Bloquant(value)
+  if value then
+    self.obstacle = ((Event.computeExpression(value) or 0) > 0)
+  else
+    return (self.obstacle and 1 or 0)
   end
 end
 
@@ -199,6 +228,8 @@ function Event:__construct(client, data, page_index, x, y)
   self.trigger_contact = false
   self.trigger_interact = false
 
+  self.name = self.page.name
+
   for _, instruction in ipairs(self.page.conditions) do
     local ctype = Event.parseCondition(instruction)
     if ctype == Event.Condition.AUTO then
@@ -217,7 +248,8 @@ function Event:__construct(client, data, page_index, x, y)
   -- init entity stuff
   self:teleport(x or self.data.x*16, y or self.data.y*16)
 
-  self.set = string.sub(self.page.set, 9) -- remove Chipset/ part
+  self.full_set = self.page.set
+  self.set = string.sub(self.full_set, 9) -- remove Chipset/ part
   self.obstacle = self.page.obstacle
   self.orientation = 0
 
@@ -495,7 +527,7 @@ end
 function Event:onMapChange()
   if self.map then -- added to map
     -- reference event by name
-    self.client.events_by_name[self.page.name] = self
+    self.client.events_by_name[self.name] = self
 
     -- listen to conditions of all previous and current page
     self.vars_callback = function()
@@ -544,7 +576,7 @@ function Event:onMapChange()
     end
   else -- removed from map
     -- unreference event by name
-    self.client.events_by_name[self.page.name] = nil
+    self.client.events_by_name[self.name] = nil
 
     -- unlisten to conditions of all previous and current page
     for i=1,self.page_index do

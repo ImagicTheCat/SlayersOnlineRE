@@ -43,6 +43,9 @@ function Event:onPacket(action, data)
 
   if action == "ch_orientation" then
     self.anim_y = data
+  elseif action == "ch_set" then
+    self.set = client:loadTexture("resources/textures/sets/"..data)
+    self.atlas = TextureAtlas(data.set_x, data.set_y, self.set:getWidth(), self.set:getHeight(), data.w, data.h)
   end
 end
 
