@@ -173,7 +173,13 @@ function event_special_vars:Chipset(value)
   if value then
     self.full_set = value
     self.set = string.sub(self.full_set, 9) -- remove Chipset/ part
-    self:broadcastPacket("ch_set", self.set)
+    self:broadcastPacket("ch_set", {
+      set = self.set,
+      x = self.set_x,
+      y = self.set_y,
+      w = self.w,
+      h = self.h
+    })
   else
     return self.full_set
   end
@@ -184,6 +190,83 @@ function event_special_vars:Bloquant(value)
     self.obstacle = ((Event.computeExpression(value) or 0) > 0)
   else
     return (self.obstacle and 1 or 0)
+  end
+end
+
+function event_special_vars:Visible(value)
+  if value then
+    self.active = ((Event.computeExpression(value) or 0) > 0)
+    self:broadcastPacket("ch_active", self.active)
+  else
+    return (self.active and 1 or 0)
+  end
+end
+
+function event_special_vars:TypeAnim(value)
+  if value then
+    self.animation_type = (Event.computeExpression(value) or 0)
+
+    -- update
+    local data = {
+      animation_type = self.animation_type
+    }
+
+    if self.animation_type <= 2 then
+      self.orientation = self.page.animation_mod
+    end
+
+    if self.animation_type ~= Event.Animation.VISUAL_EFFECT then
+      data.orientation = self.orientation
+      data.animation_number = self.page.animation_number
+    end
+
+    self:broadcastPacket("ch_animation_type", self.animation_type)
+  else
+    return self.animation_type
+  end
+end
+
+function event_special_vars:Direction(value)
+  if value then
+    self:setOrientation(Event.computeExpression(value) or 0)
+  else
+    return self.orientation
+  end
+end
+
+function event_special_vars:X(value)
+  if value then
+    self.set_x = (Event.computeExpression(value) or 0)
+    self:updateSetDimensions()
+  else
+    return self.set_x
+  end
+end
+
+function event_special_vars:Y(value)
+  if value then
+    self.set_y = (Event.computeExpression(value) or 0)
+    self:updateSetDimensions()
+  else
+    return self.set_y
+  end
+end
+
+function event_special_vars:W(value)
+  if value then
+    self.w = (Event.computeExpression(value) or 0)
+    self:updateSetDimensions()
+  else
+    return self.w
+  end
+end
+
+function event_special_vars:H(value)
+  if value then
+    self.h = (Event.computeExpression(value) or 0)
+    self:updateSetDimensions()
+  else
+    return self.h
   end
 end
 
@@ -251,9 +334,13 @@ function Event:__construct(client, data, page_index, x, y)
   self.full_set = self.page.set
   self.set = string.sub(self.full_set, 9) -- remove Chipset/ part
   self.obstacle = self.page.obstacle
+  self.active = self.page.active -- (active/visible)
   self.orientation = 0
+  self.animation_type = self.page.animation_type
+  self.set_x, self.set_y = self.page.set_x, self.page.set_y
+  self.w, self.h = self.page.w, self.page.h
 
-  if self.page.animation_type <= 2 then
+  if self.animation_type <= 2 then
     self.orientation = self.page.animation_mod
   end
 
@@ -381,7 +468,7 @@ end
 -- condition: Event.Condition type triggered
 function Event:trigger(condition)
   if condition == Event.Condition.INTERACT then
-    local atype = self.page.animation_type
+    local atype = self.animation_type
     if atype == Event.Animation.CHARACTER_RANDOM or atype == Event.Animation.STATIC_CHARACTER then
       -- look at player
       local orientation = LivingEntity.vectorOrientation(self.client.x-self.x, self.client.y-self.y)
@@ -499,28 +586,39 @@ end
 function Event:serializeNet()
   local data = Entity.serializeNet(self)
 
-  data.animation_type = self.page.animation_type
+  data.animation_type = self.animation_type
   data.position_type = self.page.position_type
   data.set = self.set
 
-  if self.page.animation_type ~= Event.Animation.VISUAL_EFFECT then
+  if self.animation_type ~= Event.Animation.VISUAL_EFFECT then
     data.orientation = self.orientation
     data.animation_number = self.page.animation_number
   end
 
-  data.w = self.page.w
-  data.h = self.page.h
-  data.set_x = self.page.set_x
-  data.set_y = self.page.set_y
+  data.w = self.w
+  data.h = self.h
+  data.set_x = self.set_x
+  data.set_y = self.set_y
+  data.active = self.active
 
   return data
 end
 
 function Event:setOrientation(orientation)
-  if self.page.animation_type ~= Event.Animation.VISUAL_EFFECT then
+  if self.animation_type ~= Event.Animation.VISUAL_EFFECT then
     self.orientation = orientation
     self:broadcastPacket("ch_orientation", orientation)
   end
+end
+
+-- to client update
+function Event:updateSetDimensions()
+  self:broadcastPacket("ch_set_dim", {
+    x = self.set_x,
+    y = self.set_y,
+    w = self.w,
+    h = self.h
+  })
 end
 
 -- overload
