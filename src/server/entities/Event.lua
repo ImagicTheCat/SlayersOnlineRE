@@ -312,6 +312,38 @@ function command_functions:Message(state, msg)
   self.client:sendEventMessage(msg)
 end
 
+function command_functions:Condition(state, condition)
+  local ok
+
+  if ctype == Event.Condition.VARIABLE then -- condition check
+    ok = self:checkCondition(condition)
+  else -- trigger check
+    local ctype = Event.parseCondition(condition)
+    ok = (ctype == state.condition)
+  end
+
+  if not ok then -- skip condition block
+    local i = state.cursor+1
+    local size = #self.page.commands
+    local i_found
+
+    while not i_found and i <= size do -- find next Condition instruction
+      local args = Event.parseCommand(self.page.commands[i])
+      if args[1] == Event.Command.FUNCTION and args[2] == "Condition" then
+        i_found = i
+      end
+
+      i = i+1
+    end
+
+    if i_found then
+      state.cursor = i_found
+    else -- skip all
+      state.cursor = i
+    end
+  end
+end
+
 -- METHODS
 
 -- page_index, x, y: specific state or nil
