@@ -26,9 +26,12 @@ function Event:__construct(data)
 
   self.anim_x = data.animation_number or 0
   self.anim_y = data.orientation or 0
+  self.animation_type = data.animation_type
 
   self.set = client:loadTexture("resources/textures/sets/"..data.set)
   self.atlas = TextureAtlas(data.set_x, data.set_y, self.set:getWidth(), self.set:getHeight(), data.w, data.h)
+
+  self.active = data.active
 
   if data.position_type == Event.Position.BACK then
     self.draw_order = -1
@@ -44,8 +47,16 @@ function Event:onPacket(action, data)
   if action == "ch_orientation" then
     self.anim_y = data
   elseif action == "ch_set" then
-    self.set = client:loadTexture("resources/textures/sets/"..data)
-    self.atlas = TextureAtlas(data.set_x, data.set_y, self.set:getWidth(), self.set:getHeight(), data.w, data.h)
+    self.set = client:loadTexture("resources/textures/sets/"..data.set)
+    self.atlas = TextureAtlas(data.x, data.y, self.set:getWidth(), self.set:getHeight(), data.w, data.h)
+  elseif action == "ch_active" then
+    self.active = data
+  elseif action == "ch_animation_type" then
+    self.anim_x = data.animation_number or 0
+    self.anim_y = data.orientation or 0
+    self.animation_type = data.animation_type
+  elseif action == "ch_set_dim" then
+    self.atlas = TextureAtlas(data.x, data.y, self.set:getWidth(), self.set:getHeight(), data.w, data.h)
   end
 end
 
@@ -55,14 +66,16 @@ end
 
 -- overload
 function Event:draw()
-  local quad = self.atlas:getQuad(self.anim_x, self.anim_y)
+  if self.active then
+    local quad = self.atlas:getQuad(self.anim_x, self.anim_y)
 
-  if quad then
-    love.graphics.draw(
-      self.set, 
-      quad,
-      self.x-math.floor((self.atlas.cell_w-16)/2), 
-      self.y+16-self.atlas.cell_h)
+    if quad then
+      love.graphics.draw(
+        self.set, 
+        quad,
+        self.x-math.floor((self.atlas.cell_w-16)/2), 
+        self.y+16-self.atlas.cell_h)
+    end
   end
 end
 
