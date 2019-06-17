@@ -57,6 +57,8 @@ function Event:onPacket(action, data)
     self.animation_type = data.animation_type
   elseif action == "ch_set_dim" then
     self.atlas = TextureAtlas(data.x, data.y, self.set:getWidth(), self.set:getHeight(), data.w, data.h)
+  elseif action == "ch_animation_number" then
+    self.anim_x = data.animation_number
   end
 end
 
