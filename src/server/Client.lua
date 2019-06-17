@@ -23,6 +23,7 @@ function Client:__construct(server, peer)
 
   self.entities = {} -- bound map entities, map of entity
   self.events_by_name = {} -- map of name => event entity
+
   self.vars = {} -- map of id (number)  => value (number)
   self.var_listeners = {} -- map of id (number) => map of callback
   self.bool_vars = {} -- map of id (number) => value (number)
@@ -31,6 +32,7 @@ function Client:__construct(server, peer)
 
   self:send(Client.makePacket(net.PROTOCOL, net)) -- send protocol
 
+  -- testing
   local map = server:getMap(next(server.project.maps))
   self:teleport(0,10*16)
   map:addEntity(self)
@@ -59,6 +61,8 @@ function Client:onPacket(protocol, data)
         self:mapChat(data)
       end
     end
+  elseif protocol == net.EVENT_MESSAGE_SKIP then
+    if self.event_message_r then self.event_message_r() end
   end
 end
 
@@ -71,8 +75,12 @@ function Client:sendChatMessage(msg)
   self:send(Client.makePacket(net.CHAT_MESSAGE_SERVER, msg))
 end
 
+-- (async) trigger event message box
+-- return when the message is skipped by the client
 function Client:sendEventMessage(msg)
+  self.event_message_r = async()
   self:send(Client.makePacket(net.EVENT_MESSAGE, msg))
+  self.event_message_r:wait()
 end
 
 function Client:onDisconnect()
@@ -104,7 +112,9 @@ function Client:onCellChange()
       -- event contact check
       for entity in pairs(cell) do
         if class.is(entity, Event) and entity.client == self and entity.trigger_contact then
-          entity:trigger(Event.Condition.CONTACT)
+          async(function()
+            entity:trigger(Event.Condition.CONTACT)
+          end)
         end
       end
     end
@@ -119,7 +129,9 @@ function Client:attack()
   local entities = self:raycastEntities(1)
   for _, entity in ipairs(entities) do
     if class.is(entity, Event) and entity.client == self and entity.trigger_attack then
-      entity:trigger(Event.Condition.ATTACK)
+      async(function()
+        entity:trigger(Event.Condition.ATTACK)
+      end)
     end
   end
 end
@@ -130,7 +142,9 @@ function Client:interact()
 
   for _, entity in ipairs(entities) do
     if class.is(entity, Event) and entity.client == self and entity.trigger_interact then
-      entity:trigger(Event.Condition.INTERACT)
+      async(function()
+        entity:trigger(Event.Condition.INTERACT)
+      end)
     end
   end
 end
