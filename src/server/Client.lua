@@ -63,6 +63,10 @@ function Client:onPacket(protocol, data)
     end
   elseif protocol == net.EVENT_MESSAGE_SKIP then
     if self.event_message_r then self.event_message_r() end
+  elseif protocol == net.EVENT_INPUT_QUERY_ANSWER then
+    if self.input_query_r and type(data) == "string" then
+      self.input_query_r(data)
+    end
   end
 end
 
@@ -81,6 +85,12 @@ function Client:sendEventMessage(msg)
   self.event_message_r = async()
   self:send(Client.makePacket(net.EVENT_MESSAGE, msg))
   self.event_message_r:wait()
+end
+
+function Client:sendInputQuery(title, options)
+  self.input_query_r = async()
+  self:send(Client.makePacket(net.EVENT_INPUT_QUERY, {title = title, options = options}))
+  return self.input_query_r:wait()
 end
 
 function Client:onDisconnect()

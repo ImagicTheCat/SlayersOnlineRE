@@ -9,6 +9,7 @@ local URL = require("socket.url")
 local TextInput = require("gui/TextInput")
 local ChatHistory = require("gui/ChatHistory")
 local MessageWindow = require("gui/MessageWindow")
+local InputQuery = require("gui/InputQuery")
 local TextureAtlas = require("TextureAtlas")
 
 local Client = class("Client")
@@ -48,6 +49,9 @@ function Client:__construct(cfg)
 
   self.message_window = MessageWindow(self)
   self.message_showing = false
+
+  self.input_query = InputQuery(self)
+  self.input_query_showing = false
 
   self.phials_atlas = TextureAtlas(0,0,64,216,16,72)
   self.phials_tex = self:loadTexture("resources/textures/phials.png")
@@ -167,6 +171,9 @@ function Client:onPacket(protocol, data)
     self.message_window:set(data)
     self.message_showing = true
     self.event_message = true
+  elseif protocol == net.EVENT_INPUT_QUERY then
+    self.input_query:set(data.title, data.options)
+    self.input_query_showing = true
   end
 end
 
@@ -203,6 +210,7 @@ function Client:onResize(w, h)
   self.xp_y = h/self.gui_scale-self.xp_h+7*self.xp_scale
 
   self.message_window:update(2/self.gui_scale, 2/self.gui_scale, (w-4)/self.gui_scale, 200/self.gui_scale)
+  self.input_query:update(2/self.gui_scale, 2/self.gui_scale, (w-4)/self.gui_scale, 200/self.gui_scale)
 end
 
 function Client:onTextInput(data)
@@ -214,9 +222,19 @@ end
 function Client:onKeyPressed(key, scancode, isrepeat)
   if not isrepeat then
     if not self.typing then
-      if scancode == "w" then self:pressOrientation(0)
+      if scancode == "w" then
+        if self.input_query_showing then
+          self.input_query:moveSelect(-1)
+        else
+          self:pressOrientation(0)
+        end
       elseif scancode == "d" then self:pressOrientation(1)
-      elseif scancode == "s" then self:pressOrientation(2)
+      elseif scancode == "s" then
+        if self.input_query_showing then
+          self.input_query:moveSelect(1)
+        else
+          self:pressOrientation(2)
+        end
       elseif scancode == "a" then self:pressOrientation(3)
       elseif scancode == "space" then self:inputAttack()
       elseif scancode == "e" then
@@ -226,6 +244,9 @@ function Client:onKeyPressed(key, scancode, isrepeat)
             self:sendPacket(net.EVENT_MESSAGE_SKIP)
             self.event_message = nil
           end
+        elseif self.input_query_showing then
+          self.input_query_showing = false
+          self:sendPacket(net.EVENT_INPUT_QUERY_ANSWER, self.input_query.options[self.input_query.selected] or "")
         else
           self:inputInteract()
         end
@@ -339,6 +360,10 @@ function Client:draw()
 
   if self.message_showing then
     self.message_window:draw()
+  end
+
+  if self.input_query_showing then
+    self.input_query:draw()
   end
 
   love.graphics.pop()

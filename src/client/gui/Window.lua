@@ -4,6 +4,33 @@ local Window = class("Window")
 -- STATICS
 
 local system
+
+function Window.loadSystemBorders(x, y, w, h, margin)
+  local borders = {
+    x = x,
+    y = y,
+    w = w,
+    h = h,
+    margin = margin
+  }
+
+  -- corners
+  -- top
+  borders.ctl = love.graphics.newQuad(x,y,margin,margin,160,80)
+  borders.ctr = love.graphics.newQuad(x+w-margin,y,margin,margin,160,80)
+  -- bottom
+  borders.cbl = love.graphics.newQuad(x,y+h-margin,margin,margin,160,80)
+  borders.cbr = love.graphics.newQuad(x+w-margin,y+h-margin,margin,margin,160,80)
+
+  -- middle
+  borders.mt = love.graphics.newQuad(x+margin,y,y+h-margin*2,margin,160,80)
+  borders.mb = love.graphics.newQuad(x+margin,y+h-margin,w-margin*2,margin,160,80)
+  borders.ml = love.graphics.newQuad(x,margin,margin,h-margin*2,160,80)
+  borders.mr = love.graphics.newQuad(x+w-margin,margin,margin,h-margin*2,160,80)
+
+  return borders
+end
+
 function Window.loadSystem(client)
   if not system then
     system = {}
@@ -11,17 +38,8 @@ function Window.loadSystem(client)
     system.tex = client:loadTexture("resources/textures/system.png")
     system.background = love.graphics.newQuad(0,0,32,32,160,80)
 
-    -- top
-    system.border_ctl = love.graphics.newQuad(32,0,5,5,160,80)
-    system.border_ctr = love.graphics.newQuad(64-5,0,5,5,160,80)
-    -- bottom
-    system.border_cbl = love.graphics.newQuad(32,32-5,5,5,160,80)
-    system.border_cbr = love.graphics.newQuad(64-5,32-5,5,5,160,80)
-
-    system.border_mt = love.graphics.newQuad(32+5,0,32-10,5,160,80)
-    system.border_mb = love.graphics.newQuad(32+5,32-5,32-10,5,160,80)
-    system.border_ml = love.graphics.newQuad(32,5,5,32-10,160,80)
-    system.border_mr = love.graphics.newQuad(64-5,5,5,32-10,160,80)
+    system.window_borders = Window.loadSystemBorders(32, 0, 32, 32, 5)
+    system.select_borders = Window.loadSystemBorders(64, 0, 32, 32, 5)
   end
 
   return system
@@ -43,23 +61,30 @@ function Window:update(x, y, w, h)
   self.x, self.y, self.w, self.h = x,y,w,h
 end
 
+-- draw rect based on borders
+function Window:drawBorders(borders, x, y, w, h)
+  local b = borders
+
+  -- borders
+  --- corners
+  love.graphics.draw(self.system.tex, b.ctl, x, y)
+  love.graphics.draw(self.system.tex, b.ctr, x+w-b.margin, y)
+  love.graphics.draw(self.system.tex, b.cbl, x, y+h-b.margin)
+  love.graphics.draw(self.system.tex, b.cbr, x+w-b.margin, y+h-b.margin)
+  --- middles
+  love.graphics.draw(self.system.tex, b.mt, x+b.margin, y, 0, (w-b.margin*2)/(b.w-b.margin*2), 1)
+  love.graphics.draw(self.system.tex, b.mb, x+b.margin, y+h-b.margin, 0, (w-b.margin*2)/(b.w-b.margin*2), 1)
+  love.graphics.draw(self.system.tex, b.ml, x, y+b.margin, 0, 1, (h-b.margin*2)/(b.h-b.margin*2))
+  love.graphics.draw(self.system.tex, b.mr, x+w-b.margin, y+b.margin, 0, 1, (h-b.margin*2)/(b.h-b.margin*2))
+end
+
 function Window:draw()
   local x,y,w,h = self.x, self.y, self.w, self.h
 
   -- background
   love.graphics.draw(self.system.tex, self.system.background, x+1, y+1, 0, (w-2)/32, (h-2)/32)
 
-  -- borders
-  --- corners
-  love.graphics.draw(self.system.tex, self.system.border_ctl, x, y)
-  love.graphics.draw(self.system.tex, self.system.border_ctr, x+w-5, y)
-  love.graphics.draw(self.system.tex, self.system.border_cbl, x, y+h-5)
-  love.graphics.draw(self.system.tex, self.system.border_cbr, x+w-5, y+h-5)
-  --- middles
-  love.graphics.draw(self.system.tex, self.system.border_mt, x+5, y, 0, (w-10)/22, 1)
-  love.graphics.draw(self.system.tex, self.system.border_mb, x+5, y+h-5, 0, (w-10)/22, 1)
-  love.graphics.draw(self.system.tex, self.system.border_ml, x, y+5, 0, 1, (h-10)/22)
-  love.graphics.draw(self.system.tex, self.system.border_mr, x+w-5, y+5, 0, 1, (h-10)/22)
+  self:drawBorders(self.system.window_borders, x, y, w, h)
 end
 
 return Window

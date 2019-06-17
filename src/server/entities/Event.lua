@@ -338,10 +338,57 @@ function command_functions:Condition(state, condition)
     end
 
     if i_found then
-      state.cursor = i_found
+      state.cursor = i_found-1
     else -- skip all
-      state.cursor = i
+      state.cursor = i-1
     end
+  end
+end
+
+function command_functions:InputQuery(state, title, ...)
+  local options = {...}
+
+  local answer = self.client:sendInputQuery(title, options)
+
+  local i = state.cursor+1
+  local size = #self.page.commands
+  local i_found
+  while not i_found and i <= size do -- skip after valid OnResultQuery or QueryEnd
+    local args = {Event.parseCommand(self.page.commands[i])}
+    if args[1] == Event.Command.FUNCTION then
+      if (args[2] == "OnResultQuery" and args[3] == answer)
+        or args[2] == "QueryEnd" then
+        i_found = i
+      end
+    end
+
+    i = i+1
+  end
+
+  if i_found then
+    state.cursor = i_found
+  else -- skip all
+    state.cursor = i-1
+  end
+end
+
+function command_functions:OnResultQuery(state)
+  local i = state.cursor+1
+  local size = #self.page.commands
+  local i_found
+  while not i_found and i <= size do -- skip after QueryEnd
+    local args = {Event.parseCommand(self.page.commands[i])}
+    if args[1] == Event.Command.FUNCTION and args[2] == "QueryEnd" then
+      i_found = i
+    end
+
+    i = i+1
+  end
+
+  if i_found then
+    state.cursor = i_found
+  else -- skip all
+    state.cursor = i-1
   end
 end
 
