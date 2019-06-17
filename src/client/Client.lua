@@ -166,6 +166,7 @@ function Client:onPacket(protocol, data)
   elseif protocol == net.EVENT_MESSAGE then
     self.message_window:set(data)
     self.message_showing = true
+    self.event_message = true
   end
 end
 
@@ -221,6 +222,10 @@ function Client:onKeyPressed(key, scancode, isrepeat)
       elseif scancode == "e" then
         if self.message_showing then
           self.message_showing = false
+          if self.event_message then
+            self:sendPacket(net.EVENT_MESSAGE_SKIP)
+            self.event_message = nil
+          end
         else
           self:inputInteract()
         end

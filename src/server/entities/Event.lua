@@ -518,7 +518,7 @@ function Event:selectPage()
   end
 end
 
--- execute event commands
+-- (async) execute event commands
 -- condition: Event.Condition type triggered
 function Event:trigger(condition)
   if condition == Event.Condition.INTERACT then
@@ -722,11 +722,15 @@ function Event:onMapChange()
     -- auto trigger
     if self.trigger_auto then
       self.trigger_task = itask(0.03, function()
-        self:trigger(Event.Condition.AUTO)
+        async(function()
+          self:trigger(Event.Condition.AUTO)
+        end)
       end)
     elseif self.trigger_auto_once then
       task(0.03, function()
-        self:trigger(Event.Condition.AUTO_ONCE)
+        async(function()
+          self:trigger(Event.Condition.AUTO_ONCE)
+        end)
       end)
     end
   else -- removed from map
