@@ -270,6 +270,23 @@ function event_special_vars:H(value)
   end
 end
 
+function event_special_vars:NumAnim(value)
+  if value then
+    self.animation_number = (Event.computeExpression(value) or 0)
+    self:broadcastPacket("ch_animation_number", self.animation_number)
+  else
+    return self.animation_number
+  end
+end
+
+function event_special_vars:Speed(value)
+  if value then
+    self.speed = (Event.computeExpression(value) or 0)
+  else
+    return self.speed
+  end
+end
+
 -- command function definitions, map of id => function
 -- function(event, state, args...)
 --- args...: function arguments as string expressions (after substitution)
@@ -339,6 +356,8 @@ function Event:__construct(client, data, page_index, x, y)
   self.animation_type = self.page.animation_type
   self.set_x, self.set_y = self.page.set_x, self.page.set_y
   self.w, self.h = self.page.w, self.page.h
+  self.animation_number = self.page.animation_number
+  self.speed = self.page.speed
 
   if self.animation_type <= 2 then
     self.orientation = self.page.animation_mod
@@ -592,7 +611,7 @@ function Event:serializeNet()
 
   if self.animation_type ~= Event.Animation.VISUAL_EFFECT then
     data.orientation = self.orientation
-    data.animation_number = self.page.animation_number
+    data.animation_number = self.animation_number
   end
 
   data.w = self.w
