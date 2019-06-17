@@ -217,7 +217,10 @@ function event_special_vars:TypeAnim(value)
 
     if self.animation_type ~= Event.Animation.VISUAL_EFFECT then
       data.orientation = self.orientation
-      data.animation_number = self.page.animation_number
+      data.animation_number = self.animation_number
+    else
+      data.animation_wc = math.max(self.page.animation_number, 1)
+      data.animation_hc = math.max(self.page.animation_mod, 1)
     end
 
     self:broadcastPacket("ch_animation_type", self.animation_type)
@@ -612,6 +615,9 @@ function Event:serializeNet()
   if self.animation_type ~= Event.Animation.VISUAL_EFFECT then
     data.orientation = self.orientation
     data.animation_number = self.animation_number
+  else
+    data.animation_wc = math.max(self.page.animation_number, 1)
+    data.animation_hc = math.max(self.page.animation_mod, 1)
   end
 
   data.w = self.w
