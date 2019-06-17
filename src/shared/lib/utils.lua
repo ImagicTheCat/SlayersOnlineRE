@@ -19,7 +19,7 @@ function utils.split(str, sep)
     end
   until not pos 
 
-  if cursor ~= string.len(str) then
+  if cursor <= string.len(str) then
     table.insert(r, string.sub(str, cursor))
   end
 
