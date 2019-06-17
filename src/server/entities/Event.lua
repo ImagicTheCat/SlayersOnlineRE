@@ -315,10 +315,11 @@ end
 function command_functions:Condition(state, condition)
   local ok
 
+  local ctype = Event.parseCondition(condition)
+
   if ctype == Event.Condition.VARIABLE then -- condition check
     ok = self:checkCondition(condition)
   else -- trigger check
-    local ctype = Event.parseCondition(condition)
     ok = (ctype == state.condition)
   end
 
