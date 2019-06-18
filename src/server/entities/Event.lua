@@ -64,13 +64,13 @@ function Event.parseVariableInstruction(instruction)
 
     -- id range
     id = string.match(lhs, "^"..pat.client_var.."$")
-    ids = (id and utils.split(id, "..") or {})
+    ids = (id and utils.split(id, "%.%.") or {})
     for i=1,#ids do ids[i] = math.floor(tonumber(ids[i])) end
     if ids[1] then return Event.Variable.CLIENT, "var", ids, op, rhs end
 
     -- id range
     id = string.match(lhs, "^"..pat.client_bool_var.."$")
-    ids = (id and utils.split(id, "..") or {})
+    ids = (id and utils.split(id, "%.%.") or {})
     for i=1,#ids do ids[i] = math.floor(tonumber(ids[i])) end
     if ids[1] then return Event.Variable.CLIENT, "bool", ids, op, rhs end
 
