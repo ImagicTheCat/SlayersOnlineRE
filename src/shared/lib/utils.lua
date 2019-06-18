@@ -30,4 +30,8 @@ function utils.clamp(x, a, b)
   return math.max(math.min(x, b), a)
 end
 
+function utils.randf(a, b)
+  return math.random()*(b-a)+a
+end
+
 return utils
