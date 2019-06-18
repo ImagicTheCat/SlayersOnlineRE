@@ -135,7 +135,7 @@ function Event.computeExpression(str)
   if string.find(str, "[^%.%*/%-%+%(%)%d%s]") then return end -- reject on unallowed characters
 
   local expr = "return "..str
-  local f = loadstring(expr)
+  local f = utils.loadstring(expr)
   local ok, r = pcall(f)
   if ok then
     local n = tonumber(r)
@@ -392,7 +392,7 @@ end
 
 function command_functions:Message(state, msg)
   if msg then
-    self.client:sendEventMessage(msg)
+    self.client:requestMessage(msg)
   end
 end
 
@@ -434,7 +434,7 @@ end
 function command_functions:InputQuery(state, title, ...)
   local options = {...}
 
-  local answer = self.client:sendInputQuery(title, options)
+  local answer = self.client:requestInputQuery(title, options)
 
   local i = state.cursor+1
   local size = #self.page.commands
@@ -539,10 +539,19 @@ function Event:__construct(client, data, page_index, x, y)
   end
 end
 
--- process the string to substitute all event language patterns
+-- (async) process the string to substitute all event language patterns
+-- f_input: if passed/true, will substitute InputString functions (async)
 -- return processed string
-function Event:instructionSubstitution(str)
+function Event:instructionSubstitution(str, f_input)
   local pat = Event.patterns
+
+  if f_input then -- special: "InputString('')"
+    str = string.gsub(str, "InputString%('(.-)'%)", function(title)
+      title = self:instructionSubstitution(title, f_input)
+
+      return self.client:requestInputString(title)
+    end)
+  end
 
   -- special: variable functions "%func(...)%"
   str = string.gsub(str, "%%([%w_]+)%((.-)%)%%", function(id, content)
@@ -551,7 +560,7 @@ function Event:instructionSubstitution(str)
       -- process function arguments
       local args = utils.split(content, ",")
       for i=1,#args do
-        args[i] = self:instructionSubstitution(args[i])
+        args[i] = self:instructionSubstitution(args[i], f_input)
       end
 
       if f then
