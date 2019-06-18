@@ -147,6 +147,36 @@ end
 
 -- PRIVATE METHODS
 
+-- special var function definitions, map of id => function
+-- function(event, args...): should return a number or a string
+--- args...: passed string expressions (after substitution)
+
+local client_special_vfunctions = {}
+
+function client_special_vfunctions:rand(max)
+  if max then
+    return math.random(0, (Event.computeExpression(max) or 1)-1)
+  end
+end
+
+function client_special_vfunctions:min(a, b)
+  if a and b then
+    return math.min(Event.computeExpression(a) or 0, Event.computeExpression(b) or 0)
+  end
+end
+
+function client_special_vfunctions:max(a, b)
+  if a and b then
+    return math.max(Event.computeExpression(a) or 0, Event.computeExpression(b) or 0)
+  end
+end
+
+function client_special_vfunctions:upper(str)
+  if str then
+    return string.upper(str)
+  end
+end
+
 -- special var accessor definitions, map of id => function
 -- function(event, value): should return a number or a string on get mode
 --- value: passed string expression (after substitution) on set mode (nil on get mode)
@@ -361,38 +391,42 @@ function command_functions:Teleport(state, map_name, cx, cy)
 end
 
 function command_functions:Message(state, msg)
-  self.client:sendEventMessage(msg)
+  if msg then
+    self.client:sendEventMessage(msg)
+  end
 end
 
 function command_functions:Condition(state, condition)
-  local ok
+  if condition then
+    local ok
 
-  local ctype = Event.parseCondition(condition)
+    local ctype = Event.parseCondition(condition)
 
-  if ctype == Event.Condition.VARIABLE then -- condition check
-    ok = self:checkCondition(condition)
-  else -- trigger check
-    ok = (ctype == state.condition)
-  end
-
-  if not ok then -- skip condition block
-    local i = state.cursor+1
-    local size = #self.page.commands
-    local i_found
-
-    while not i_found and i <= size do -- find next Condition instruction
-      local args = {Event.parseCommand(self.page.commands[i])}
-      if args[1] == Event.Command.FUNCTION and args[2] == "Condition" then
-        i_found = i
-      end
-
-      i = i+1
+    if ctype == Event.Condition.VARIABLE then -- condition check
+      ok = self:checkCondition(condition)
+    else -- trigger check
+      ok = (ctype == state.condition)
     end
 
-    if i_found then
-      state.cursor = i_found-1
-    else -- skip all
-      state.cursor = i-1
+    if not ok then -- skip condition block
+      local i = state.cursor+1
+      local size = #self.page.commands
+      local i_found
+
+      while not i_found and i <= size do -- find next Condition instruction
+        local args = {Event.parseCommand(self.page.commands[i])}
+        if args[1] == Event.Command.FUNCTION and args[2] == "Condition" then
+          i_found = i
+        end
+
+        i = i+1
+      end
+
+      if i_found then
+        state.cursor = i_found-1
+      else -- skip all
+        state.cursor = i-1
+      end
     end
   end
 end
@@ -509,6 +543,24 @@ end
 -- return processed string
 function Event:instructionSubstitution(str)
   local pat = Event.patterns
+
+  -- special: variable functions "%func(...)%"
+  str = string.gsub(str, "%%([%w_]+)%((.-)%)%%", function(id, content)
+    local f = client_special_vfunctions[id]
+    if f then
+      -- process function arguments
+      local args = utils.split(content, ",")
+      for i=1,#args do
+        args[i] = self:instructionSubstitution(args[i])
+      end
+
+      if f then
+        f(self, unpack(args))
+      end
+
+      return f(self)
+    end
+  end)
 
   -- server var
   str = string.gsub(str, pat.server_var, function(id)
