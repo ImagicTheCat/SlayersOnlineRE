@@ -277,7 +277,7 @@ function event_special_vars:TypeAnim(value)
 
     self:moveRandom() -- re-launch move random behavior
 
-    self:broadcastPacket("ch_animation_type", self.animation_type)
+    self:broadcastPacket("ch_animation_type", data)
   else
     return self.animation_type
   end
