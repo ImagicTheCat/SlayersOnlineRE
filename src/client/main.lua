@@ -1,5 +1,8 @@
 local Luaoop = require("Luaoop")
 class = Luaoop.class
+local Luaseq = require("Luaseq")
+async = Luaseq.async
+
 local Client = require("Client")
 
 local cfg = require("config")

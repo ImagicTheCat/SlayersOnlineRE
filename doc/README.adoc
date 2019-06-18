@@ -20,4 +20,5 @@ client:: LÖVE 11.x
 
 .Client dependencies
 * https://github.com/ImagicTheCat/Luaoop 
+* https://github.com/ImagicTheCat/Luaseq
 * https://fperrad.frama.io/lua-MessagePack/
