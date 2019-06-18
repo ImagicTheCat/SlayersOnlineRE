@@ -159,6 +159,19 @@ function client_special_vars:Name(value)
   end
 end
 
+function client_special_vars:EvCaseX(value)
+  if not value then
+    return self.cx
+  end
+end
+
+function client_special_vars:EvCaseY(value)
+  if not value then
+    return self.cy
+  end
+end
+
+
 local event_special_vars = {}
 
 function event_special_vars:Name(value)
@@ -232,6 +245,8 @@ function event_special_vars:TypeAnim(value)
       data.animation_hc = math.max(self.page.animation_mod, 1)
     end
 
+    self:moveRandom() -- re-launch move random behavior
+
     self:broadcastPacket("ch_animation_type", self.animation_type)
   else
     return self.animation_type
@@ -243,6 +258,34 @@ function event_special_vars:Direction(value)
     self:setOrientation(Event.computeExpression(value) or 0)
   else
     return self.orientation
+  end
+end
+
+function event_special_vars:CaseX(value)
+  if value then
+    self:moveToCell(Event.computeExpression(value) or self.cx, self.cy)
+  else
+    return self.cx
+  end
+end
+
+function event_special_vars:CaseY(value)
+  if value then
+    self:moveToCell(self.cx, Event.computeExpression(value) or self.cy)
+  else
+    return self.cy
+  end
+end
+
+function event_special_vars:CaseNBX(value)
+  if value then
+    self:moveToCell(Event.computeExpression(value) or self.cx, self.cy, true)
+  end
+end
+
+function event_special_vars:CaseNBY(value)
+  if value then
+    self:moveToCell(self.cx, Event.computeExpression(value) or self.cy, true)
   end
 end
 
@@ -454,6 +497,8 @@ function Event:__construct(client, data, page_index, x, y)
   if self.animation_type <= 2 then
     self.orientation = self.page.animation_mod
   end
+
+  self:moveRandom()
 
   if self.page.active and string.len(self.set) > 0 then -- networked event
     self.nettype = "Event"
@@ -743,6 +788,44 @@ function Event:setOrientation(orientation)
   if self.animation_type ~= Event.Animation.VISUAL_EFFECT then
     self.orientation = orientation
     self:broadcastPacket("ch_orientation", orientation)
+  end
+end
+
+-- (async)
+-- blocking: if passed/true, async and wait until it reaches the destination
+function Event:moveToCell(cx, cy, blocking)
+  -- TODO
+  -- basic implementation
+  local dx, dy = cx-self.cx, cy-self.cy
+  self:setOrientation(LivingEntity.vectorOrientation(dx,dy))
+  self:teleport(cx*16, cy*16)
+end
+
+-- randomly move the event if type is Animation.CHARACTER_RANDOM
+-- (starts a unique loop, will call itself again)
+function Event:moveRandom()
+  if not self.moverandom_task and self.animation_type == Event.Animation.CHARACTER_RANDOM then
+    self.moverandom_task = task(utils.randf(0.75, 7), function()
+      local ok
+      local ncx, ncy
+      local i = 1
+      while not ok and i <= 10 do -- search for a passable cell
+        local dx, dy = LivingEntity.orientationVector(math.random(0,3))
+        ncx, ncy = self.cx+dx, self.cy+dy
+
+        ok = (self.map and self.map:isCellPassable(self, ncx, ncy))
+
+        i = i+1
+      end
+
+      if ok then
+        self:moveToCell(ncx, ncy)
+      end
+
+      self.moverandom_task = nil
+
+      self:moveRandom()
+    end)
   end
 end
 
