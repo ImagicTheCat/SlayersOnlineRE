@@ -53,6 +53,8 @@ function Client:__construct(cfg)
   self.input_query = InputQuery(self)
   self.input_query_showing = false
 
+  self.input_string_showing = false
+
   self.phials_atlas = TextureAtlas(0,0,64,216,16,72)
   self.phials_tex = self:loadTexture("resources/textures/phials.png")
   self.phials_time = 0
@@ -170,10 +172,13 @@ function Client:onPacket(protocol, data)
   elseif protocol == net.EVENT_MESSAGE then
     self.message_window:set(data)
     self.message_showing = true
-    self.event_message = true
   elseif protocol == net.EVENT_INPUT_QUERY then
     self.input_query:set(data.title, data.options)
     self.input_query_showing = true
+  elseif protocol == net.EVENT_INPUT_STRING then
+    self.message_window:set(data)
+    self.input_string_showing = true
+    self:setTyping(true)
   end
 end
 
@@ -239,11 +244,8 @@ function Client:onKeyPressed(key, scancode, isrepeat)
       elseif scancode == "space" then self:inputAttack()
       elseif scancode == "e" then
         if self.message_showing then
+          self:sendPacket(net.EVENT_MESSAGE_SKIP)
           self.message_showing = false
-          if self.event_message then
-            self:sendPacket(net.EVENT_MESSAGE_SKIP)
-            self.event_message = nil
-          end
         elseif self.input_query_showing then
           self.input_query_showing = false
           self:sendPacket(net.EVENT_INPUT_QUERY_ANSWER, self.input_query.options[self.input_query.selected] or "")
@@ -258,9 +260,15 @@ function Client:onKeyPressed(key, scancode, isrepeat)
     if self.typing then
       self.input_chat:erase(-1)
     end
-  elseif scancode == "return" then
+  elseif scancode == "return" then -- valid text input
     if self.typing then
-      self:inputChat(self.input_chat.text)
+      if self.input_string_showing then -- input string
+        self:sendPacket(net.EVENT_INPUT_STRING_ANSWER, self.input_chat.text)
+        self.input_string_showing = false
+      else -- chat
+        self:inputChat(self.input_chat.text)
+      end
+
       self.input_chat:set("")
     end
 
@@ -358,7 +366,7 @@ function Client:draw()
     self.chat_history:draw()
   end
 
-  if self.message_showing then
+  if self.message_showing or self.input_string_showing then
     self.message_window:draw()
   end
 
