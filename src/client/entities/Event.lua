@@ -42,7 +42,7 @@ function Event:__construct(data)
 
   if data.position_type == Event.Position.BACK then
     self.draw_order = -1
-  elseif data.position_type == Event.Position.BACK then
+  elseif data.position_type == Event.Position.FRONT then
     self.draw_order = 1
   end
 end
