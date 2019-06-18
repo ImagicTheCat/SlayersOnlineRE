@@ -125,7 +125,9 @@ end
 -- process/compute string expression using basic Lua features
 -- return computed number (integer) or nil on failure
 function Event.computeExpression(str)
-  local expr = "return "..string.gsub(str, "[^%.%*/%-%+%(%)%d%s]", " ") -- allowed characters
+  if string.find(str, "[^%.%*/%-%+%(%)%d%s]") then return end -- reject on unallowed characters
+
+  local expr = "return "..str
   local f = loadstring(expr)
   local ok, r = pcall(f)
   if ok then
