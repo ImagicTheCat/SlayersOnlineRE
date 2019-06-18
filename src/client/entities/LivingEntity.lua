@@ -53,7 +53,8 @@ end
 
 -- skin: remote skin filename
 function LivingEntity:setSkin(skin)
-  client:loadSkin(skin, function(image)
+  async(function()
+    local image = client:loadSkin(skin)
     if image then
       self.charaset = image
     else
