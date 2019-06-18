@@ -37,6 +37,7 @@ function Client:__construct(cfg)
 
   self.font = love.graphics.newFont("resources/font.ttf", 50)
   self.font_target_height = 40 -- pixels
+  love.graphics.setFont(self.font)
 
   self.world_scale = 4
   self.gui_scale = 2
@@ -191,6 +192,7 @@ function Client:onDisconnect()
 end
 
 function Client:close()
+  self.net_manager:close()
   self.peer:disconnect()
   while self.peer:state() ~= "disconnected" do -- wait for disconnection
     self.host:service(100)
@@ -375,6 +377,17 @@ function Client:draw()
   end
 
   love.graphics.pop()
+
+  -- download info
+  local requests = self.net_manager.requests
+  if requests[1] then
+    local text = love.graphics.newText(self.font, "downloading "..requests[1].url.."...")
+    local factor = 30/text:getHeight()
+    love.graphics.setColor(0,0,0)
+    love.graphics.rectangle("fill", love.graphics.getWidth()-text:getWidth()*factor, 0, text:getWidth()*factor, text:getHeight()*factor)
+    love.graphics.setColor(1,1,1)
+    love.graphics.draw(text, love.graphics.getWidth()-text:getWidth()*factor, 0, 0, factor)
+  end
 end
 
 function Client:setOrientation(orientation)
@@ -438,7 +451,7 @@ function Client:loadSkin(file, callback)
     else -- load
       self.loading_skins[file] = {callback}
 
-      client.net_manager:request("http://chipset.slayersonline.net/"..file, function(data)
+      client.net_manager:request(self.cfg.skin_repository..file, function(data)
         if data then
           local filedata = love.filesystem.newFileData(data, "skin.png")
           local image = love.graphics.newImage(love.image.newImageData(filedata))

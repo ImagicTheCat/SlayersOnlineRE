@@ -6,15 +6,15 @@ local channel_out = love.thread.getChannel("http.out")
 
 local running = true
 while running do
-  local id, url = unpack(channel_in:demand())
-  if id < 0 then -- exit
+  local data = channel_in:demand()
+  if not data.url then -- exit
     running = false
   else
-    local body, code = http.request(url)
+    local body, code = http.request(data.url)
     if body and code == 200 then
-      channel_out:push({id, body})
+      channel_out:push({body = body})
     else
-      channel_out:push({id})
+      channel_out:push({})
     end
   end
 end

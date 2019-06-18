@@ -1,4 +1,3 @@
-local IdManager = require("lib/IdManager")
 
 local NetManager = class("NetManager")
 
@@ -10,28 +9,30 @@ function NetManager:__construct()
   self.http_channel_in = love.thread.getChannel("http.in")
   self.http_channel_out = love.thread.getChannel("http.out")
 
-  self.ids = IdManager()
-  self.requests = {}
+  self.requests = {} -- list of requests (processed in ASC order)
 end
 
 -- callback(data)
 --- data: body data or nil on failure
 function NetManager:request(url, callback)
-  local id = self.ids:gen()
+  table.insert(self.requests, {
+    callback = callback,
+    url = url
+  })
 
-  self.requests[id] = callback
-  self.http_channel_in:push({id, url})
+  self.http_channel_in:push({url = url})
 end
 
 function NetManager:tick(dt)
   local data = self.http_channel_out:pop()
   if data then
-    local id, body = unpack(data)
-    local callback = self.requests[id]
-    self.ids:free(id)
-
-    if callback then callback(body) end
+    local request = table.remove(self.requests, 1)
+    if request.callback then request.callback(data.body) end
   end
+end
+
+function NetManager:close()
+  self.http_channel_in:push({})
 end
 
 return NetManager
