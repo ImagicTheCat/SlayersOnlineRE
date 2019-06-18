@@ -26,7 +26,8 @@ Event.Condition = {
   AUTO_ONCE = 2,
   CONTACT = 3,
   ATTACK = 4,
-  VARIABLE = 5
+  VARIABLE = 5,
+  EXPRESSION = 6
 }
 
 Event.Variable = {
@@ -89,10 +90,16 @@ function Event.parseCondition(instruction)
   if instruction == "En contact" then return Event.Condition.CONTACT end
   if instruction == "Attaque" then return Event.Condition.ATTACK end
 
-  -- variable conditions
+  -- variable condition
   local r = {Event.parseVariableInstruction(instruction)}
   if r[1] then
     return Event.Condition.VARIABLE, unpack(r)
+  end
+
+  -- anonymous condition
+  local lhs, op, rhs = string.match(instruction, "^(.-)([<>!=]+)(.*)$")
+  if lhs then
+    return Event.Condition.EXPRESSION, lhs, op, rhs
   end
 end
 
@@ -532,6 +539,27 @@ function Event:checkCondition(instruction)
       rhs = expr
     else -- number comparison
       lhs = tonumber(lhs) or 0
+    end
+
+    if op == "=" then return (lhs == rhs)
+    elseif op == "<" then return (lhs < rhs)
+    elseif op == ">" then return (lhs > rhs)
+    elseif op == "<=" then return (lhs <= rhs)
+    elseif op == ">=" then return (lhs >= rhs)
+    elseif op == "!=" then return (lhs ~= rhs)
+    else return false end
+  elseif args[1] == Event.Condition.EXPRESSION then -- expression comparison
+    local lhs_expr, op, rhs_expr = args[2], args[3], args[4]
+
+    lhs_expr = self:instructionSubstitution(lhs_expr)
+    rhs_expr = self:instructionSubstitution(rhs_expr)
+
+    local rhs = Event.computeExpression(rhs_expr)
+    if not rhs then -- string comparison
+      lhs = rhs_expr
+      rhs = rhs_expr
+    else -- number comparison
+      lhs = Event.computeExpression(lhs_expr) or 0
     end
 
     if op == "=" then return (lhs == rhs)
