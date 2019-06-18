@@ -12,22 +12,26 @@ function NetManager:__construct()
   self.requests = {} -- list of requests (processed in ASC order)
 end
 
--- callback(data)
---- data: body data or nil on failure
-function NetManager:request(url, callback)
+-- (async) request HTTP file body
+-- return data or nil on failure
+function NetManager:request(url)
+  local r = async()
+
   table.insert(self.requests, {
-    callback = callback,
+    callback = r,
     url = url
   })
 
   self.http_channel_in:push({url = url})
+
+  return r:wait()
 end
 
 function NetManager:tick(dt)
   local data = self.http_channel_out:pop()
   if data then
     local request = table.remove(self.requests, 1)
-    if request.callback then request.callback(data.body) end
+    request.callback(data.body)
   end
 end
 

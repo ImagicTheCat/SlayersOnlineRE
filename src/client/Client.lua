@@ -439,36 +439,39 @@ function Client:loadTexture(path)
   return image
 end
 
--- callback(image)
---- image: skin texture or nil on failure
-function Client:loadSkin(file, callback)
+-- (async) load remote skin
+-- return skin texture or nil on failure
+function Client:loadSkin(file)
   local image = self.skins[file]
   if image then
-    callback(image)
+    return image
   else
+    local r = async()
+
     if self.loading_skins[file] then -- already loading
-      table.insert(self.loading_skins[file], callback)
+      table.insert(self.loading_skins[file], r)
     else -- load
-      self.loading_skins[file] = {callback}
+      self.loading_skins[file] = {r}
 
-      client.net_manager:request(self.cfg.skin_repository..file, function(data)
-        if data then
-          local filedata = love.filesystem.newFileData(data, "skin.png")
-          local image = love.graphics.newImage(love.image.newImageData(filedata))
-          self.skins[file] = image
+      local data = client.net_manager:request(self.cfg.skin_repository..file)
+      if data then
+        local filedata = love.filesystem.newFileData(data, "skin.png")
+        local image = love.graphics.newImage(love.image.newImageData(filedata))
+        self.skins[file] = image
 
-          for _, callback in ipairs(self.loading_skins[file]) do
-            callback(image)
-          end
-        else
-          for _, callback in ipairs(self.loading_skins[file]) do
-            callback()
-          end
+        for _, callback in ipairs(self.loading_skins[file]) do
+          callback(image)
         end
+      else
+        for _, callback in ipairs(self.loading_skins[file]) do
+          callback()
+        end
+      end
 
-        self.loading_skins[file] = nil
-      end)
+      self.loading_skins[file] = nil
     end
+
+    return r:wait()
   end
 end
 
