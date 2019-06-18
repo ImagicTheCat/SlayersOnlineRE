@@ -9,6 +9,25 @@ local magick = require("magick")
 
 local Server = class("Server")
 
+-- STATICS
+
+-- parse [cmd arg1 arg2 "arg 3" ...]
+-- return command args
+function Server.parseCommand(str)
+  str = string.gsub(str, "\"(.-)\"", function(content)
+    return string.gsub(content, "%s", "\\s")
+  end)
+
+  local args = {}
+
+  for arg in string.gmatch(str, "([^%s]+)") do
+    arg = string.gsub(arg, "\\s", " ")
+    table.insert(args, arg)
+  end
+
+  return args
+end
+
 -- COMMANDS
 
 local function cmd_memory(self, client, args)
@@ -46,6 +65,32 @@ local function cmd_skin(self, client, args)
     local skin = args[2] or ""
     client:setSkin(skin)
     client:sendChatMessage("skin set to \""..skin.."\"")
+  end
+end
+
+local function cmd_tp(self, client, args)
+  if client then
+    local ok
+
+    if #args >= 4 then
+      local map_name = args[2]
+      local cx, cy = tonumber(args[3]), tonumber(args[4])
+      if cx and cy then
+        ok = true
+
+        local map = self:getMap(map_name)
+        if map then
+          client:teleport(cx*16,cy*16)
+          map:addEntity(client)
+        else
+          client:sendChatMessage("invalid map \""..map_name.."\"")
+        end
+      end
+    end
+
+    if not ok then
+      client:sendChatMessage("usage: /tp map cx cy")
+    end
   end
 end
 
@@ -94,6 +139,7 @@ function Server:__construct(cfg)
   self:registerCommand("count", cmd_count)
   self:registerCommand("where", cmd_where)
   self:registerCommand("skin", cmd_skin)
+  self:registerCommand("tp", cmd_tp)
 
   -- console thread
   self.console_flags = effil.table({ running = true })
@@ -114,7 +160,7 @@ function Server:tick(dt)
     local line = self.console_channel:pop()
 
     -- parse command
-    local args = utils.split(line, " ")
+    local args = Server.parseCommand(line)
     if #args > 0 then
       local ok = self:processCommand(nil, args)
       if not ok then

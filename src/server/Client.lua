@@ -50,7 +50,7 @@ function Client:onPacket(protocol, data)
   elseif protocol == net.INPUT_CHAT then
     if type(data) == "string" and string.len(data) > 0 and string.len(data) < 1000 then
       if string.sub(data, 1, 1) == "/" then -- parse command
-        local args = utils.split(string.sub(data, 2), " ")
+        local args = self.server.parseCommand(string.sub(data, 2))
         if #args > 0 then
           local ok = self.server:processCommand(self, args)
           if not ok then
