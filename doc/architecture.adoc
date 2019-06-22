@@ -1,0 +1,19 @@
+
+= Architecture
+
+This file is about how all the game data is managed.
+
+== Resources streaming
+
+All game's persistent resources are located in the `resources/` path, which is a combination of multiple origins.
+
+.Resource origins in reverse order
+base game files:: base/default files
+`resources_repository/` game data files (streaming):: resources acquired from the remote repository
+`resources/` game data files:: can be used to customize the game resources
+
+Not all resources are remote-requested before being used.
+
+== Skins
+
+Skins are loaded from the skin repository when needed and are not saved.

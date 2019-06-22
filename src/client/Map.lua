@@ -10,8 +10,32 @@ end
 -- METHODS
 
 function Map:__construct(data)
-  self.tileset = client:loadTexture("resources/textures/sets/"..data.tileset)
+  self.tileset = client:loadTexture("resources/textures/sets/tileset.png") -- default
+  self:build(data)
+
+  async(function()
+    if client.net_manager:requestResource("textures/sets/"..data.tileset) then
+      self.tileset = client:loadTexture("resources/textures/sets/"..data.tileset)
+      self:build(data)
+    end
+  end)
+
+  self.data = data
   
+  -- build entities
+  self.entities = {} -- map of id => entity
+
+  -- lists of entities
+  self.back_draw_list = {}
+  self.dynamic_draw_list = {}
+  self.front_draw_list = {}
+
+  for _, edata in pairs(data.entities) do
+    self:createEntity(edata)
+  end
+end
+
+function Map:build(data)
   local atlas = TextureAtlas(0, 0, self.tileset:getWidth(), self.tileset:getHeight(), 16, 16)
 
   -- build low / high layer sprite batches
@@ -43,18 +67,6 @@ function Map:__construct(data)
         end
       end
     end
-  end
-
-  -- build entities
-  self.entities = {} -- map of id => entity
-
-  -- lists of entities
-  self.back_draw_list = {}
-  self.dynamic_draw_list = {}
-  self.front_draw_list = {}
-
-  for _, edata in pairs(data.entities) do
-    self:createEntity(edata)
   end
 end
 
