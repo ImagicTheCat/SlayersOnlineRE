@@ -3,7 +3,11 @@
 
 This file is about how all the game data is managed.
 
-== Resources streaming
+== Project data
+
+The server needs all the Slayers Online project files in `resources/project/`.
+
+== Client resources
 
 All game's persistent resources are located in the `resources/` path, which is a combination of multiple origins.
 
@@ -12,10 +16,14 @@ base game files:: base/default files
 `resources_repository/` game data files (streaming):: resources acquired from the remote repository
 `resources/` game data files:: can be used to customize the game resources
 
+=== Streaming
+
 Not all resources are remote-requested before being used, here is the process when they are:
 * check for the file in `repository.manifest` and `local.manifest`
 * try to re-compute the hash from disk if missing
 * download/update if the file is missing or if the hash is different
+
+The repository manifest is computed using `tools/build_manifest.lua`.
 
 == Skins
 
