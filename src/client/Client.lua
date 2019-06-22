@@ -29,7 +29,7 @@ function Client:__construct(cfg)
 
   self.orientation_stack = {}
 
-  self.net_manager = NetManager()
+  self.net_manager = NetManager(self)
 
   self.textures = {} -- map of texture path => image
   self.skins = {} -- map of skin file => image
@@ -197,6 +197,8 @@ function Client:close()
   while self.peer:state() ~= "disconnected" do -- wait for disconnection
     self.host:service(100)
   end
+
+  self.net_manager:saveLocalManifest()
 end
 
 function Client:onResize(w, h)

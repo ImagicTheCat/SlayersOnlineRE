@@ -35,7 +35,14 @@ function Event:__construct(data)
   self.anim_interval = 1/3
   self.anim_time = 0
 
-  self.set = client:loadTexture("resources/textures/sets/"..data.set)
+  self.set = client:loadTexture("resources/textures/sets/charaset.png") -- default
+  async(function()
+    if client.net_manager:requestResource("textures/sets/"..data.set) then
+      self.set = client:loadTexture("resources/textures/sets/"..data.set)
+      self.atlas = TextureAtlas(data.set_x, data.set_y, self.set:getWidth(), self.set:getHeight(), data.w, data.h)
+    end
+  end)
+
   self.atlas = TextureAtlas(data.set_x, data.set_y, self.set:getWidth(), self.set:getHeight(), data.w, data.h)
 
   self.active = data.active
@@ -54,8 +61,12 @@ function Event:onPacket(action, data)
   if action == "ch_orientation" then
     self.anim_y = data
   elseif action == "ch_set" then
-    self.set = client:loadTexture("resources/textures/sets/"..data.set)
-    self.atlas = TextureAtlas(data.x, data.y, self.set:getWidth(), self.set:getHeight(), data.w, data.h)
+    async(function()
+      if client.net_manager:requestResource("textures/sets/"..data.set) then
+        self.set = client:loadTexture("resources/textures/sets/"..data.set)
+        self.atlas = TextureAtlas(data.x, data.y, self.set:getWidth(), self.set:getHeight(), data.w, data.h)
+      end
+    end)
   elseif action == "ch_active" then
     self.active = data
   elseif action == "ch_animation_type" then
