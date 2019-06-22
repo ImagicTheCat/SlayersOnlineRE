@@ -23,6 +23,7 @@ function NetManager:__construct(client)
 
   -- create dirs
   love.filesystem.createDirectory("resources_repository/textures/sets")
+  love.filesystem.createDirectory("resources_repository/audio")
 
   -- mount downloads
   if not love.filesystem.mount("resources_repository", "resources") then

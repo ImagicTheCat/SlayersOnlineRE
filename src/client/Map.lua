@@ -18,6 +18,10 @@ function Map:__construct(data)
       self.tileset = client:loadTexture("resources/textures/sets/"..data.tileset)
       self:build(data)
     end
+
+    if data.music and client.net_manager:requestResource("audio/"..data.music) then
+      client:playMusic("resources/audio/"..data.music)
+    end
   end)
 
   self.data = data

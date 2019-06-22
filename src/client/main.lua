@@ -14,6 +14,7 @@ end
 function love.load()
   love.keyboard.setKeyRepeat(true)
   love.graphics.setDefaultFilter("nearest", "nearest")
+  love.audio.setVolume(0.5)
   client = Client(cfg) -- global
 end
 

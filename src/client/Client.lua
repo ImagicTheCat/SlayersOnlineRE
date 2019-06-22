@@ -477,4 +477,18 @@ function Client:loadSkin(file)
   end
 end
 
+function Client:playMusic(path)
+  if self.music_path ~= path then
+    if self.music_source then
+      self.music_source:stop()
+    end
+
+    self.music_source = love.audio.newSource(path, "stream")
+    self.music_source:setLooping(true)
+    self.music_source:play()
+
+    self.music_path = path
+  end
+end
+
 return Client
