@@ -12,7 +12,10 @@ base game files:: base/default files
 `resources_repository/` game data files (streaming):: resources acquired from the remote repository
 `resources/` game data files:: can be used to customize the game resources
 
-Not all resources are remote-requested before being used.
+Not all resources are remote-requested before being used, here is the process when they are:
+* check for the file in `repository.manifest` and `local.manifest`
+* try to re-compute the hash from disk if missing
+* download/update if the file is missing or if the hash is different
 
 == Skins
 
