@@ -4,6 +4,7 @@
 This project is a rework of the client and server of Slayers Online, aiming to work with the already existing content and to be cross-platform.
 
 .Infos
+code name:: Slayers Online RE
 language:: Lua 5.1
 server:: LuaJIT
 client:: LÖVE 11.x
@@ -22,3 +23,4 @@ client:: LÖVE 11.x
 * https://github.com/ImagicTheCat/Luaoop 
 * https://github.com/ImagicTheCat/Luaseq
 * https://fperrad.frama.io/lua-MessagePack/
+* https://github.com/kikito/md5.lua

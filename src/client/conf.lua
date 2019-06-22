@@ -1,4 +1,4 @@
 function love.conf(t)
   t.window.resizable = true
-  t.identity = "SlayersOnline"
+  t.identity = "SlayersOnlineRE"
 end
