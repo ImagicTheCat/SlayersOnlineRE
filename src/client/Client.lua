@@ -263,39 +263,33 @@ end
 
 function Client:onKeyPressed(key, scancode, isrepeat)
   -- control handling
-  if not isrepeat and not self.typing then
+  if not isrepeat then
     local control = self.scancode_controls[scancode]
     if control then
       self:pressControl(control)
     end
   end
 
-  -- input handling
+  if not isrepeat and scancode == "return" then
+    self:pressControl("return")
+    self:releaseControl("return")
+  end
+
+  -- input text handling
   if scancode == "backspace" then
     if self.typing then
       self.input_chat:erase(-1)
     end
-  elseif scancode == "return" then -- valid text input
-    if self.typing then
-      if self.input_string_showing then -- input string
-        self:sendPacket(net.EVENT_INPUT_STRING_ANSWER, self.input_chat.text)
-        self.input_string_showing = false
-      else -- chat
-        self:inputChat(self.input_chat.text)
-      end
-
-      self.input_chat:set("")
-    end
-
-    self:setTyping(not self.typing)
   end
 
   -- input chat copy/paste
-  if self.typing and love.keyboard.isDown("lctrl") and not isrepeat then
+  if not isrepeat and love.keyboard.isDown("lctrl") then
     if key == "c" then
-      love.system.setClipboardText(self.input_chat.text)
+      self:pressControl("copy")
+      self:releaseControl("copy")
     elseif key == "v" then
-      self.input_chat:set(self.input_chat.text..love.system.getClipboardText())
+      self:pressControl("paste")
+      self:releaseControl("paste")
     end
   end
 end
@@ -306,7 +300,6 @@ function Client:onKeyReleased(key, scancode)
     if control then
       self:releaseControl(control)
     end
-
   end
 end
 
@@ -317,6 +310,8 @@ function Client:pressControl(id)
     self.controls[id] = true
 
     -- handling
+
+    -- character controls
     if not self.typing then
       if id == "up" then
         if self.input_query_showing then
@@ -343,6 +338,30 @@ function Client:pressControl(id)
         else
           self:inputInteract()
         end
+      end
+    end
+
+    -- input text
+    if id == "return" then -- valid text input
+      if self.typing then
+        if self.input_string_showing then -- input string
+          self:sendPacket(net.EVENT_INPUT_STRING_ANSWER, self.input_chat.text)
+          self.input_string_showing = false
+        else -- chat
+          self:inputChat(self.input_chat.text)
+        end
+
+        self.input_chat:set("")
+      end
+
+      self:setTyping(not self.typing)
+    end
+
+    if self.typing then
+      if id == "copy" then
+        love.system.setClipboardText(self.input_chat.text)
+      elseif id == "paste" then
+        self.input_chat:set(self.input_chat.text..love.system.getClipboardText())
       end
     end
   end
@@ -372,9 +391,14 @@ function Client:setTyping(typing)
     if self.typing then
       self:setMoveForward(false)
       self.typing = true
+
+      local s = self.gui_scale
+      love.keyboard.setTextInput(true, self.input_chat.x/s, self.input_chat.y/s, self.input_chat.w/s, self.input_chat.h/s)
     else
       self.typing = false
       self.chat_history_time = 0
+
+      love.keyboard.setTextInput(false)
     end
   end
 end
