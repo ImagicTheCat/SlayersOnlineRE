@@ -34,6 +34,15 @@ function Client:__construct(cfg)
   self.orientation = 0
 
   self.orientation_stack = {}
+  self.controls = {} -- map of control id (string) when pressed
+  self.scancode_controls = {
+    w = "up",
+    d = "right",
+    s = "down",
+    a = "left",
+    space = "attack",
+    e = "interact"
+  }
 
   self.net_manager = NetManager(self)
 
@@ -113,14 +122,14 @@ function Client:tick(dt)
     self.map:tick(dt)
   end
 
+  -- movement input
   if not self.typing then
-    -- movement input
-    local key = "w"
-    if self.orientation == 1 then key = "d"
-    elseif self.orientation == 2 then key = "s"
-    elseif self.orientation == 3 then key = "a" end
+    local control = "up"
+    if self.orientation == 1 then control = "right"
+    elseif self.orientation == 2 then control = "down"
+    elseif self.orientation == 3 then control = "left" end
 
-    self:setMoveForward(love.keyboard.isScancodeDown(key))
+    self:setMoveForward(self:isControlPressed(control))
   end
 
   if self.chat_history_time > 0 then
@@ -253,37 +262,15 @@ function Client:onTextInput(data)
 end
 
 function Client:onKeyPressed(key, scancode, isrepeat)
-  if not isrepeat then
-    if not self.typing then
-      if scancode == "w" then
-        if self.input_query_showing then
-          self.input_query:moveSelect(-1)
-        else
-          self:pressOrientation(0)
-        end
-      elseif scancode == "d" then self:pressOrientation(1)
-      elseif scancode == "s" then
-        if self.input_query_showing then
-          self.input_query:moveSelect(1)
-        else
-          self:pressOrientation(2)
-        end
-      elseif scancode == "a" then self:pressOrientation(3)
-      elseif scancode == "space" then self:inputAttack()
-      elseif scancode == "e" then
-        if self.message_showing then
-          self:sendPacket(net.EVENT_MESSAGE_SKIP)
-          self.message_showing = false
-        elseif self.input_query_showing then
-          self.input_query_showing = false
-          self:sendPacket(net.EVENT_INPUT_QUERY_ANSWER, self.input_query.options[self.input_query.selected] or "")
-        else
-          self:inputInteract()
-        end
-      end
+  -- control handling
+  if not isrepeat and not self.typing then
+    local control = self.scancode_controls[scancode]
+    if control then
+      self:pressControl(control)
     end
   end
 
+  -- input handling
   if scancode == "backspace" then
     if self.typing then
       self.input_chat:erase(-1)
@@ -303,7 +290,8 @@ function Client:onKeyPressed(key, scancode, isrepeat)
     self:setTyping(not self.typing)
   end
 
-  if self.typing and love.keyboard.isDown("lctrl") and not isrepeat then -- input chat copy/paste
+  -- input chat copy/paste
+  if self.typing and love.keyboard.isDown("lctrl") and not isrepeat then
     if key == "c" then
       love.system.setClipboardText(self.input_chat.text)
     elseif key == "v" then
@@ -314,11 +302,67 @@ end
 
 function Client:onKeyReleased(key, scancode)
   if not self.typing then
-    if scancode == "w" then self:releaseOrientation(0)
-    elseif scancode == "d" then self:releaseOrientation(1)
-    elseif scancode == "s" then self:releaseOrientation(2)
-    elseif scancode == "a" then self:releaseOrientation(3) end
+    local control = self.scancode_controls[scancode]
+    if control then
+      self:releaseControl(control)
+    end
+
   end
+end
+
+-- abstraction layer for controls
+function Client:pressControl(id)
+  local control = self.controls[id]
+  if not control then
+    self.controls[id] = true
+
+    -- handling
+    if not self.typing then
+      if id == "up" then
+        if self.input_query_showing then
+          self.input_query:moveSelect(-1)
+        else
+          self:pressOrientation(0)
+        end
+      elseif id == "right" then self:pressOrientation(1)
+      elseif id == "down" then
+        if self.input_query_showing then
+          self.input_query:moveSelect(1)
+        else
+          self:pressOrientation(2)
+        end
+      elseif id == "left" then self:pressOrientation(3)
+      elseif id == "attack" then self:inputAttack()
+      elseif id == "interact" then
+        if self.message_showing then
+          self:sendPacket(net.EVENT_MESSAGE_SKIP)
+          self.message_showing = false
+        elseif self.input_query_showing then
+          self.input_query_showing = false
+          self:sendPacket(net.EVENT_INPUT_QUERY_ANSWER, self.input_query.options[self.input_query.selected] or "")
+        else
+          self:inputInteract()
+        end
+      end
+    end
+  end
+end
+
+function Client:releaseControl(id)
+  local control = self.controls[id]
+  if control then
+    self.controls[id] = nil
+
+    -- handling
+    if id == "up" then self:releaseOrientation(0)
+    elseif id == "right" then self:releaseOrientation(1)
+    elseif id == "down" then self:releaseOrientation(2)
+    elseif id == "left" then self:releaseOrientation(3) end
+  end
+end
+
+function Client:isControlPressed(id)
+  return (self.controls[id] ~= nil)
 end
 
 function Client:setTyping(typing)
