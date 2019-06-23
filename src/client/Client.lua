@@ -435,7 +435,7 @@ function Client:setTyping(typing)
       self.typing = true
 
       local s = self.gui_scale
-      love.keyboard.setTextInput(true, self.input_chat.x/s, self.input_chat.y/s, self.input_chat.w/s, self.input_chat.h/s)
+      love.keyboard.setTextInput(true, self.input_chat.x*s, self.input_chat.y*s, self.input_chat.w*s, self.input_chat.h*s)
     else
       self.typing = false
       self.chat_history_time = 0
