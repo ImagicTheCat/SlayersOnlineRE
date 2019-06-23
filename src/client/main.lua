@@ -23,12 +23,20 @@ function love.draw()
   client:draw()
 end
 
-function love.keypressed(key, scancode, isrepeat)
-  client:onKeyPressed(key, scancode, isrepeat)
+function love.keypressed(...)
+  client:onKeyPressed(...)
 end
 
-function love.keyreleased(key, scancode)
-  client:onKeyReleased(key, scancode)
+function love.keyreleased(...)
+  client:onKeyReleased(...)
+end
+
+function love.touchpressed(...)
+  client:onTouchPressed(...)
+end
+
+function love.touchreleased(...)
+  client:onTouchReleased(...)
 end
 
 function love.textinput(data)
