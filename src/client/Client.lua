@@ -41,8 +41,11 @@ function Client:__construct(cfg)
     s = "down",
     a = "left",
     space = "attack",
-    e = "interact"
+    e = "interact",
+    ["return"] = "return"
   }
+
+  self.touches = {} -- map of id => control
 
   self.net_manager = NetManager(self)
 
@@ -270,11 +273,6 @@ function Client:onKeyPressed(key, scancode, isrepeat)
     end
   end
 
-  if not isrepeat and scancode == "return" then
-    self:pressControl("return")
-    self:releaseControl("return")
-  end
-
   -- input text handling
   if scancode == "backspace" then
     if self.typing then
@@ -295,11 +293,55 @@ function Client:onKeyPressed(key, scancode, isrepeat)
 end
 
 function Client:onKeyReleased(key, scancode)
-  if not self.typing then
-    local control = self.scancode_controls[scancode]
+  local control = self.scancode_controls[scancode]
+  if control then
+    self:releaseControl(control)
+  end
+end
+
+-- touch controls handling
+function Client:onTouchPressed(id, x, y)
+  local w, h = love.graphics.getDimensions()
+
+  -- detect controls
+
+  -- movement pad (left-bottom side, 50% height square)
+  if utils.pointInRect(x, y, 0, h/2, h/2, h/2) then
+    -- compute direction
+    local dx, dy = x-h/4, y-h/2-h/4 -- shift from pad center
+
+    local g_x = (math.abs(dx) > math.abs(dy))
+    dx = dx/math.abs(dx)
+    dy = dy/math.abs(dy)
+
+    local control = "down"
+    if dy < 0 and not g_x then control = "up"
+    elseif dx > 0 and g_x then control = "right"
+    elseif dx < 0 and g_x then control = "left" end
+
+    self.touches[id] = control
+    self:pressControl(control)
+  -- buttons (right side, 100% height, 4x25% height squares)
+  elseif utils.pointInRect(x, y, w-h/4, 0, h/4, h) then
+    local button = math.floor((h-y)/h*4) -- 0, 1, 2, 3 "buttons" from bottom
+    local controls = { -- button controls
+      "interact",
+      "attack",
+      "return"
+    }
+
+    local control = controls[button+1]
     if control then
-      self:releaseControl(control)
+      self.touches[id] = control
+      self:pressControl(control)
     end
+  end
+end
+
+function Client:onTouchReleased(id, x, y)
+  local control = self.touches[id]
+  if control then
+    self:releaseControl(control)
   end
 end
 
