@@ -1,7 +1,5 @@
 #!/bin/bash
 
-./build-love.sh
-
 # build win32 directory
 love=love-11.2.0-win32
 rm win32 -r
