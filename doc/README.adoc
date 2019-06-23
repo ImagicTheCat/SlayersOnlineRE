@@ -18,6 +18,7 @@ client:: LÖVE 11.x
 * https://github.com/iryont/lua-struct
 * https://luarocks.org/modules/luarocks/lua-iconv
 * https://github.com/leafo/magick
+* https://github.com/effil/effil
 
 .Client dependencies
 * https://github.com/ImagicTheCat/Luaoop 
