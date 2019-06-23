@@ -46,6 +46,14 @@ function LivingEntity:onPacket(action, data)
     self.attacking = true
     self.attack_duration = data
     self.attack_time = 0
+
+    async(function()
+      client.net_manager:requestResource("audio/Sword3.wav")
+      local source = client:playSound("resources/audio/Sword3.wav")
+      source:setPosition(self.x, self.y, 0)
+      source:setVolume(0.75)
+      source:setAttenuationDistances(16, 16*15)
+    end)
   elseif action == "ch_skin" then
     self:setSkin(data)
   end

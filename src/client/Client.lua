@@ -21,6 +21,12 @@ local net = {
 function Client:__construct(cfg)
   self.cfg = cfg
 
+  -- setup love
+  love.keyboard.setKeyRepeat(true)
+  love.graphics.setDefaultFilter("nearest", "nearest")
+  love.audio.setVolume(0.5)
+  love.audio.setOrientation(0,0,-1,0,1,0) -- listener facing playground
+
   self.host = enet.host_create()
   self.peer = self.host:connect(self.cfg.remote)
 
@@ -34,6 +40,9 @@ function Client:__construct(cfg)
   self.textures = {} -- map of texture path => image
   self.skins = {} -- map of skin file => image
   self.loading_skins = {} -- map of skin file => callbacks
+
+  self.sound_sources = {} -- list of source
+  self.sounds = {} -- map of path => sound data
 
   self.font = love.graphics.newFont("resources/font.ttf", 50)
   self.font_target_height = 40 -- pixels
@@ -124,6 +133,21 @@ function Client:tick(dt)
     local steps = math.floor(self.phials_time/self.phials_delay)
     self.phials_index = (self.phials_index+steps)%3
     self.phials_time = self.phials_time-steps*self.phials_delay
+  end
+
+  if self.map then
+    -- set listener on player
+    local player = self.map.entities[self.id]
+    if player then
+      love.audio.setPosition(player.x, player.y, 0)
+    end
+  end
+
+  -- remove stopped sources
+  for i=1,#self.sound_sources do
+    if not self.sound_sources[i]:isPlaying() then
+      self.sound_sources[i] = nil
+    end
   end
 end
 
@@ -489,6 +513,27 @@ function Client:playMusic(path)
 
     self.music_path = path
   end
+end
+
+-- play a source and return it
+-- x,y: (optional) spatialized if passed
+-- volume: (optional)
+-- pitch: (optional)
+-- return source
+function Client:playSound(path)
+  local data = self.sounds[path]
+  if not data then -- load
+    data = love.sound.newSoundData(path)
+    self.sounds[path] = data
+  end
+
+
+  local source = love.audio.newSource(data, "static")
+  source:play()
+
+  table.insert(self.sound_sources, source)
+
+  return source
 end
 
 return Client
