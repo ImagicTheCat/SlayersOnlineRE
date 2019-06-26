@@ -23,6 +23,7 @@ function Client:__construct(server, peer)
 
   self.entities = {} -- bound map entities, map of entity
   self.events_by_name = {} -- map of name => event entity
+  self.event_queue = {} -- waiting event triggers, queue of callbacks
 
   self.vars = {} -- map of id (number)  => value (number)
   self.var_listeners = {} -- map of id (number) => map of callback
@@ -164,6 +165,8 @@ function Client:interact()
       async(function()
         entity:trigger(Event.Condition.INTERACT)
       end)
+
+      break
     end
   end
 end
