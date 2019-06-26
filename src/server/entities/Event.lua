@@ -294,7 +294,7 @@ end
 
 function event_special_vars:CaseX(value)
   if value then
-    self:moveToCell(Event.computeExpression(value) or self.cx, self.cy)
+    self:moveToCell(Event.computeExpression(value) or self.cx, self.cy, true)
   else
     return self.cx
   end
@@ -302,7 +302,7 @@ end
 
 function event_special_vars:CaseY(value)
   if value then
-    self:moveToCell(self.cx, Event.computeExpression(value) or self.cy)
+    self:moveToCell(self.cx, Event.computeExpression(value) or self.cy, true)
   else
     return self.cy
   end
@@ -310,13 +310,13 @@ end
 
 function event_special_vars:CaseNBX(value)
   if value then
-    self:moveToCell(Event.computeExpression(value) or self.cx, self.cy, true)
+    self:moveToCell(Event.computeExpression(value) or self.cx, self.cy)
   end
 end
 
 function event_special_vars:CaseNBY(value)
   if value then
-    self:moveToCell(self.cx, Event.computeExpression(value) or self.cy, true)
+    self:moveToCell(self.cx, Event.computeExpression(value) or self.cy)
   end
 end
 
@@ -703,9 +703,16 @@ function Event:selectPage()
   end
 end
 
--- (async) execute event commands
+-- (async) execute event script commands (will wait on instructions and for previous events to complete)
 -- condition: Event.Condition type triggered
 function Event:trigger(condition)
+  local r = async()
+
+  table.insert(self.client.event_queue, r)
+  if #self.client.event_queue > 1 then -- wait for previous event next call
+    r:wait()
+  end
+
   if condition == Event.Condition.INTERACT then
     local atype = self.animation_type
     if atype == Event.Animation.CHARACTER_RANDOM or atype == Event.Animation.STATIC_CHARACTER then
@@ -787,6 +794,15 @@ function Event:trigger(condition)
 
     state.cursor = state.cursor+1
   end
+
+  -- end
+  table.remove(self.client.event_queue, 1)
+
+  -- next event call
+  local next_r = self.client.event_queue[1]
+  if next_r then
+    next_r()
+  end
 end
 
 -- trigger change event
@@ -856,7 +872,9 @@ end
 -- (async)
 -- blocking: if passed/true, async and wait until it reaches the destination
 function Event:moveToCell(cx, cy, blocking)
-  -- TODO
+  local r
+  if blocking then r = async() end
+
   -- basic implementation
   local dx, dy = cx-self.x/16, cy-self.y/16
   local speed = self.speed*5 -- cells per second
@@ -874,12 +892,18 @@ function Event:moveToCell(cx, cy, blocking)
       self.x = utils.lerp(x, cx*16, progress)
       self.y = utils.lerp(y, cy*16, progress)
       self:updateCell()
-    else
+    else -- end
       self:teleport(cx*16, cy*16)
       self.move_task:remove()
       self.move_task = nil
+
+      if blocking then
+        r()
+      end
     end
   end)
+
+  if blocking then r:wait() end
 end
 
 -- randomly move the event if type is Animation.CHARACTER_RANDOM
@@ -889,14 +913,18 @@ function Event:moveRandom()
     self.moverandom_task = task(utils.randf(0.75, 7), function()
       local ok
       local ncx, ncy
-      local i = 1
-      while not ok and i <= 10 do -- search for a passable cell
-        local dx, dy = LivingEntity.orientationVector(math.random(0,3))
-        ncx, ncy = self.cx+dx, self.cy+dy
 
-        ok = (self.map and self.map:isCellPassable(self, ncx, ncy))
+      if not self.client.event_queue[1] then -- prevent movement when an event is in execution
+        -- search for a passable cell
+        local i = 1
+        while not ok and i <= 10 do
+          local dx, dy = LivingEntity.orientationVector(math.random(0,3))
+          ncx, ncy = self.cx+dx, self.cy+dy
 
-        i = i+1
+          ok = (self.map and self.map:isCellPassable(self, ncx, ncy))
+
+          i = i+1
+        end
       end
 
       if ok then
@@ -963,11 +991,21 @@ function Event:onMapChange()
 
     -- auto trigger
     if self.trigger_auto then
-      self.trigger_task = itask(0.03, function()
-        async(function()
-          self:trigger(Event.Condition.AUTO)
-        end)
-      end)
+      self.trigger_task = true
+
+      -- task iteration
+      local function iteration()
+        if self.trigger_task then
+          task(0.03, function()
+            async(function()
+              self:trigger(Event.Condition.AUTO)
+              iteration()
+            end)
+          end)
+        end
+      end
+
+      iteration()
     elseif self.trigger_auto_once then
       task(0.03, function()
         async(function()
@@ -1001,7 +1039,6 @@ function Event:onMapChange()
 
     -- auto trigger
     if self.trigger_auto then
-      self.trigger_task:remove()
       self.trigger_task = nil
     end
   end
