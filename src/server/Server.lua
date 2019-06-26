@@ -52,7 +52,10 @@ commands.help = {function(self, client, args)
     client:sendChatMessage(table.concat(lines, "\n"))
   else
     io.write(table.concat(lines, "\n"))
+    io.write("\n")
+    io.flush()
   end
+
 end, "", "list all commands"}
 
 commands.memory = {function(self, client, args)
