@@ -222,6 +222,7 @@ function Client:onPacket(protocol, data)
   elseif protocol == net.PLAYER_CONFIG then
     -- apply player config
     utils.mergeInto(data, self.player_config)
+    self:onApplyConfig(data)
   end
 end
 
@@ -241,6 +242,15 @@ function Client:close()
   end
 
   self.net_manager:saveLocalManifest()
+end
+
+function Client:onApplyConfig(config)
+  if config.volume then
+    local master = config.volume.master
+    if master then
+      love.audio.setVolume(master)
+    end
+  end
 end
 
 function Client:onResize(w, h)

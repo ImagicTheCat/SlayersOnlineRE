@@ -46,8 +46,8 @@ commands.help = {function(self, client, args)
     local cmd = commands[id]
     if cmd then -- found
       local lines = {}
-      table.insert(lines, id.." "..cmd[2])
-      table.insert(lines, "  "..cmd[3])
+      table.insert(lines, "  "..id.." "..cmd[2])
+      table.insert(lines, "    "..cmd[3])
 
       if client then
         client:sendChatMessage(table.concat(lines, "\n"))
@@ -101,8 +101,22 @@ commands.bind = {function(self, client, args)
   end
 end, "<scancode> [control]", [[show or map a LÖVE/SDL scancode to a control
     scancodes: https://love2d.org/wiki/Scancode
-    controls: none, up, right, down, left, interact, attack, return
-]]}
+    controls: none, up, right, down, left, interact, attack, return]]
+}
+
+commands.volume = {function(self, client, args)
+  if client then
+    local vtype, volume = args[2], tonumber(args[3])
+    if vtype and volume then
+      client:applyConfig({volume = {[vtype] = volume}})
+    else
+      return true
+    end
+  end
+end, "<type> <volume>", [[set volume
+    types: master
+    volume: 0-1]]
+}
 
 commands.memory = {function(self, client, args)
   if not client then
