@@ -41,8 +41,8 @@ end
 local commands = {}
 
 commands.help = {function(self, client, args)
-  if #args >= 2 then -- single command
-    local id = args[2]
+  local id = args[2]
+  if id then -- single command
     local cmd = commands[id]
     if cmd then -- found
       local lines = {}
@@ -77,6 +77,32 @@ commands.help = {function(self, client, args)
     end
   end
 end, "[command]", "list all commands or print info for a single command"}
+
+local bind_blacklist = {
+  ["return"] = true
+}
+commands.bind = {function(self, client, args)
+  if client then
+    local scancode, control = args[2], args[3]
+    if not scancode then return true end
+
+    if control then
+      if not bind_blacklist[scancode] then
+        client:applyConfig({scancode_controls = {[scancode] = control}})
+        client:sendChatMessage("bound \""..scancode.."\" to \""..control.."\"")
+      else
+        client:sendChatMessage("scancode \""..scancode.."\" can't be re-mapped")
+      end
+    else
+      local controls = client.player_config.scancode_controls
+      local control = (controls and controls[scancode] or "none")
+      client:sendChatMessage("\""..scancode.."\" is bound to \""..control.."\"")
+    end
+  end
+end, "<scancode> [control]", [[show or map a LÖVE/SDL scancode to a control
+    scancodes: https://love2d.org/wiki/Scancode
+    controls: none, up, right, down, left, interact, attack, return
+]]}
 
 commands.memory = {function(self, client, args)
   if not client then

@@ -48,4 +48,17 @@ function utils.lerp(a, b, x)
   return a*(1-x)+b*x
 end
 
+-- merge a into b (deep)
+-- replace all keys of b by a keys, unless both keys are tables => recursive merge
+-- a, b: tables
+function utils.mergeInto(a, b)
+  for k,v in pairs(a) do
+    if type(v) == "table" and type(b[k]) == "table" then -- merge
+      utils.mergeInto(v, b[k])
+    else -- raw set
+      b[k] = v
+    end
+  end
+end
+
 return utils
