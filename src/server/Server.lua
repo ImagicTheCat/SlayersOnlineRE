@@ -30,14 +30,39 @@ end
 
 -- COMMANDS
 
-local function cmd_memory(self, client, args)
+-- map of command id => {handler, usage, description}
+-- handler(server, client, args)
+--- client: client or nil if emitted from the server
+--- args: command arguments list (first is command id/name)
+--- should return true if the command is invalid
+-- usage: one line command arguments summary (ex: "<arg1> <arg2> ...")
+-- description: command description
+
+local commands = {}
+
+commands.help = {function(self, client, args)
+  local lines = {}
+  table.insert(lines, "Commands:")
+  for id, cmd in pairs(commands) do
+    table.insert(lines, "  "..id.." "..cmd[2])
+    table.insert(lines, "    "..cmd[3])
+  end
+
+  if client then
+    client:sendChatMessage(table.concat(lines, "\n"))
+  else
+    io.write(table.concat(lines, "\n"))
+  end
+end, "", "list all commands"}
+
+commands.memory = {function(self, client, args)
   if not client then
     local MB = collectgarbage("count")*1024/1000000
     print("Lua main memory usage: "..MB.." MB")
   end
-end
+end, "", "print memory used by Lua"}
 
-local function cmd_count(self, client, args)
+commands.count = {function(self, client, args)
   local count = 0
   for _ in pairs(self.clients) do
     count = count+1
@@ -48,9 +73,9 @@ local function cmd_count(self, client, args)
   else
     print(count.." online players")
   end
-end
+end, "", "print number of online players"}
 
-local function cmd_where(self, client, args)
+commands.where = {function(self, client, args)
   if client then
     if client.map then
       client:sendChatMessage(client.map.id.." "..client.cx..","..client.cy)
@@ -58,17 +83,19 @@ local function cmd_where(self, client, args)
       client:sendChatMessage("not on a map")
     end
   end
-end
+end, "", "print location"}
 
-local function cmd_skin(self, client, args)
+commands.skin = {function(self, client, args)
   if client then
+    if not args[2] then return true end
+
     local skin = args[2] or ""
     client:setSkin(skin)
     client:sendChatMessage("skin set to \""..skin.."\"")
   end
-end
+end, "<skin_name>", "change skin"}
 
-local function cmd_tp(self, client, args)
+commands.tp = {function(self, client, args)
   if client then
     local ok
 
@@ -89,10 +116,10 @@ local function cmd_tp(self, client, args)
     end
 
     if not ok then
-      client:sendChatMessage("usage: /tp map cx cy")
+      return true
     end
   end
-end
+end, "<map> <cx> <cy>", "teleport to coordinates"}
 
 -- CONSOLE THREAD
 local function console_main(flags, channel)
@@ -134,13 +161,6 @@ function Server:__construct(cfg)
   self.host = enet.host_create(self.cfg.host, self.cfg.max_clients)
   print("Listening to \""..self.cfg.host.."\"...")
 
-  -- register commands
-  self:registerCommand("memory", cmd_memory)
-  self:registerCommand("count", cmd_count)
-  self:registerCommand("where", cmd_where)
-  self:registerCommand("skin", cmd_skin)
-  self:registerCommand("tp", cmd_tp)
-
   -- console thread
   self.console_flags = effil.table({ running = true })
   self.console_channel = effil.channel()
@@ -162,10 +182,7 @@ function Server:tick(dt)
     -- parse command
     local args = Server.parseCommand(line)
     if #args > 0 then
-      local ok = self:processCommand(nil, args)
-      if not ok then
-        print("unknown command \""..args[1].."\"")
-      end
+      self:processCommand(nil, args)
     end
   end
 
@@ -213,24 +230,27 @@ function Server:getMap(id)
   return map
 end
 
--- return true if the command has been processed or false
-function Server:processCommand(sender, args)
+-- client: client or nil from server console
+function Server:processCommand(client, args)
   -- dispatch command
-  local command = self.commands[args[1]]
+  local command = commands[args[1]]
   if command then
-    command(self, sender, args)
-    return true
+    if command[1](self, client, args) then
+      local msg = ("usage: "..args[1].." "..command[2])
+      if client then
+        client:sendChatMessage(msg)
+      else
+        print(msg)
+      end
+    end
   else
-    return false
+    local msg = ("unknown command \""..args[1].."\"")
+    if client then
+      client:sendChatMessage(msg)
+    else
+      print(msg)
+    end
   end
-end
-
--- id: string (first command argument)
--- callback(server, sender, args)
---- client: client or nil if emitted from the server
---- args: command arguments (first is command id/name)
-function Server:registerCommand(id, callback)
-  self.commands[id] = callback
 end
 
 function Server:loadMapData(id)
