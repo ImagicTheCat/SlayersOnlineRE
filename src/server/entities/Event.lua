@@ -3,6 +3,7 @@ local Entity = require("Entity")
 local LivingEntity = require("entities/LivingEntity")
 
 local Event = class("Event", Entity)
+local cfg = require("config")
 
 -- STATICS
 
@@ -857,9 +858,28 @@ end
 function Event:moveToCell(cx, cy, blocking)
   -- TODO
   -- basic implementation
-  local dx, dy = cx-self.cx, cy-self.cy
+  local dx, dy = cx-self.x/16, cy-self.y/16
+  local speed = self.speed*5 -- cells per second
   self:setOrientation(LivingEntity.vectorOrientation(dx,dy))
-  self:teleport(cx*16, cy*16)
+  self:broadcastPacket("move_to_cell", {cx = cx, cy = cy, speed = speed})
+
+  local dist = math.sqrt(dx*dx+dy*dy)
+  local duration = dist/speed
+  local time = clock()
+  local x, y = self.x, self.y
+
+  self.move_task = itask(1/cfg.tickrate, function()
+    local progress = (clock()-time)/duration
+    if progress <= 1 then
+      self.x = utils.lerp(x, cx*16, progress)
+      self.y = utils.lerp(y, cy*16, progress)
+      self:updateCell()
+    else
+      self:teleport(cx*16, cy*16)
+      self.move_task:remove()
+      self.move_task = nil
+    end
+  end)
 end
 
 -- randomly move the event if type is Animation.CHARACTER_RANDOM

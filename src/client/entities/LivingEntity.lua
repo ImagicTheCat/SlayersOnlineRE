@@ -6,10 +6,6 @@ local LivingEntity = class("LivingEntity", Entity)
 
 -- STATICS
 
-function LivingEntity.lerp(a, b, x)
-  return a*(1-x)+b*x
-end
-
 LivingEntity.charaset_atlas = TextureAtlas(0, 0, 9*24, 32*4, 24, 32)
 
 -- METHODS
@@ -79,8 +75,8 @@ end
 -- overload
 function LivingEntity:tick(dt)
   -- lerp
-  local x = math.floor(LivingEntity.lerp(self.x, self.tx, 0.5))
-  local y = math.floor(LivingEntity.lerp(self.y, self.ty, 0.5))
+  local x = math.floor(utils.lerp(self.x, self.tx, 0.5))
+  local y = math.floor(utils.lerp(self.y, self.ty, 0.5))
 
   if self.attacking then
     -- compute attack animation
