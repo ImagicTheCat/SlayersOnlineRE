@@ -41,22 +41,42 @@ end
 local commands = {}
 
 commands.help = {function(self, client, args)
-  local lines = {}
-  table.insert(lines, "Commands:")
-  for id, cmd in pairs(commands) do
-    table.insert(lines, "  "..id.." "..cmd[2])
-    table.insert(lines, "    "..cmd[3])
-  end
+  if #args >= 2 then -- single command
+    local id = args[2]
+    local cmd = commands[id]
+    if cmd then -- found
+      local lines = {}
+      table.insert(lines, id.." "..cmd[2])
+      table.insert(lines, "  "..cmd[3])
 
-  if client then
-    client:sendChatMessage(table.concat(lines, "\n"))
-  else
-    io.write(table.concat(lines, "\n"))
-    io.write("\n")
-    io.flush()
-  end
+      if client then
+        client:sendChatMessage(table.concat(lines, "\n"))
+      else
+        print(table.concat(lines, "\n"))
+      end
+    else
+      local msg = "help: unknown command \""..id.."\""
+      if client then
+        client:sendChatMessage(msg)
+      else
+        print(msg)
+      end
+    end
+  else -- all commands
+    local lines = {}
+    table.insert(lines, "Commands:")
+    for id, cmd in pairs(commands) do
+      table.insert(lines, "  "..id.." "..cmd[2])
+      table.insert(lines, "    "..cmd[3])
+    end
 
-end, "", "list all commands"}
+    if client then
+      client:sendChatMessage(table.concat(lines, "\n"))
+    else
+      print(table.concat(lines, "\n"))
+    end
+  end
+end, "[command]", "list all commands or print info for a single command"}
 
 commands.memory = {function(self, client, args)
   if not client then
@@ -239,7 +259,7 @@ function Server:processCommand(client, args)
   local command = commands[args[1]]
   if command then
     if command[1](self, client, args) then
-      local msg = ("usage: "..args[1].." "..command[2])
+      local msg = "usage: "..args[1].." "..command[2]
       if client then
         client:sendChatMessage(msg)
       else
@@ -247,7 +267,7 @@ function Server:processCommand(client, args)
       end
     end
   else
-    local msg = ("unknown command \""..args[1].."\"")
+    local msg = "unknown command \""..args[1].."\" (command \"help\" to list all)"
     if client then
       client:sendChatMessage(msg)
     else
