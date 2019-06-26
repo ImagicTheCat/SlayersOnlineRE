@@ -30,6 +30,8 @@ function Client:__construct(server, peer)
   self.bool_var_listeners = {} -- map of id (number) => map of callback
   self.special_var_listeners = {} -- map of id (string) => map of callback
 
+  self.player_config = {} -- stored player config
+
   self:send(Client.makePacket(net.PROTOCOL, net)) -- send protocol
 
   -- testing
@@ -164,6 +166,12 @@ function Client:interact()
       end)
     end
   end
+end
+
+-- modify player config
+function Client:applyConfig(config)
+  utils.mergeInto(config, self.player_config)
+  self:send(Client.makePacket(net.PLAYER_CONFIG, config))
 end
 
 -- variables

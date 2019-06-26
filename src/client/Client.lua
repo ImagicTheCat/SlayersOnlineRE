@@ -35,14 +35,17 @@ function Client:__construct(cfg)
 
   self.orientation_stack = {}
   self.controls = {} -- map of control id (string) when pressed
-  self.scancode_controls = {
-    w = "up",
-    d = "right",
-    s = "down",
-    a = "left",
-    space = "attack",
-    e = "interact",
-    ["return"] = "return"
+
+  self.player_config = {
+    scancode_controls = {
+      w = "up",
+      d = "right",
+      s = "down",
+      a = "left",
+      space = "attack",
+      e = "interact",
+      ["return"] = "return"
+    }
   }
 
   self.touches = {} -- map of id => control
@@ -216,6 +219,9 @@ function Client:onPacket(protocol, data)
     self.message_window:set(data)
     self.input_string_showing = true
     self:setTyping(true)
+  elseif protocol == net.PLAYER_CONFIG then
+    -- apply player config
+    utils.mergeInto(data, self.player_config)
   end
 end
 
@@ -267,7 +273,7 @@ end
 function Client:onKeyPressed(key, scancode, isrepeat)
   -- control handling
   if not isrepeat then
-    local control = self.scancode_controls[scancode]
+    local control = self.player_config.scancode_controls[scancode]
     if control then
       self:pressControl(control)
     end
@@ -293,7 +299,7 @@ function Client:onKeyPressed(key, scancode, isrepeat)
 end
 
 function Client:onKeyReleased(key, scancode)
-  local control = self.scancode_controls[scancode]
+  local control = self.player_config.scancode_controls[scancode]
   if control then
     self:releaseControl(control)
   end
