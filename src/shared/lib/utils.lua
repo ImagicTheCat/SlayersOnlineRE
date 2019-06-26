@@ -44,4 +44,8 @@ function utils.pointInRect(x, y, rx, ry, rw, rh)
   return (x >= rx and y >= ry and x <= rx+rw and y <= ry+rh)
 end
 
+function utils.lerp(a, b, x)
+  return a*(1-x)+b*x
+end
+
 return utils

@@ -1,5 +1,6 @@
 local TextureAtlas = require("TextureAtlas")
 local Entity = require("Entity")
+local utils = require("lib/utils")
 
 local Event = class("Event", Entity)
 
@@ -34,6 +35,9 @@ function Event:__construct(data)
   self.anim_index = 1
   self.anim_interval = 1/3
   self.anim_time = 0
+
+  self.attacking = false
+  self.anim_step_length = 15 -- pixel length for a movement step
 
   self.set = client:loadTexture("resources/textures/sets/charaset.png") -- default
   async(function()
@@ -81,20 +85,58 @@ function Event:onPacket(action, data)
     self.atlas = TextureAtlas(data.x, data.y, self.set:getWidth(), self.set:getHeight(), data.w, data.h)
   elseif action == "ch_animation_number" then
     self.anim_x = data.animation_number
+  elseif action == "move_to_cell" then
+    data.x = self.x
+    data.y = self.y
+    data.dx = data.cx-data.x/16
+    data.dy = data.cy-data.y/16
+    data.dist = math.sqrt(data.dx*data.dx+data.dy*data.dy)
+    data.duration = data.dist/data.speed
+    data.time = 0
+
+    self.move_to_cell = data
+  elseif action == "teleport" then
+    self.move_to_cell = nil
   end
 end
 
 -- overload
 function Event:tick(dt)
-  if self.active and self.animation_type == Event.Animation.VISUAL_EFFECT then
-    self.anim_time = self.anim_time+dt
+  if self.active then
+    if self.animation_type == Event.Animation.VISUAL_EFFECT then -- effect
+      self.anim_time = self.anim_time+dt
 
-    local steps = math.floor(self.anim_time/self.anim_interval)
-    self.anim_time = self.anim_time-steps*self.anim_interval
+      local steps = math.floor(self.anim_time/self.anim_interval)
+      self.anim_time = self.anim_time-steps*self.anim_interval
 
-    self.anim_index = (self.anim_index+steps)%(self.anim_wc*self.anim_hc)
-    self.anim_x = self.anim_index%self.anim_wc
-    self.anim_y = math.floor(self.anim_index/self.anim_wc)
+      self.anim_index = (self.anim_index+steps)%(self.anim_wc*self.anim_hc)
+      self.anim_x = self.anim_index%self.anim_wc
+      self.anim_y = math.floor(self.anim_index/self.anim_wc)
+    else
+      if self.attacking then
+        -- compute attack animation
+        self.attack_time = self.attack_time+dt
+        self.anim_index = 3+math.floor(self.attack_time/self.attack_duration*3)%3
+        if self.attack_time >= self.attack_duration then -- stop
+          self.attacking = false
+          self.anim_index = 1
+        end
+      elseif self.move_to_cell then
+        local mtc = self.move_to_cell
+        mtc.time = mtc.time+dt
+
+        -- compute movement animation
+        local progress = mtc.time/mtc.duration
+        local steps = math.floor((mtc.dist*progress)/self.anim_step_length)
+        self.anim_index = steps%3
+        self.x = utils.lerp(mtc.x, mtc.cx*16, progress)
+        self.y = utils.lerp(mtc.y, mtc.cy*16, progress)
+
+        if mtc.time >= mtc.duration then
+          self.move_to_cell = nil
+        end
+      end
+    end
   end
 end
 
