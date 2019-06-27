@@ -19,7 +19,7 @@ function TextInput:draw()
   love.graphics.setScissor((self.x+3)*scale, (self.y+3)*scale, (self.w-6)*scale, (self.h-6)*scale)
 
   -- scroll
-  local x = math.min(self.x+4, self.w-6-self.display_text:getWidth()*scale)
+  local x = math.min(self.x+4, self.w-6-self.display_text:getWidth()/scale)
 
   love.graphics.draw(self.display_text, x, self.y+3, 0, 1/scale)
   love.graphics.setScissor()

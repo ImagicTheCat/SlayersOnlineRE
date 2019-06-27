@@ -118,6 +118,21 @@ end, "<type> <volume>", [[set volume
     volume: 0-1]]
 }
 
+commands.gui = {function(self, client, args)
+  if client then
+    local param, value = args[2], args[3]
+    if not param or not value then return true end
+
+    if param == "font_size" then
+      client:applyConfig({gui = {font_size = tonumber(value) or 25}})
+    else
+      client:sendChatMessage("invalid parameter \""..param.."\"")
+    end
+  end
+end, "<parameter> <value>", [[set GUI parameters
+    - font_size (size in pixels)]]
+}
+
 commands.memory = {function(self, client, args)
   if not client then
     local MB = collectgarbage("count")*1024/1000000
