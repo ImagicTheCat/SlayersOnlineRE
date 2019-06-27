@@ -59,6 +59,10 @@ function Client:__construct(cfg)
   self.sound_sources = {} -- list of source
   self.sounds = {} -- map of path => sound data
 
+  -- list of loading screen paths
+  self.loading_screens = love.filesystem.getDirectoryItems("resources/textures/loadings")
+  self.loading_screen_fade = 1
+
   self.font = love.graphics.newFont("resources/font.ttf", 50)
   self.font_target_height = 40 -- pixels
   love.graphics.setFont(self.font)
@@ -164,12 +168,28 @@ function Client:tick(dt)
       self.sound_sources[i] = nil
     end
   end
+
+  -- loading screen
+  if self.loading_screen_tex then
+    if self.loading_screen_time > 0 then -- fade-out
+      self.loading_screen_time = self.loading_screen_time-dt
+
+      if self.loading_screen_time <= 0 then
+        self.loading_screen_tex = nil -- remove loading screen
+      end
+    else
+      if not self.net_manager.requests[1] then
+        self.loading_screen_time = self.loading_screen_fade -- next step, fade-out
+      end
+    end
+  end
 end
 
 function Client:onPacket(protocol, data)
   if protocol == net.PROTOCOL then
     net = data
   elseif protocol == net.MAP then
+    self:showLoading()
     self.map = Map(data.map)
     self.id = data.id -- entity id
   elseif protocol == net.ENTITY_ADD then
@@ -530,6 +550,22 @@ function Client:draw()
 
   love.graphics.pop()
 
+  -- loading screen
+  if self.loading_screen_tex then
+    local opacity = (self.loading_screen_time > 0 and self.loading_screen_time or 1)
+    local tw, th = self.loading_screen_tex:getDimensions()
+    local factor = math.ceil(w/tw)
+
+    love.graphics.setColor(0,0,0, opacity)
+    local miss_h = (h-th*factor)/2
+    love.graphics.rectangle("fill", 0, 0, w, miss_h)
+    love.graphics.rectangle("fill", 0, h-miss_h, w, miss_h)
+
+    love.graphics.setColor(1,1,1, opacity)
+    love.graphics.draw(self.loading_screen_tex, w/2-tw*factor/2, h/2-th*factor/2, 0, factor)
+    love.graphics.setColor(1,1,1)
+  end
+
   -- download info
   local requests = self.net_manager.requests
   if requests[1] then
@@ -660,6 +696,15 @@ function Client:playSound(path)
   table.insert(self.sound_sources, source)
 
   return source
+end
+
+function Client:showLoading()
+  if #self.loading_screens > 0 then
+    local path = self.loading_screens[math.random(1, #self.loading_screens)]
+
+    self.loading_screen_tex = self:loadTexture("resources/textures/loadings/"..path)
+    self.loading_screen_time = 0
+  end
 end
 
 return Client
