@@ -45,6 +45,9 @@ function Client:__construct(cfg)
       space = "attack",
       e = "interact",
       ["return"] = "return"
+    },
+    gui = {
+      font_size = 25
     }
   }
 
@@ -63,7 +66,7 @@ function Client:__construct(cfg)
   self.loading_screens = love.filesystem.getDirectoryItems("resources/textures/loadings")
   self.loading_screen_fade = 1
 
-  self.font = love.graphics.newFont("resources/font.ttf", 25)
+  self.font = love.graphics.newFont("resources/font.ttf", self.player_config.gui.font_size)
   love.graphics.setFont(self.font)
 
   self.world_scale = 4
@@ -264,10 +267,20 @@ function Client:close()
 end
 
 function Client:onApplyConfig(config)
-  if config.volume then
+  if config.volume then -- set volume
     local master = config.volume.master
     if master then
       love.audio.setVolume(master)
+    end
+  end
+
+  if config.gui then
+    if config.gui.font_size then -- reload font
+      self.font = love.graphics.newFont("resources/font.ttf", config.gui.font_size)
+      love.graphics.setFont(self.font)
+
+      self:onSetFont()
+      self:onResize(love.graphics.getDimensions()) -- trigger GUI update
     end
   end
 end
@@ -293,6 +306,21 @@ function Client:onResize(w, h)
 
   self.message_window:update(2/self.gui_scale, 2/self.gui_scale, (w-4)/self.gui_scale, 200/self.gui_scale)
   self.input_query:update(2/self.gui_scale, 2/self.gui_scale, (w-4)/self.gui_scale, 200/self.gui_scale)
+end
+
+function Client:onSetFont()
+  self.input_chat.display_text:setFont(self.font)
+  self.chat_history.text:setFont(self.font)
+  self.message_window.text:setFont(self.font)
+  self.input_query.text:setFont(self.font)
+
+  if self.map then
+    for id, entity in pairs(self.map.entities) do
+      if class.is(entity, Player) then
+        entity.chat_text:setFont(self.font)
+      end
+    end
+  end
 end
 
 function Client:onTextInput(data)
@@ -571,11 +599,10 @@ function Client:draw()
   local requests = self.net_manager.requests
   if requests[1] then
     local text = love.graphics.newText(self.font, "downloading "..requests[1].url.."...")
-    local factor = 30/text:getHeight()
     love.graphics.setColor(0,0,0)
-    love.graphics.rectangle("fill", love.graphics.getWidth()-text:getWidth()*factor, 0, text:getWidth()*factor, text:getHeight()*factor)
+    love.graphics.rectangle("fill", love.graphics.getWidth()-text:getWidth(), 0, text:getWidth(), text:getHeight())
     love.graphics.setColor(1,1,1)
-    love.graphics.draw(text, love.graphics.getWidth()-text:getWidth()*factor, 0, 0, factor)
+    love.graphics.draw(text, love.graphics.getWidth()-text:getWidth(), 0)
   end
 end
 
