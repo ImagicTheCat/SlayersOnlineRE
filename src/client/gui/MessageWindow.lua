@@ -16,9 +16,7 @@ function MessageWindow:set(message)
 end
 
 function MessageWindow:buildText()
-  self.text_factor = self.client.font_target_height/(self.client.font:getHeight()*self.client.gui_scale)
-
-  self.text:setf(self.message, (self.w-6)/self.text_factor, "left")
+  self.text:setf(self.message, (self.w-6)*self.client.gui_scale, "left")
 end
 
 -- overload
@@ -35,7 +33,7 @@ function MessageWindow:draw()
   local scale = self.client.gui_scale
   love.graphics.setScissor((self.x+3)*scale, (self.y+3)*scale, (self.w-6)*scale, (self.h-6)*scale)
 
-  love.graphics.draw(self.text, self.x+3, self.y+3, 0, self.text_factor)
+  love.graphics.draw(self.text, self.x+3, self.y+3, 0, 1/scale)
 
   love.graphics.setScissor()
 end

@@ -29,21 +29,17 @@ end
 -- overload
 function Player:drawHUD()
   if self.chat_time > 0 then
-    local text_factor = client.font_target_height/(client.font:getHeight()*client.world_scale)
-
-    local w, h = self.chat_text:getWidth()*text_factor+8, self.chat_text:getHeight()*text_factor+6
+    local w, h = self.chat_text:getWidth()/client.world_scale+8, self.chat_text:getHeight()/client.world_scale+6
     local x, y = self.x+8-w/2, self.y-16-h
     self.chat_window:update(x,y,w,h)
     self.chat_window:draw()
-    love.graphics.draw(self.chat_text, x+4, y+3, 0, text_factor)
+    love.graphics.draw(self.chat_text, x+4, y+3, 0, 1/client.world_scale)
   end
 end
 
 function Player:onMapChat(msg)
-  local text_factor = client.font_target_height/(client.font:getHeight()*client.world_scale)
-
   self.chat_time = utils.clamp(utf8.len(msg)/5, 5, 20)
-  self.chat_text:setf(msg, 150/text_factor, "left")
+  self.chat_text:setf(msg, 150*client.world_scale, "left")
 end
 
 return Player

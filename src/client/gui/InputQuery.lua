@@ -9,7 +9,6 @@ function InputQuery:__construct(client)
   self.title = ""
   self.options = {}
   self.text_options = {}
-  self.text_factor = 1
 
   self.selected = 1
 end
@@ -33,15 +32,12 @@ function InputQuery:moveSelect(mod)
 end
 
 function InputQuery:buildText()
-  self.text_factor = self.client.font_target_height/(self.client.font:getHeight()*self.client.gui_scale)
-
-
-  self.text:setf(self.title, (self.w-6)/self.text_factor, "left")
+  self.text:setf(self.title, (self.w-6)*self.client.gui_scale, "left")
 
   self.text_options = {}
   for _, option in ipairs(self.options) do
     local text = love.graphics.newText(self.client.font)
-    text:setf(option, (self.w-6)/self.text_factor, "left")
+    text:setf(option, (self.w-6)*self.client.gui_scale, "left")
     table.insert(self.text_options, text)
   end
 end
@@ -61,18 +57,18 @@ function InputQuery:draw()
   love.graphics.setScissor((self.x+3)*scale, (self.y+3)*scale, (self.w-6)*scale, (self.h-6)*scale)
 
   -- draw title
-  love.graphics.draw(self.text, self.x+3, self.y+3, 0, self.text_factor)
+  love.graphics.draw(self.text, self.x+3, self.y+3, 0, 1/scale)
 
   -- draw options
-  local shift_y = self.y+3+self.text:getHeight()*self.text_factor
+  local shift_y = self.y+3+self.text:getHeight()*1/scale
   for i, text in ipairs(self.text_options) do
-    love.graphics.draw(text, self.x+3, shift_y, 0, self.text_factor)
+    love.graphics.draw(text, self.x+3, shift_y, 0, 1/scale)
 
     if self.selected == i then -- draw selection
-      self:drawBorders(self.system.select_borders, self.x+2, shift_y, self.w-4, text:getHeight()*self.text_factor)
+      self:drawBorders(self.system.select_borders, self.x+2, shift_y, self.w-4, text:getHeight()/scale)
     end
 
-    shift_y = shift_y+text:getHeight()*self.text_factor
+    shift_y = shift_y+text:getHeight()/scale
   end
 
   love.graphics.setScissor()
