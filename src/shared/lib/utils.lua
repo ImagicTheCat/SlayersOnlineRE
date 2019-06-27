@@ -61,4 +61,10 @@ function utils.mergeInto(a, b)
   end
 end
 
+-- return fixed scale (to get integer mult/div on the passed size)
+function utils.floorScale(scale, size)
+  if scale < 1 then return math.floor(scale*size)/size
+  else return math.floor(scale) end
+end
+
 return utils

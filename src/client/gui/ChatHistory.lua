@@ -13,8 +13,7 @@ function ChatHistory:__construct(client)
 end
 
 function ChatHistory:buildText()
-  self.text_factor = self.client.font_target_height/(self.client.font:getHeight()*self.client.gui_scale)
-  self.max_display = math.ceil((self.h-6)*self.client.gui_scale/(self.client.font_target_height))
+  self.max_display = math.ceil((self.h-6)*self.client.gui_scale/(self.client.font:getHeight()))
 
   local coloredtext = {}
 
@@ -25,7 +24,7 @@ function ChatHistory:buildText()
     table.insert(coloredtext, "\n")
   end
 
-  self.text:setf(coloredtext, (self.w-6)/self.text_factor, "left")
+  self.text:setf(coloredtext, (self.w-6)*self.client.gui_scale, "left")
 end
 
 -- coloredtext: see LÖVE
@@ -53,7 +52,7 @@ function ChatHistory:draw()
   local scale = self.client.gui_scale
   love.graphics.setScissor((self.x+3)*scale, (self.y+3)*scale, (self.w-6)*scale, (self.h-6)*scale)
 
-  love.graphics.draw(self.text, self.x+3, self.y+self.h-self.text:getHeight()*self.text_factor-3, 0, self.text_factor)
+  love.graphics.draw(self.text, self.x+3, self.y+self.h-self.text:getHeight()/scale-3, 0, 1/scale)
 
   love.graphics.setScissor()
 end

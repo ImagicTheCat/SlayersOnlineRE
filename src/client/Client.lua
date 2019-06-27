@@ -63,8 +63,7 @@ function Client:__construct(cfg)
   self.loading_screens = love.filesystem.getDirectoryItems("resources/textures/loadings")
   self.loading_screen_fade = 1
 
-  self.font = love.graphics.newFont("resources/font.ttf", 50)
-  self.font_target_height = 40 -- pixels
+  self.font = love.graphics.newFont("resources/font.ttf", 25)
   love.graphics.setFont(self.font)
 
   self.world_scale = 4
@@ -276,9 +275,11 @@ end
 function Client:onResize(w, h)
   self.world_scale = math.ceil(h/16/15) -- display 15 tiles max (height)
 
-  self.xp_scale = utils.clamp(math.floor(w/self.xp_tex:getWidth()), 1, 3)/self.gui_scale
+  self.xp_scale = utils.floorScale(w/self.xp_tex:getWidth()/self.gui_scale, self.xp_tex:getWidth())
 
-  self.input_chat:update(2/self.gui_scale, (h-45-2)/self.gui_scale, (w-4)/self.gui_scale, 45/self.gui_scale)
+  self.input_chat:update(2/self.gui_scale, (h-self.font:getHeight()-2-12)/self.gui_scale, (w-4)/self.gui_scale, (self.font:getHeight()+12)/self.gui_scale)
+
+  self.phials_scale = utils.floorScale((h*0.40/self.phials_atlas.cell_h)/self.gui_scale, self.phials_atlas.cell_h)
 
   self.phials_w = self.phials_atlas.cell_w*self.phials_scale
   self.phials_h = self.phials_atlas.cell_h*self.phials_scale

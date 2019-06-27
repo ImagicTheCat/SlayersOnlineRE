@@ -18,17 +18,10 @@ function TextInput:draw()
   local scale = self.client.gui_scale
   love.graphics.setScissor((self.x+3)*scale, (self.y+3)*scale, (self.w-6)*scale, (self.h-6)*scale)
 
-  -- height
-  local factor = 1
-  local th = self.display_text:getHeight()
-  if th > 0 then
-    factor = (self.h-6)/th
-  end
-
   -- scroll
-  local x = math.min(self.x+4, self.w-6-self.display_text:getWidth()*factor)
+  local x = math.min(self.x+4, self.w-6-self.display_text:getWidth()*scale)
 
-  love.graphics.draw(self.display_text, x, self.y+3, 0, factor)
+  love.graphics.draw(self.display_text, x, self.y+3, 0, 1/scale)
   love.graphics.setScissor()
 end
 
