@@ -79,7 +79,8 @@ commands.help = {function(self, client, args)
 end, "[command]", "list all commands or print info for a single command"}
 
 local bind_blacklist = {
-  ["return"] = true
+  ["return"] = true,
+  escape = true
 }
 commands.bind = {function(self, client, args)
   if client then
@@ -101,7 +102,7 @@ commands.bind = {function(self, client, args)
   end
 end, "<scancode> [control]", [[show or map a LÖVE/SDL scancode to a control
     scancodes: https://love2d.org/wiki/Scancode
-    controls: none, up, right, down, left, interact, attack, return]]
+    controls: none, up, right, down, left, interact, attack, return, menu]]
 }
 
 commands.volume = {function(self, client, args)

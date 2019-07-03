@@ -11,6 +11,7 @@ local ChatHistory = require("gui/ChatHistory")
 local MessageWindow = require("gui/MessageWindow")
 local InputQuery = require("gui/InputQuery")
 local TextureAtlas = require("TextureAtlas")
+local Menu = require("gui/Menu")
 
 local Client = class("Client")
 
@@ -44,7 +45,8 @@ function Client:__construct(cfg)
       a = "left",
       space = "attack",
       e = "interact",
-      ["return"] = "return"
+      ["return"] = "return",
+      escape = "menu"
     },
     gui = {
       font_size = 25
@@ -85,6 +87,9 @@ function Client:__construct(cfg)
   self.input_query_showing = false
 
   self.input_string_showing = false
+
+  self.menu = Menu(self)
+  self.menu_showing = false
 
   self.phials_atlas = TextureAtlas(0,0,64,216,16,72)
   self.phials_tex = self:loadTexture("resources/textures/phials.png")
@@ -306,6 +311,10 @@ function Client:onResize(w, h)
 
   self.message_window:update(2/self.gui_scale, 2/self.gui_scale, (w-4)/self.gui_scale, 200/self.gui_scale)
   self.input_query:update(2/self.gui_scale, 2/self.gui_scale, (w-4)/self.gui_scale, 200/self.gui_scale)
+
+  local w_menu = self.font:getWidth("Inventory")+12*self.gui_scale
+  local h_menu = (self.font:getHeight()+6*self.gui_scale)*5+6*self.gui_scale
+  self.menu:update(2/self.gui_scale, (h/2-h_menu/2)/self.gui_scale, w_menu/self.gui_scale, h_menu/self.gui_scale)
 end
 
 function Client:onSetFont()
@@ -423,6 +432,8 @@ function Client:pressControl(id)
       if id == "up" then
         if self.input_query_showing then
           self.input_query.selector:moveSelect(0,-1)
+        elseif self.menu_showing then
+          self.menu.selector:moveSelect(0,-1)
         else
           self:pressOrientation(0)
         end
@@ -430,6 +441,8 @@ function Client:pressControl(id)
       elseif id == "down" then
         if self.input_query_showing then
           self.input_query.selector:moveSelect(0,1)
+        elseif self.menu_showing then
+          self.menu.selector:moveSelect(0,1)
         else
           self:pressOrientation(2)
         end
@@ -447,6 +460,10 @@ function Client:pressControl(id)
           self:inputInteract()
         end
       end
+    end
+
+    if id == "menu" then
+      self.menu_showing = not self.menu_showing
     end
 
     -- input text
@@ -576,6 +593,10 @@ function Client:draw()
 
   if self.input_query_showing then
     self.input_query:draw()
+  end
+
+  if self.menu_showing then
+    self.menu:draw()
   end
 
   love.graphics.pop()
