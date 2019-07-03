@@ -53,8 +53,8 @@ end
 function InputQuery:draw()
   Window.draw(self)
 
+  self:clip()
   local scale = self.client.gui_scale
-  love.graphics.setScissor((self.x+3)*scale, (self.y+3)*scale, (self.w-6)*scale, (self.h-6)*scale)
 
   -- draw title
   love.graphics.draw(self.text, self.x+3, self.y+3, 0, 1/scale)
