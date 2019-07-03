@@ -10,23 +10,7 @@ function Window:__construct(client)
   self.system = Window.loadSystem(client)
 end
 
--- draw rect based on borders
-function Window:drawBorders(borders, x, y, w, h)
-  local b = borders
-
-  -- borders
-  --- corners
-  love.graphics.draw(self.system.tex, b.ctl, x, y)
-  love.graphics.draw(self.system.tex, b.ctr, x+w-b.margin, y)
-  love.graphics.draw(self.system.tex, b.cbl, x, y+h-b.margin)
-  love.graphics.draw(self.system.tex, b.cbr, x+w-b.margin, y+h-b.margin)
-  --- middles
-  love.graphics.draw(self.system.tex, b.mt, x+b.margin, y, 0, (w-b.margin*2)/(b.w-b.margin*2), 1)
-  love.graphics.draw(self.system.tex, b.mb, x+b.margin, y+h-b.margin, 0, (w-b.margin*2)/(b.w-b.margin*2), 1)
-  love.graphics.draw(self.system.tex, b.ml, x, y+b.margin, 0, 1, (h-b.margin*2)/(b.h-b.margin*2))
-  love.graphics.draw(self.system.tex, b.mr, x+w-b.margin, y+b.margin, 0, 1, (h-b.margin*2)/(b.h-b.margin*2))
-end
-
+-- overload
 function Window:draw()
   local x,y,w,h = self.x, self.y, self.w, self.h
 

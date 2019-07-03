@@ -422,14 +422,14 @@ function Client:pressControl(id)
     if not self.typing then
       if id == "up" then
         if self.input_query_showing then
-          self.input_query:moveSelect(-1)
+          self.input_query.selector:moveSelect(0,-1)
         else
           self:pressOrientation(0)
         end
       elseif id == "right" then self:pressOrientation(1)
       elseif id == "down" then
         if self.input_query_showing then
-          self.input_query:moveSelect(1)
+          self.input_query.selector:moveSelect(0,1)
         else
           self:pressOrientation(2)
         end
@@ -441,6 +441,7 @@ function Client:pressControl(id)
           self.message_showing = false
         elseif self.input_query_showing then
           self.input_query_showing = false
+          self.input_query.selector:select()
           self:sendPacket(net.EVENT_INPUT_QUERY_ANSWER, self.input_query.options[self.input_query.selected] or "")
         else
           self:inputInteract()
