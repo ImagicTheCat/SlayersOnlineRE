@@ -52,6 +52,23 @@ function Deserializer.readProjectClassEntry(file)
   return cls
 end
 
+function Deserializer.readProjectObjectEntry(file)
+  local obj = {}
+
+  obj.name = Deserializer.readString(file, 50)
+  obj.description = Deserializer.readString(file, 50)
+  obj.usable_class, obj.type, obj.spell = struct.unpack("HHH", file:read(2*3))
+  obj.price = struct.unpack("I", file:read(4))
+  obj.mod_strength, obj.mod_dexterity, obj.mod_constitution, obj.mod_magic = struct.unpack("HHHH", file:read(2*4))
+  obj.mod_attack_a, obj.mod_attack_b, obj.mod_defense = struct.unpack("HHH", file:read(2*3))
+  file:seek("cur", 2)
+  obj.mod_hp, obj.mod_mp = struct.unpack("II", file:read(4*2))
+  obj.req_strength, obj.req_dexterity, obj.req_constitution, obj.req_magic, obj.req_level = struct.unpack("HHHHH", file:read(2*5))
+  file:seek("cur", 2)
+
+  return obj
+end
+
 function Deserializer.readMapEventEntry(file)
   local event = {}
 
@@ -120,6 +137,21 @@ function Deserializer.loadProject(name)
       local class = Deserializer.readProjectClassEntry(file_cls)
       prj.classes[class.name] = class
     end
+
+    file_cls:close()
+
+    -- read object entries
+    prj.objects = {}
+    prj.object_count = file_obj:seek("end")/148 -- 148 bytes per entry
+
+    file_obj:seek("set")
+
+    for i=1,math.min(prj.object_count,3) do
+      local object = Deserializer.readProjectObjectEntry(file_obj)
+      table.insert(prj.objects, object)
+    end
+
+    file_obj:close()
 
     return prj
   else
