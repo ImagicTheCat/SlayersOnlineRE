@@ -35,6 +35,23 @@ function Deserializer.readProjectEntry(file)
   return map
 end
 
+function Deserializer.readProjectClassEntry(file)
+  local cls = {}
+
+  cls.name = Deserializer.readString(file, 50)
+  cls.attack_sound = Deserializer.readString(file, 255)
+  cls.hurt_sound = Deserializer.readString(file, 255)
+  cls.focus_sound = Deserializer.readString(file, 255)
+  file:seek("cur",1)
+  cls.max_strength, cls.max_dexterity, cls.max_constitution, cls.max_magic = struct.unpack("iiii", file:read(4*4))
+  cls.max_level, cls.level_up_points = struct.unpack("ii", file:read(2*4))
+  cls.strength, cls.dexterity, cls.constitution, cls.magic = struct.unpack("iiii", file:read(4*4))
+  cls.off_index, cls.def_index, cls.pow_index, cls.health_index, cls.mag_index = struct.unpack("HHHHH", file:read(5*2))
+  file:seek("cur",2)
+
+  return cls
+end
+
 function Deserializer.readMapEventEntry(file)
   local event = {}
 
@@ -70,20 +87,38 @@ function Deserializer.readMapEventEntry(file)
 end
 
 function Deserializer.loadProject(name)
-  -- .prj
-  local file, err = io.open("resources/project/"..name..".prj", "rb")
-  if file then
+  -- open files
+  local file_prj = io.open("resources/project/"..name..".prj", "rb")
+  local file_cls = io.open("resources/project/"..name..".cls", "rb")
+  local file_mag = io.open("resources/project/"..name..".mag", "rb")
+  local file_mon = io.open("resources/project/"..name..".mon", "rb")
+  local file_obj = io.open("resources/project/"..name..".obj", "rb")
+
+  if file_prj and file_cls and file_mag and file_mon and file_obj then
     local prj = {}
     
     -- read map entries
     prj.maps = {}
-    prj.map_count = file:seek("end")/778 -- 778 bytes per map entry
+    prj.map_count = file_prj:seek("end")/778 -- 778 bytes per entry
 
-    file:seek("set")
+    file_prj:seek("set")
 
     for i=1,prj.map_count do
-      local map = Deserializer.readProjectEntry(file)
+      local map = Deserializer.readProjectEntry(file_prj)
       prj.maps[map.name] = map
+    end
+
+    file_prj:close()
+
+    -- read class entries
+    prj.classes = {}
+    prj.class_count = file_cls:seek("end")/872 -- 872 bytes per entry
+
+    file_cls:seek("set")
+
+    for i=1,prj.class_count do
+      local class = Deserializer.readProjectClassEntry(file_cls)
+      prj.classes[class.name] = class
     end
 
     return prj
