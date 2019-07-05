@@ -69,6 +69,40 @@ function Deserializer.readProjectObjectEntry(file)
   return obj
 end
 
+function Deserializer.readProjectMobEntry(file)
+  local mob = {}
+
+  mob.name = Deserializer.readString(file, 50)
+  mob.type, mob.level = struct.unpack("BB", file:read(2))
+  mob.charaset = Deserializer.readString(file, 100)
+  mob.attack_sound = Deserializer.readString(file, 100)
+  mob.hurt_sound = Deserializer.readString(file, 100)
+  mob.focus_sound = Deserializer.readString(file, 100)
+  file:seek("cur", 1)
+  mob.speed, mob.w, mob.h = struct.unpack("HHH", file:read(2*3))
+  mob.attack, mob.defense, mob.damage = struct.unpack("HHH", file:read(2*3))
+  file:seek("cur", 2)
+  mob.health = struct.unpack("I", file:read(4))
+  mob.xp_min, mob.xp_max, mob.gold_min, mob.gold_max = struct.unpack("IIII", file:read(4*4))
+  mob.loot_object, mob.loot_chance = struct.unpack("HH", file:read(2*2))
+  mob.var_id, mob.var_increment = struct.unpack("HH", file:read(2*2))
+
+  mob.spells = {}
+  -- 10 spells id
+  for i=1,10 do
+    mob.spells[i] = {struct.unpack("H", file:read(2))}
+  end
+
+  -- 10 spells number
+  for i=1,10 do
+    mob.spells[i][2] = struct.unpack("H", file:read(2))
+  end
+
+  file:seek("cur", 4)
+
+  return mob
+end
+
 function Deserializer.readMapEventEntry(file)
   local event = {}
 
@@ -146,12 +180,25 @@ function Deserializer.loadProject(name)
 
     file_obj:seek("set")
 
-    for i=1,math.min(prj.object_count,3) do
+    for i=1,prj.object_count do
       local object = Deserializer.readProjectObjectEntry(file_obj)
       table.insert(prj.objects, object)
     end
 
     file_obj:close()
+
+    -- read mob entries
+    prj.mobs = {}
+    prj.mob_count = file_mon:seek("end")/544 -- 544 bytes per entry
+
+    file_mon:seek("set")
+
+    for i=1,prj.mob_count do
+      local mob = Deserializer.readProjectMobEntry(file_mon)
+      prj.mobs[mob.name] = mob
+    end
+
+    file_mon:close()
 
     return prj
   else
