@@ -214,10 +214,13 @@ function Server:__construct(cfg)
   self.cfg = cfg
 
   -- load project
+  print("load project \""..self.cfg.project_name.."\"...")
+
   self.project = Deserializer.loadProject(self.cfg.project_name)
-  print(self.project.map_count.." project maps loaded")
-  print(self.project.class_count.." project classes loaded")
-  print(self.project.object_count.." project objects loaded")
+  print("- "..self.project.map_count.." maps loaded")
+  print("- "..self.project.class_count.." classes loaded")
+  print("- "..self.project.object_count.." objects loaded")
+  print("- "..self.project.mob_count.." mobs loaded")
   self.project.tilesets = {} -- map of id => tileset data
 
   self.clients = {} -- map of peer => client
