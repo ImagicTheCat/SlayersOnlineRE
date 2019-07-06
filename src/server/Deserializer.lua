@@ -103,6 +103,29 @@ function Deserializer.readProjectMobEntry(file)
   return mob
 end
 
+function Deserializer.readProjectSpellEntry(file)
+  local spell = {}
+
+  spell.name = Deserializer.readString(file, 50)
+  spell.description = Deserializer.readString(file, 50)
+  spell.set = Deserializer.readString(file, 255)
+  spell.sound = Deserializer.readString(file, 255)
+  spell.area_expr = Deserializer.readString(file, 255)
+  spell.aggro_expr = Deserializer.readString(file, 255)
+  spell.duration_expr = Deserializer.readString(file, 255)
+  spell.touch_expr = Deserializer.readString(file, 255)
+  spell.effect_expr = Deserializer.readString(file, 255)
+  file:seek("cur", 2)
+  spell.x, spell.y, spell.w, spell.h, spell.opacity = struct.unpack("IIIII", file:read(4*5))
+  spell.position_type, spell.anim_duration = struct.unpack("HH", file:read(2*2))
+  spell.usable_class, spell.type = struct.unpack("HH", file:read(2*2))
+  spell.mp, spell.req_level, spell.target_type, spell.cast_duration = struct.unpack("IHHH", file:read(4+2*3))
+
+  file:seek("cur", 2)
+
+  return spell
+end
+
 function Deserializer.readMapEventEntry(file)
   local event = {}
 
@@ -169,7 +192,7 @@ function Deserializer.loadProject(name)
 
     for i=1,prj.class_count do
       local class = Deserializer.readProjectClassEntry(file_cls)
-      prj.classes[class.name] = class
+      table.insert(prj.classes, class)
     end
 
     file_cls:close()
@@ -195,10 +218,21 @@ function Deserializer.loadProject(name)
 
     for i=1,prj.mob_count do
       local mob = Deserializer.readProjectMobEntry(file_mon)
-      prj.mobs[mob.name] = mob
+      table.insert(prj.mobs, mob)
     end
 
     file_mon:close()
+
+    -- read spell entries
+    prj.spells = {}
+    prj.spell_count = file_mag:seek("end")/1936 -- 1936 bytes per entry
+
+    file_mag:seek("set")
+
+    for i=1,prj.spell_count do
+      local spell = Deserializer.readProjectSpellEntry(file_mag)
+      table.insert(prj.spells, spell)
+    end
 
     return prj
   else

@@ -221,6 +221,7 @@ function Server:__construct(cfg)
   print("- "..self.project.class_count.." classes loaded")
   print("- "..self.project.object_count.." objects loaded")
   print("- "..self.project.mob_count.." mobs loaded")
+  print("- "..self.project.spell_count.." spells loaded")
   self.project.tilesets = {} -- map of id => tileset data
 
   self.clients = {} -- map of peer => client
@@ -243,7 +244,7 @@ function Server:__construct(cfg)
 
   -- create host
   self.host = enet.host_create(self.cfg.host, self.cfg.max_clients)
-  print("Listening to \""..self.cfg.host.."\"...")
+  print("listening to \""..self.cfg.host.."\"...")
 
   -- console thread
   self.console_flags = effil.table({ running = true })
