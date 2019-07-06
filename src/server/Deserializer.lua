@@ -160,6 +160,20 @@ function Deserializer.readMapEventEntry(file)
   return event
 end
 
+function Deserializer.readMapMobAreaEntry(file)
+  local area = {}
+
+  area.x1, area.x2, area.y1, area.y2 = struct.unpack("IIII", file:read(4*4))
+  file:seek("cur", 4)
+  area.max_mobs, area.type = struct.unpack("Ii", file:read(4*2))
+  file:seek("cur", 4)
+  area.spawn_speed = struct.unpack("I", file:read(4))
+  area.server_var = Deserializer.readString(file, 255)
+  area.server_var_expr = Deserializer.readString(file, 255)
+
+  return area
+end
+
 function Deserializer.loadProject(name)
   -- open files
   local file_prj = io.open("resources/project/"..name..".prj", "rb")
@@ -234,6 +248,8 @@ function Deserializer.loadProject(name)
       table.insert(prj.spells, spell)
     end
 
+    file_mag:close()
+
     return prj
   else
     print("error loading project \""..name.."\"")
@@ -253,6 +269,8 @@ function Deserializer.loadTilesetPassableData(id)
     for i=1,size do
       data[i] = (struct.unpack("B", file:read(1)) > 0)
     end
+
+    file:close()
 
     return data
   else
@@ -274,9 +292,32 @@ function Deserializer.loadMapTiles(id)
       end
     until not line
 
+    file:close()
+
     return tiledata
   else
     print("error loading tiledata for map \""..id.."\"")
+  end
+end
+
+function Deserializer.loadMapMobAreas(id)
+  local file = io.open("resources/project/Maps/"..id..".zon", "rb")
+  if file then
+    local count = file:seek("end")/548 -- 548 bytes per entry
+    file:seek("set")
+
+    local areas = {}
+
+    for i=1,count do
+      local area = Deserializer.readMapMobAreaEntry(file)
+      table.insert(areas, area)
+    end
+
+    file:close()
+
+    return areas
+  else
+    print("error loading mob areas for map \""..id.."\"")
   end
 end
 
@@ -339,6 +380,9 @@ function Deserializer.loadMapEvents(id)
 
       line = f_ev0:read("*l")
     end
+
+    f_evn:close()
+    f_ev0:close()
 
     return events
   else
