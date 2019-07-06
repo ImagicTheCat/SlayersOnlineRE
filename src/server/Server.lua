@@ -344,6 +344,7 @@ function Server:loadMapData(id)
     map.loaded = true
     map.tiledata = Deserializer.loadMapTiles(id)
     map.events = Deserializer.loadMapEvents(id)
+    map.mob_areas = Deserializer.loadMapMobAreas(id)
 
     map.tileset_id = string.sub(map.tileset, 9, string.len(map.tileset)-4)
     map.tileset_data = self:loadTilesetData(map.tileset_id)
