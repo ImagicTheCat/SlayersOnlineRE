@@ -1,4 +1,5 @@
 local Entity = require("Entity")
+local utils = require("lib/utils")
 local cfg = require("config")
 
 local LivingEntity = class("LivingEntity", Entity)

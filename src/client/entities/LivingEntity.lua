@@ -118,10 +118,6 @@ end
 
 -- overload
 function LivingEntity:tick(dt)
-  -- lerp
-  local x = math.floor(utils.lerp(self.x, self.tx, 0.5))
-  local y = math.floor(utils.lerp(self.y, self.ty, 0.5))
-
   if self.attacking then
     -- compute attack animation
     self.attack_time = self.attack_time+dt
@@ -145,6 +141,10 @@ function LivingEntity:tick(dt)
       self.move_to_cell = nil
     end
   else
+    -- lerp
+    local x = math.floor(utils.lerp(self.x, self.tx, 0.5))
+    local y = math.floor(utils.lerp(self.y, self.ty, 0.5))
+
     -- compute movement animation
     local dist = math.abs(x-self.x)+math.abs(y-self.y)
     self.anim_traveled = self.anim_traveled+dist
@@ -152,11 +152,11 @@ function LivingEntity:tick(dt)
     local steps = math.floor(self.anim_traveled/self.anim_step_length)
     self.anim_traveled = self.anim_traveled-self.anim_step_length*steps
     self.anim_x = (self.anim_x+steps)%3
-  end
 
-  -- apply new position
-  self.x = x
-  self.y = y
+    -- apply new position
+    self.x = x
+    self.y = y
+  end
 end
 
 -- overload
