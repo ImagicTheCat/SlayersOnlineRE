@@ -3,7 +3,6 @@ local Entity = require("Entity")
 local LivingEntity = require("entities/LivingEntity")
 
 local Event = class("Event", LivingEntity)
-local cfg = require("config")
 
 -- STATICS
 
