@@ -1,4 +1,5 @@
 local LivingEntity = require("entities/LivingEntity")
+local utils = require("lib/utils")
 
 local Mob = class("Mob", LivingEntity)
 
@@ -31,6 +32,45 @@ function Mob:__construct(data)
 
   self.speed = data.speed
   self.obstacle = data.obstacle
+end
+
+-- randomly move the mob
+-- (starts a unique loop, will call itself again)
+function Mob:moveRandom()
+  if self.map and not self.moverandom_task then
+    self.moverandom_task = task(utils.randf(0.75, 7), function()
+      local ok
+      local ncx, ncy
+
+      -- search for a passable cell
+      local i = 1
+      while not ok and i <= 10 do
+        local dx, dy = LivingEntity.orientationVector(math.random(0,3))
+        ncx, ncy = self.cx+dx, self.cy+dy
+
+        ok = self.map:isCellPassable(self, ncx, ncy)
+
+        i = i+1
+      end
+
+      if ok then
+        self:moveToCell(ncx, ncy)
+      end
+
+      self.moverandom_task = nil
+
+      self:moveRandom()
+    end)
+  end
+end
+
+-- overload
+function Mob:onMapChange()
+  LivingEntity.onMapChange(self)
+
+  if self.map and (self.data.type == Mob.Type.DEFENSIVE or self.data.type == Mob.Type.AGGRESSIVE) then
+    self:moveRandom()
+  end
 end
 
 return Mob
