@@ -17,6 +17,7 @@ end
 
 function Client:__construct(server, peer)
   Player.__construct(self)
+  self.nettype = "Player"
 
   self.server = server
   self.peer = peer

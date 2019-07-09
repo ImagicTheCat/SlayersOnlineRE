@@ -67,4 +67,18 @@ function utils.floorScale(scale, size)
   else return math.floor(scale) end
 end
 
+-- basic deep clone function (doesn't handle circular references)
+function utils.clone(t)
+  if type(t) == "table" then
+    local new = {}
+    for k,v in pairs(t) do
+      new[k] = clone(v)
+    end
+
+    return new
+  else
+    return t
+  end
+end
+
 return utils

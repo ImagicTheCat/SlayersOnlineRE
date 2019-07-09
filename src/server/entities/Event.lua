@@ -2,7 +2,7 @@ local utils = require("lib/utils")
 local Entity = require("Entity")
 local LivingEntity = require("entities/LivingEntity")
 
-local Event = class("Event", Entity)
+local Event = class("Event", LivingEntity)
 local cfg = require("config")
 
 -- STATICS
@@ -224,17 +224,10 @@ end
 
 function event_special_vars:Chipset(value)
   if value then
-    self.full_set = value
-    self.set = string.sub(self.full_set, 9) -- remove Chipset/ part
-    self:broadcastPacket("ch_set", {
-      set = self.set,
-      x = self.set_x,
-      y = self.set_y,
-      w = self.w,
-      h = self.h
-    })
+    self.charaset.path = string.sub(value, 9) -- remove Chipset/ part
+    self:setCharaset(self.charaset)
   else
-    return self.full_set
+    return (self.charaset.is_skin and "" or "Chipset\\")..self.charaset.path
   end
 end
 
@@ -265,11 +258,10 @@ function event_special_vars:TypeAnim(value)
     }
 
     if self.animation_type <= 2 then
-      self.orientation = self.page.animation_mod
+      self:setOrientation(self.page.animation_mod)
     end
 
     if self.animation_type ~= Event.Animation.VISUAL_EFFECT then
-      data.orientation = self.orientation
       data.animation_number = self.animation_number
     else
       data.animation_wc = math.max(self.page.animation_number, 1)
@@ -322,37 +314,37 @@ end
 
 function event_special_vars:X(value)
   if value then
-    self.set_x = (Event.computeExpression(value) or 0)
-    self:updateSetDimensions()
+    self.charaset.x = (Event.computeExpression(value) or 0)
+    self:setCharaset(self.charaset)
   else
-    return self.set_x
+    return self.charaset.x
   end
 end
 
 function event_special_vars:Y(value)
   if value then
-    self.set_y = (Event.computeExpression(value) or 0)
-    self:updateSetDimensions()
+    self.charaset.y = (Event.computeExpression(value) or 0)
+    self:setCharaset(self.charaset)
   else
-    return self.set_y
+    return self.charaset.y
   end
 end
 
 function event_special_vars:W(value)
   if value then
-    self.w = (Event.computeExpression(value) or 0)
-    self:updateSetDimensions()
+    self.charaset.w = (Event.computeExpression(value) or 0)
+    self:setCharaset(self.charaset)
   else
-    return self.w
+    return self.charaset.w
   end
 end
 
 function event_special_vars:H(value)
   if value then
-    self.h = (Event.computeExpression(value) or 0)
-    self:updateSetDimensions()
+    self.charaset.h = (Event.computeExpression(value) or 0)
+    self:setCharaset(self.charaset)
   else
-    return self.h
+    return self.charaset.h
   end
 end
 
@@ -483,7 +475,7 @@ end
 
 -- page_index, x, y: specific state or nil
 function Event:__construct(client, data, page_index, x, y)
-  Entity.__construct(self)
+  LivingEntity.__construct(self)
 
   self:setClient(client)
   self.data = data -- event data
@@ -518,14 +510,16 @@ function Event:__construct(client, data, page_index, x, y)
   -- init entity stuff
   self:teleport(x or self.data.x*16, y or self.data.y*16)
 
-  self.full_set = self.page.set
-  self.set = string.sub(self.full_set, 9) -- remove Chipset/ part
+  self:setCharaset({
+    path = string.sub(self.page.set, 9), -- remove Chipset/ part
+    x = self.page.set_x, y = self.page.set_y,
+    w = self.page.w, h = self.page.h,
+    is_skin = false
+  })
+
   self.obstacle = self.page.obstacle
   self.active = self.page.active -- (active/visible)
-  self.orientation = 0
   self.animation_type = self.page.animation_type
-  self.set_x, self.set_y = self.page.set_x, self.page.set_y
-  self.w, self.h = self.page.w, self.page.h
   self.animation_number = self.page.animation_number
   self.speed = self.page.speed
 
@@ -535,7 +529,7 @@ function Event:__construct(client, data, page_index, x, y)
 
   self:moveRandom()
 
-  if self.page.active and string.len(self.set) > 0 then -- networked event
+  if self.page.active and string.len(self.page.set) > 0 then -- networked event
     self.nettype = "Event"
   end
 end
@@ -839,11 +833,10 @@ end
 
 -- overload
 function Event:serializeNet()
-  local data = Entity.serializeNet(self)
+  local data = LivingEntity.serializeNet(self)
 
   data.animation_type = self.animation_type
   data.position_type = self.page.position_type
-  data.set = self.set
 
   if self.animation_type ~= Event.Animation.VISUAL_EFFECT then
     data.orientation = self.orientation
@@ -853,57 +846,9 @@ function Event:serializeNet()
     data.animation_hc = math.max(self.page.animation_mod, 1)
   end
 
-  data.w = self.w
-  data.h = self.h
-  data.set_x = self.set_x
-  data.set_y = self.set_y
   data.active = self.active
 
   return data
-end
-
-function Event:setOrientation(orientation)
-  if self.animation_type ~= Event.Animation.VISUAL_EFFECT then
-    self.orientation = orientation
-    self:broadcastPacket("ch_orientation", orientation)
-  end
-end
-
--- (async)
--- blocking: if passed/true, async and wait until it reaches the destination
-function Event:moveToCell(cx, cy, blocking)
-  local r
-  if blocking then r = async() end
-
-  -- basic implementation
-  local dx, dy = cx-self.x/16, cy-self.y/16
-  local speed = self.speed*5 -- cells per second
-  self:setOrientation(LivingEntity.vectorOrientation(dx,dy))
-  self:broadcastPacket("move_to_cell", {cx = cx, cy = cy, speed = speed})
-
-  local dist = math.sqrt(dx*dx+dy*dy)
-  local duration = dist/speed
-  local time = clock()
-  local x, y = self.x, self.y
-
-  self.move_task = itask(1/cfg.tickrate, function()
-    local progress = (clock()-time)/duration
-    if progress <= 1 then
-      self.x = utils.lerp(x, cx*16, progress)
-      self.y = utils.lerp(y, cy*16, progress)
-      self:updateCell()
-    else -- end
-      self:teleport(cx*16, cy*16)
-      self.move_task:remove()
-      self.move_task = nil
-
-      if blocking then
-        r()
-      end
-    end
-  end)
-
-  if blocking then r:wait() end
 end
 
 -- randomly move the event if type is Animation.CHARACTER_RANDOM
@@ -936,16 +881,6 @@ function Event:moveRandom()
       self:moveRandom()
     end)
   end
-end
-
--- to client update
-function Event:updateSetDimensions()
-  self:broadcastPacket("ch_set_dim", {
-    x = self.set_x,
-    y = self.set_y,
-    w = self.w,
-    h = self.h
-  })
 end
 
 -- overload
