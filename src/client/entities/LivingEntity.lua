@@ -6,26 +6,43 @@ local LivingEntity = class("LivingEntity", Entity)
 
 -- STATICS
 
-LivingEntity.charaset_atlas = TextureAtlas(0, 0, 9*24, 32*4, 24, 32)
+LivingEntity.atlases = {}
+
+function LivingEntity.getTextureAtlas(x, y, tw, th, w, h)
+  local key = table.concat({x,y,tw,th,w,h}, ",")
+
+  local atlas = LivingEntity.atlases[key]
+  if not atlas then
+    atlas = TextureAtlas(x,y,tw,th,w,h)
+    LivingEntity.atlases[key] = atlas
+  end
+
+  return atlas
+end
 
 -- METHODS
 
 function LivingEntity:__construct(data)
   Entity.__construct(self, data)
 
-  self.orientation = data.orientation
   self.tx = self.x
   self.ty = self.y
 
   self.anim_traveled = 0 -- distance traveled (pixels) for the movement animation
-  self.anim_index = 1 -- movement animation frame index
   self.anim_step_length = 15 -- pixel length for a movement step
+
+  self.anim_x = 0
+  self.anim_y = data.orientation
 
   self.attacking = false
 
-  -- skin
-  self.charaset = client:loadTexture("resources/textures/sets/charaset.png")
-  self:setSkin(data.skin)
+  -- default skin
+  self:setCharaset({
+    path = "charaset.png",
+    x = 0, y = 0,
+    w = 24, h = 32,
+    is_skin = false
+  })
 end
 
 -- overload
@@ -35,9 +52,9 @@ function LivingEntity:onPacket(action, data)
   if action == "teleport" then
     self.tx = self.x
     self.ty = self.y
-    self.anim_index = 1
+    self.anim_x = 1
   elseif action == "ch_orientation" then
-    self.orientation = data
+    self.anim_y = data
   elseif action == "attack" then
     self.attacking = true
     self.attack_duration = data
@@ -50,19 +67,31 @@ function LivingEntity:onPacket(action, data)
       source:setVolume(0.75)
       source:setAttenuationDistances(16, 16*15)
     end)
-  elseif action == "ch_skin" then
-    self:setSkin(data)
+  elseif action == "ch_charaset" then
+    self:setCharaset(data)
   end
 end
 
--- skin: remote skin filename
-function LivingEntity:setSkin(skin)
+function LivingEntity:setCharaset(charaset)
+  self.charaset = charaset
+
   async(function()
-    local image = client:loadSkin(skin)
-    if image then
-      self.charaset = image
+    -- load texture
+    local texture
+
+    if charaset.is_skin then -- skin
+      texture = client:loadSkin(charaset.path)
+    else -- resource
+      if client.net_manager:requestResource("textures/sets/"..charaset.path) then
+        texture = client:loadTexture("resources/textures/sets/"..charaset.path)
+      end
+    end
+
+    if texture then
+      self.texture = texture
+      self.atlas = LivingEntity.getTextureAtlas(charaset.x, charaset.y, texture:getWidth(), texture:getHeight(), charaset.w, charaset.h)
     else
-      print("failed to load character skin \""..skin.."\"")
+      print("failed to load charaset "..(charaset.is_skin and "skin" or "resource").." \""..charaset.path.."\"")
     end
   end)
 end
@@ -81,10 +110,10 @@ function LivingEntity:tick(dt)
   if self.attacking then
     -- compute attack animation
     self.attack_time = self.attack_time+dt
-    self.anim_index = 3+math.floor(self.attack_time/self.attack_duration*3)%3
+    self.anim_x = 3+math.floor(self.attack_time/self.attack_duration*3)%3
     if self.attack_time >= self.attack_duration then -- stop
       self.attacking = false
-      self.anim_index = 1
+      self.anim_x = 1
     end
   else
     -- compute movement animation
@@ -93,7 +122,7 @@ function LivingEntity:tick(dt)
 
     local steps = math.floor(self.anim_traveled/self.anim_step_length)
     self.anim_traveled = self.anim_traveled-self.anim_step_length*steps
-    self.anim_index = (self.anim_index+steps)%3
+    self.anim_x = (self.anim_x+steps)%3
   end
 
   -- apply new position
@@ -103,7 +132,17 @@ end
 
 -- overload
 function LivingEntity:draw()
-  love.graphics.draw(self.charaset, LivingEntity.charaset_atlas:getQuad(self.anim_index,self.orientation), self.x-4, self.y-16)
+  if self.texture then
+    local quad = self.atlas:getQuad(self.anim_x, self.anim_y)
+
+    if quad then
+      love.graphics.draw(
+        self.texture,
+        quad,
+        self.x-math.floor((self.atlas.cell_w-16)/2),
+        self.y+16-self.atlas.cell_h)
+    end
+  end
 end
 
 return LivingEntity

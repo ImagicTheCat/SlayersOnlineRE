@@ -40,7 +40,7 @@ function LivingEntity:__construct()
   self.attack_duration = 1 -- seconds
   self.attacking = false
 
-  self.skin = ""
+  -- self.charaset {.path, .x, .y, .w, .h, .is_skin}
 end
 
 -- overload
@@ -48,7 +48,7 @@ function LivingEntity:serializeNet()
   local data = Entity.serializeNet(self)
 
   data.orientation = self.orientation
-  data.skin = self.skin
+  data.charaset = self.charaset
 
   return data
 end
@@ -157,10 +157,13 @@ function LivingEntity:raycastEntities(dist)
   return entities
 end
 
--- skin: skin filename
-function LivingEntity:setSkin(skin)
-  self.skin = skin
-  self:broadcastPacket("ch_skin", skin)
+-- charaset: {.path, .x, .y, .w, .h, .is_skin}
+--- x,y: atlas origin
+--- w,h: cell dimensions
+--- is_skin: if true, use remote skin repository instead of resources
+function LivingEntity:setCharaset(charaset)
+  self.charaset = charaset
+  self:broadcastPacket("ch_charaset", self.charaset)
 end
 
 -- continuous movement update (should end with a teleport)

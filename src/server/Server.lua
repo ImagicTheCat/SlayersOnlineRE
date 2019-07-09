@@ -169,7 +169,14 @@ commands.skin = {function(self, client, args)
     if not args[2] then return true end
 
     local skin = args[2] or ""
-    client:setSkin(skin)
+
+    client:setCharaset({
+      path = skin,
+      x = 0, y = 0,
+      w = 24, h = 32,
+      is_skin = true
+    })
+
     client:sendChatMessage("skin set to \""..skin.."\"")
   end
 end, "<skin_name>", "change skin"}
