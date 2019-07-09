@@ -9,8 +9,6 @@ local Player = class("Player", LivingEntity)
 
 function Player:__construct()
   LivingEntity.__construct(self)
-
-  self.nettype = "Player"
 end
 
 function Player:mapChat(msg)

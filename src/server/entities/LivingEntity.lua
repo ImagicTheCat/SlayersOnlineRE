@@ -30,8 +30,6 @@ end
 function LivingEntity:__construct()
   Entity.__construct(self)
 
-  self.nettype = "LivingEntity"
-
   self.orientation = 0 -- follow charaset directions (0 top, 1 right, 2 bottom, 3 left)
   self.move_forward = false
   self.speed = 50 -- pixels per seconds
@@ -68,6 +66,8 @@ function LivingEntity:setMoveForward(move_forward)
     if self.move_forward then
       self.move_time = clock()
 
+      if self.move_task then self.move_task:remove() end
+
       self.move_task = itask(1/cfg.tickrate, function()
         local dt = clock()-self.move_time
 
@@ -101,6 +101,45 @@ function LivingEntity:setMoveForward(move_forward)
       self:teleport(self.x, self.y) -- end movement
     end
   end
+end
+
+-- (async)
+-- blocking: if passed/true, async and wait until it reaches the destination
+function LivingEntity:moveToCell(cx, cy, blocking)
+  local r
+  if blocking then r = async() end
+
+  -- basic implementation
+  local dx, dy = cx-self.x/16, cy-self.y/16
+  local speed = self.speed*5 -- cells per second
+  self:setOrientation(LivingEntity.vectorOrientation(dx,dy))
+  self:broadcastPacket("move_to_cell", {cx = cx, cy = cy, speed = speed})
+
+  local dist = math.sqrt(dx*dx+dy*dy)
+  local duration = dist/speed
+  local time = clock()
+  local x, y = self.x, self.y
+
+  if self.move_task then self.move_task:remove() end
+
+  self.move_task = itask(1/cfg.tickrate, function()
+    local progress = (clock()-time)/duration
+    if progress <= 1 then
+      self.x = utils.lerp(x, cx*16, progress)
+      self.y = utils.lerp(y, cy*16, progress)
+      self:updateCell()
+    else -- end
+      self:teleport(cx*16, cy*16)
+      self.move_task:remove()
+      self.move_task = nil
+
+      if blocking then
+        r()
+      end
+    end
+  end)
+
+  if blocking then r:wait() end
 end
 
 function LivingEntity:attack()

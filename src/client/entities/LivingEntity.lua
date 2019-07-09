@@ -43,6 +43,10 @@ function LivingEntity:__construct(data)
     w = 24, h = 32,
     is_skin = false
   })
+
+  if data.charaset then
+    self:setCharaset(data.charaset)
+  end
 end
 
 -- overload
@@ -52,6 +56,7 @@ function LivingEntity:onPacket(action, data)
   if action == "teleport" then
     self.tx = self.x
     self.ty = self.y
+    self.move_to_cell = nil
     self.anim_x = 1
   elseif action == "ch_orientation" then
     self.anim_y = data
@@ -69,6 +74,16 @@ function LivingEntity:onPacket(action, data)
     end)
   elseif action == "ch_charaset" then
     self:setCharaset(data)
+  elseif action == "move_to_cell" then
+    data.x = self.x
+    data.y = self.y
+    data.dx = data.cx-data.x/16
+    data.dy = data.cy-data.y/16
+    data.dist = math.sqrt(data.dx*data.dx+data.dy*data.dy)
+    data.duration = data.dist/data.speed
+    data.time = 0
+
+    self.move_to_cell = data
   end
 end
 
@@ -114,6 +129,20 @@ function LivingEntity:tick(dt)
     if self.attack_time >= self.attack_duration then -- stop
       self.attacking = false
       self.anim_x = 1
+    end
+  elseif self.move_to_cell then
+    local mtc = self.move_to_cell
+    mtc.time = mtc.time+dt
+
+    -- compute movement animation
+    local progress = mtc.time/mtc.duration
+    local steps = math.floor((mtc.dist*progress)/self.anim_step_length)
+    self.anim_x = steps%3
+    self.x = utils.lerp(mtc.x, mtc.cx*16, progress)
+    self.y = utils.lerp(mtc.y, mtc.cy*16, progress)
+
+    if mtc.time >= mtc.duration then
+      self.move_to_cell = nil
     end
   else
     -- compute movement animation
