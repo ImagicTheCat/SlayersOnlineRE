@@ -1,6 +1,8 @@
 local IdManager = require("lib/IdManager")
 local Client = require("Client")
 local net = require("protocol")
+local Mob = require("entities/Mob")
+local utils = require("lib/utils")
 
 local Map = class("Map")
 
@@ -13,13 +15,13 @@ function Map:__construct(server, id, data)
   self.id = id
   self.ids = IdManager()
 
+  self.data = data -- map data
+
   self.entities = {} -- map of entity
   self.clients = {} -- map of client
   self.cells = {} -- map space partitioning (16x16 cells), map of cell index => map of entity
 
   self.living_entity_updates = {} -- map of living entity
-
-  self.data = data -- map data
 
   self.w = self.data.width
   self.h = self.data.height
@@ -30,6 +32,15 @@ function Map:__construct(server, id, data)
 
   self.tiledata = self.data.tiledata
   self.tileset_data = self.data.tileset_data
+
+  -- init mob areas
+  self.mob_areas = {} -- list of mob area states
+  for i, area in ipairs(data.mob_areas) do
+    self.mob_areas[i] = { mob_count = 0 }
+    if area.type >= 0 then
+      self:mobAreaSpawnTask(i)
+    end
+  end
 end
 
 -- return cell (map of entity) or nil if invalid or empty
@@ -237,6 +248,54 @@ function Map:tick(dt)
   end
 
   self.living_entity_updates = {}
+end
+
+-- check if a mob can be spawned at the cell coordinates
+function Map:canSpawnMob(mob, cx, cy)
+  -- check passable
+  if not self:isCellPassable(mob, cx, cy) then return false end
+
+  -- check for no spawn areas
+  for _, area in ipairs(self.data.mob_areas) do
+    if area.type < 0 and cx >= area.x1 and cx <= area.x2 and cy >= area.y1 and cy <= area.y2 then
+      return false
+    end
+  end
+
+  return true
+end
+
+function Map:mobAreaSpawnTask(index)
+  local def = self.data.mob_areas[index]
+  local area = self.mob_areas[index]
+
+  if def then
+    if area.mob_count < def.max_mobs then -- try to spawn
+      local mob_data = self.server.project.mobs[def.type+1]
+      if mob_data then
+        local mob = Mob(mob_data)
+
+        -- find position
+        local i = 0
+        local done = false
+        while not done and i < 10 do
+          local cx, cy = math.random(def.x1, def.x2), math.random(def.y1, def.y2)
+          if self:canSpawnMob(mob, cx, cy) then
+            mob:teleport(cx*16, cy*16)
+            self:addEntity(mob)
+            area.mob_count = area.mob_count+1
+            done = true
+          end
+        end
+      end
+    end
+
+    -- next call
+    local duration = 1/(def.spawn_speed == 0 and 60 or def.spawn_speed)*60*utils.randf(0.80, 1)
+    task(duration, function()
+      self:mobAreaSpawnTask(index)
+    end)
+  end
 end
 
 return Map

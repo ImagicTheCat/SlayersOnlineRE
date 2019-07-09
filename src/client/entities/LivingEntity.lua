@@ -31,7 +31,7 @@ function LivingEntity:__construct(data)
   self.anim_traveled = 0 -- distance traveled (pixels) for the movement animation
   self.anim_step_length = 15 -- pixel length for a movement step
 
-  self.anim_x = 0
+  self.anim_x = 1
   self.anim_y = data.orientation
 
   self.attacking = false

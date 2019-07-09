@@ -26,6 +26,11 @@ function LivingEntity.vectorOrientation(dx, dy)
   else return 3 end
 end
 
+-- convert game speed to px/s
+function LivingEntity.pixelSpeed(speed)
+  return speed*4*16
+end
+
 -- METHODS
 
 function LivingEntity:__construct()
@@ -33,7 +38,7 @@ function LivingEntity:__construct()
 
   self.orientation = 0 -- follow charaset directions (0 top, 1 right, 2 bottom, 3 left)
   self.move_forward = false
-  self.speed = 50 -- pixels per seconds
+  self.speed = 1 -- game speed
   self.move_time = 0
 
   self.attack_duration = 1 -- seconds
@@ -72,9 +77,11 @@ function LivingEntity:setMoveForward(move_forward)
       self.move_task = itask(1/cfg.tickrate, function()
         local dt = clock()-self.move_time
 
+        local speed = LivingEntity.pixelSpeed(self.speed)
+
         -- move following the orientation
         local dx, dy = LivingEntity.orientationVector(self.orientation)
-        local dist = math.floor(self.speed*dt) -- pixels traveled
+        local dist = math.floor(speed*dt) -- pixels traveled
         if dist > 0 then
           local nx, ny = self.x+dx*dist, self.y+dy*dist
           local dcx, dcy = nx-self.cx*16, ny-self.cy*16
@@ -93,7 +100,7 @@ function LivingEntity:setMoveForward(move_forward)
             self:updatePosition(nx, ny)
           end
 
-          self.move_time = self.move_time+dist/self.speed -- sub traveled time
+          self.move_time = self.move_time+dist/speed -- sub traveled time
         end
       end)
     else
@@ -112,7 +119,7 @@ function LivingEntity:moveToCell(cx, cy, blocking)
 
   -- basic implementation
   local dx, dy = cx-self.x/16, cy-self.y/16
-  local speed = self.speed*5 -- cells per second
+  local speed = LivingEntity.pixelSpeed(self.speed)/16 -- cells per second
   self:setOrientation(LivingEntity.vectorOrientation(dx,dy))
   self:broadcastPacket("move_to_cell", {cx = cx, cy = cy, speed = speed})
 
