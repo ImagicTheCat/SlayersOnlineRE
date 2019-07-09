@@ -118,15 +118,7 @@ end
 
 -- overload
 function LivingEntity:tick(dt)
-  if self.attacking then
-    -- compute attack animation
-    self.attack_time = self.attack_time+dt
-    self.anim_x = 3+math.floor(self.attack_time/self.attack_duration*3)%3
-    if self.attack_time >= self.attack_duration then -- stop
-      self.attacking = false
-      self.anim_x = 1
-    end
-  elseif self.move_to_cell then
+  if self.move_to_cell then
     local mtc = self.move_to_cell
     mtc.time = mtc.time+dt
 
@@ -156,6 +148,16 @@ function LivingEntity:tick(dt)
     -- apply new position
     self.x = x
     self.y = y
+  end
+
+  if self.attacking then
+    -- compute attack animation
+    self.attack_time = self.attack_time+dt
+    self.anim_x = 3+math.floor(self.attack_time/self.attack_duration*3)%3
+    if self.attack_time >= self.attack_duration then -- stop
+      self.attacking = false
+      self.anim_x = 1
+    end
   end
 end
 
