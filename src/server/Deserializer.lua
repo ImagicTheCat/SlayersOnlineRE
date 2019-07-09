@@ -98,7 +98,8 @@ function Deserializer.readProjectMobEntry(file)
     mob.spells[i][2] = struct.unpack("H", file:read(2))
   end
 
-  file:seek("cur", 4)
+  mob.obstacle = (struct.unpack("B", file:read(1)) > 0)
+  file:seek("cur", 3)
 
   return mob
 end
