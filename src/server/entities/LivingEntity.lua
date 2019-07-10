@@ -150,6 +150,7 @@ function LivingEntity:moveToCell(cx, cy, blocking)
   if blocking then r:wait() end
 end
 
+-- do attack animation
 function LivingEntity:attack()
   if not self.attacking then
     self.attacking = true

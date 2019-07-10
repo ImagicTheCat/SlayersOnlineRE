@@ -2,6 +2,7 @@ local msgpack = require("MessagePack")
 local net = require("protocol")
 local Player = require("entities/Player")
 local Event = require("entities/Event")
+local Mob = require("entities/Mob")
 local utils = require("lib/utils")
 
 -- server-side client
@@ -146,13 +147,17 @@ end
 function Client:attack()
   Player.attack(self)
 
-  -- event attack check
+  -- attack check
   local entities = self:raycastEntities(1)
   for _, entity in ipairs(entities) do
-    if class.is(entity, Event) and entity.client == self and entity.trigger_attack then
+    if class.is(entity, Mob) then -- mob
+      entity:onAttack(self)
+      break
+    elseif class.is(entity, Event) and entity.client == self and entity.trigger_attack then -- event
       async(function()
         entity:trigger(Event.Condition.ATTACK)
       end)
+      break
     end
   end
 end

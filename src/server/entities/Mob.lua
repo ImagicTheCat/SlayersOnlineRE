@@ -32,36 +32,53 @@ function Mob:__construct(data)
 
   self.speed = data.speed
   self.obstacle = data.obstacle
+
+  -- self.target -- player aggro
 end
 
 -- randomly move the mob
 -- (starts a unique loop, will call itself again)
 function Mob:moveAI()
-  if self.map and not self.move_ai_task then
-    self.move_ai_task = task(utils.randf(0.75, 7), function()
-      local ok
-      local ncx, ncy
+  if not self.move_ai_task then
+    local aggro = (self.target and self.target.map == self.map)
 
-      -- search for a passable cell
-      local i = 1
-      while not ok and i <= 10 do
-        local dx, dy = LivingEntity.orientationVector(math.random(0,3))
-        ncx, ncy = self.cx+dx, self.cy+dy
+    self.move_ai_task = task(utils.randf(0.75, (aggro and 1.5 or 7)), function()
+      if self.map then
+        local ok
+        local ncx, ncy
 
-        ok = self.map:isCellPassable(self, ncx, ncy)
+        -- search for a passable cell
+        local i = 1
+        while not ok and i <= 10 do
+          local orientation
+          if aggro then
+            orientation = LivingEntity.vectorOrientation(self.target.x-self.x, self.target.y-self.y)
+          else
+            orientation = math.random(0,3)
+          end
 
-        i = i+1
+          local dx, dy = LivingEntity.orientationVector(orientation)
+          ncx, ncy = self.cx+dx, self.cy+dy
+
+          ok = self.map:isCellPassable(self, ncx, ncy)
+
+          i = i+1
+        end
+
+        if ok then
+          self:moveToCell(ncx, ncy)
+        end
+
+        self.move_ai_task = nil
+
+        self:moveAI()
       end
-
-      if ok then
-        self:moveToCell(ncx, ncy)
-      end
-
-      self.move_ai_task = nil
-
-      self:moveAI()
     end)
   end
+end
+
+function Mob:onAttack(client)
+  self.target = client
 end
 
 -- overload
