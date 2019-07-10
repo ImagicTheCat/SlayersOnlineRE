@@ -267,7 +267,7 @@ function event_special_vars:TypeAnim(value)
       data.animation_hc = math.max(self.page.animation_mod, 1)
     end
 
-    self:moveRandom() -- re-launch move random behavior
+    self:moveAI() -- re-launch move random behavior
 
     self:broadcastPacket("ch_animation_type", data)
   else
@@ -525,8 +525,6 @@ function Event:__construct(client, data, page_index, x, y)
   if self.animation_type <= 2 then
     self.orientation = self.page.animation_mod
   end
-
-  self:moveRandom()
 
   if self.page.active and string.len(self.page.set) > 0 then -- networked event
     self.nettype = "Event"
@@ -852,9 +850,10 @@ end
 
 -- randomly move the event if type is Animation.CHARACTER_RANDOM
 -- (starts a unique loop, will call itself again)
-function Event:moveRandom()
-  if not self.moverandom_task and self.animation_type == Event.Animation.CHARACTER_RANDOM then
-    self.moverandom_task = task(utils.randf(0.75, 7), function()
+function Event:moveAI()
+  if self.map and not self.move_ai_task
+    and (self.animation_type == Event.Animation.CHARACTER_RANDOM or self.animation_type == Event.Animation.CHARACTER_FOLLOW) then
+    self.move_ai_task = task(utils.randf(0.75, 7), function()
       local ok
       local ncx, ncy
 
@@ -862,7 +861,15 @@ function Event:moveRandom()
         -- search for a passable cell
         local i = 1
         while not ok and i <= 10 do
-          local dx, dy = LivingEntity.orientationVector(math.random(0,3))
+          -- random/follow orientation
+          local orientation
+          if self.animation_type == Event.Animation.CHARACTER_FOLLOW then
+            orientation = LivingEntity.vectorOrientation(self.client.x-self.x, self.client.y-self.y)
+          else
+            orientation = math.random(0,3)
+          end
+
+          local dx, dy = LivingEntity.orientationVector(orientation)
           ncx, ncy = self.cx+dx, self.cy+dy
 
           ok = (self.map and self.map:isCellPassable(self, ncx, ncy))
@@ -875,9 +882,9 @@ function Event:moveRandom()
         self:moveToCell(ncx, ncy)
       end
 
-      self.moverandom_task = nil
+      self.move_ai_task = nil
 
-      self:moveRandom()
+      self:moveAI()
     end)
   end
 end
@@ -885,6 +892,8 @@ end
 -- overload
 function Event:onMapChange()
   if self.map then -- added to map
+    self:moveAI()
+
     -- reference event by name
     self.client.events_by_name[self.name] = self
 

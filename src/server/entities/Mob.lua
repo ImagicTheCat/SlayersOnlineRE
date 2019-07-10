@@ -36,9 +36,9 @@ end
 
 -- randomly move the mob
 -- (starts a unique loop, will call itself again)
-function Mob:moveRandom()
-  if self.map and not self.moverandom_task then
-    self.moverandom_task = task(utils.randf(0.75, 7), function()
+function Mob:moveAI()
+  if self.map and not self.move_ai_task then
+    self.move_ai_task = task(utils.randf(0.75, 7), function()
       local ok
       local ncx, ncy
 
@@ -57,9 +57,9 @@ function Mob:moveRandom()
         self:moveToCell(ncx, ncy)
       end
 
-      self.moverandom_task = nil
+      self.move_ai_task = nil
 
-      self:moveRandom()
+      self:moveAI()
     end)
   end
 end
@@ -69,7 +69,7 @@ function Mob:onMapChange()
   LivingEntity.onMapChange(self)
 
   if self.map and (self.data.type == Mob.Type.DEFENSIVE or self.data.type == Mob.Type.AGGRESSIVE) then
-    self:moveRandom()
+    self:moveAI()
   end
 end
 
