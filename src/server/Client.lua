@@ -4,9 +4,14 @@ local Player = require("entities/Player")
 local Event = require("entities/Event")
 local Mob = require("entities/Mob")
 local utils = require("lib/utils")
+local sha2 = require("sha2")
 
 -- server-side client
 local Client = class("Client", Player)
+
+-- PRIVATE STATICS
+
+local q_login = "SELECT id, pseudo FROM users WHERE pseudo = {1} AND password = UNHEX({2})"
 
 -- STATICS
 
@@ -36,42 +41,65 @@ function Client:__construct(server, peer)
   self.player_config = {} -- stored player config
 
   self:send(Client.makePacket(net.PROTOCOL, net)) -- send protocol
-
-  -- testing
-  local map = server:getMap(next(server.project.maps))
-  self:teleport(0,10*16)
-  map:addEntity(self)
+  self:send(Client.makePacket(net.MOTD_LOGIN, self.server.motd)) -- send motd (start login)
 end
 
 function Client:onPacket(protocol, data)
-  if protocol == net.INPUT_ORIENTATION then
-    self:setOrientation(tonumber(data) or 0)
-  elseif protocol == net.INPUT_MOVE_FORWARD then
-    self:setMoveForward(not not data)
-  elseif protocol == net.INPUT_ATTACK then
-    self:attack()
-  elseif protocol == net.INPUT_INTERACT then
-    self:interact()
-  elseif protocol == net.INPUT_CHAT then
-    if type(data) == "string" and string.len(data) > 0 and string.len(data) < 1000 then
-      if string.sub(data, 1, 1) == "/" then -- parse command
-        local args = self.server.parseCommand(string.sub(data, 2))
-        if #args > 0 then
-          self.server:processCommand(self, args)
-        end
-      else -- message
-        self:mapChat(data)
+  -- not logged
+  if not self.user_id then
+    if protocol == net.LOGIN then -- login
+      if type(data) == "table" and type(data.pseudo) == "string" and type(data.password) == "string" then
+        async(function()
+          local pass_hash = sha2.sha512("<server_salt>"..data.pseudo..data.password)
+
+          local rows = self.server.db:query(q_login, {data.pseudo, pass_hash})
+          if rows and rows[1] then
+            self.user_id = rows[1].id -- mark as logged
+            self.pseudo = rows[1].pseudo
+
+            self:sendChatMessage("Logged in.")
+
+            -- testing spawn
+            local map = self.server:getMap(next(self.server.project.maps))
+            self:teleport(0,10*16)
+            map:addEntity(self)
+          else -- login failed
+            self:sendChatMessage("Login failed.")
+            self:send(Client.makePacket(net.MOTD_LOGIN, self.server.motd)) -- send motd (start login)
+          end
+        end)
       end
     end
-  elseif protocol == net.EVENT_MESSAGE_SKIP then
-    if self.message_r then self.message_r() end
-  elseif protocol == net.EVENT_INPUT_QUERY_ANSWER then
-    if self.input_query_r and type(data) == "string" then
-      self.input_query_r(data)
-    end
-  elseif protocol == net.EVENT_INPUT_STRING_ANSWER then
-    if self.input_string_r and type(data) == "string" then
-      self.input_string_r(data)
+  else -- logged
+    if protocol == net.INPUT_ORIENTATION then
+      self:setOrientation(tonumber(data) or 0)
+    elseif protocol == net.INPUT_MOVE_FORWARD then
+      self:setMoveForward(not not data)
+    elseif protocol == net.INPUT_ATTACK then
+      self:attack()
+    elseif protocol == net.INPUT_INTERACT then
+      self:interact()
+    elseif protocol == net.INPUT_CHAT then
+      if type(data) == "string" and string.len(data) > 0 and string.len(data) < 1000 then
+        if string.sub(data, 1, 1) == "/" then -- parse command
+          local args = self.server.parseCommand(string.sub(data, 2))
+          if #args > 0 then
+            self.server:processCommand(self, args)
+          end
+        else -- message
+          self:mapChat(data)
+        end
+      end
+    elseif protocol == net.EVENT_MESSAGE_SKIP then
+      if self.message_r then self.message_r() end
+    elseif protocol == net.EVENT_INPUT_QUERY_ANSWER then
+      if self.input_query_r and type(data) == "string" then
+        self.input_query_r(data)
+      end
+    elseif protocol == net.EVENT_INPUT_STRING_ANSWER then
+      if self.input_string_r and type(data) == "string" then
+        self.input_string_r(data)
+      end
     end
   end
 end

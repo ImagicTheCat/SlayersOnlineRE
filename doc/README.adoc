@@ -20,9 +20,10 @@ client:: LÖVE 11.x
 * https://github.com/leafo/magick
 * https://github.com/effil/effil
 * https://github.com/keplerproject/luasql/
+* https://github.com/Egor-Skriptunoff/pure_lua_SHA2
 
 .Client dependencies
 * https://github.com/ImagicTheCat/Luaoop 
 * https://github.com/ImagicTheCat/Luaseq
 * https://fperrad.frama.io/lua-MessagePack/
-* https://github.com/kikito/md5.lua
+* https://github.com/Egor-Skriptunoff/pure_lua_SHA2

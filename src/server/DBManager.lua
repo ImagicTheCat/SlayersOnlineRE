@@ -100,8 +100,8 @@ function DBManager:do_task()
   end
 end
 
--- return affected, lastid OR rows
-function DBManager:execute(query, params)
+-- return affected, lastid OR rows OR nil on error
+function DBManager:query(query, params)
   if not query then
     error("query is nil")
   end

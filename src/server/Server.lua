@@ -237,6 +237,7 @@ function Server:__construct(cfg)
   self.vars = {} -- server variables, map of id (str) => value (string or number)
   self.var_listeners = {} -- map of id => map of callback
   self.commands = {} -- map of id => callback
+  self.motd = self.cfg.motd
 
   self.last_time = clock()
 

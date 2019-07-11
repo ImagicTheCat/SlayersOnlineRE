@@ -12,6 +12,7 @@ local MessageWindow = require("gui/MessageWindow")
 local InputQuery = require("gui/InputQuery")
 local TextureAtlas = require("TextureAtlas")
 local Menu = require("gui/Menu")
+local sha2 = require("sha2")
 
 local Client = class("Client")
 
@@ -195,6 +196,23 @@ end
 function Client:onPacket(protocol, data)
   if protocol == net.PROTOCOL then
     net = data
+  elseif protocol == net.MOTD_LOGIN then
+    local motd = data
+
+    async(function()
+      -- login process
+      --- load remote manifest
+      if not self.net_manager:loadRemoteManifest() then
+        print("couldn't reach remote resources repository manifest")
+        return
+      end
+
+      local pseudo = self:prompt(motd.."\n\nPseudo: ")
+      local password = self:prompt(motd.."\n\nPassword: ")
+
+      local pass_hash = sha2.hex2bin(sha2.sha512("<client_salt>"..pseudo..password))
+      self:sendPacket(net.LOGIN, {pseudo = pseudo, password = pass_hash})
+    end)
   elseif protocol == net.MAP then
     self:showLoading()
     self.map = Map(data.map)
@@ -229,7 +247,7 @@ function Client:onPacket(protocol, data)
       local entity = self.map.entities[data.id]
       if class.is(entity, Player) then
         entity:onMapChat(data.msg)
-        self.chat_history:add({{0,0.5,1}, tostring(entity.id)..": ", {1,1,1}, data.msg})
+        self.chat_history:add({{0,0.5,1}, tostring(entity.pseudo)..": ", {1,1,1}, data.msg})
         self.chat_history_time = 10
       end
     end
@@ -243,9 +261,10 @@ function Client:onPacket(protocol, data)
     self.input_query:set(data.title, data.options)
     self.input_query_showing = true
   elseif protocol == net.EVENT_INPUT_STRING then
-    self.message_window:set(data)
-    self.input_string_showing = true
-    self:setTyping(true)
+    async(function()
+      local str = self:prompt(data)
+      self:sendPacket(net.EVENT_INPUT_STRING_ANSWER, str)
+    end)
   elseif protocol == net.PLAYER_CONFIG then
     -- apply player config
     utils.mergeInto(data, self.player_config)
@@ -470,16 +489,24 @@ function Client:pressControl(id)
     if id == "return" then -- valid text input
       if self.typing then
         if self.input_string_showing then -- input string
-          self:sendPacket(net.EVENT_INPUT_STRING_ANSWER, self.input_chat.text)
           self.input_string_showing = false
+
+          local r = self.prompt_r
+          if r then
+            self.prompt_r = nil
+            local text = self.input_chat.text
+            self.input_chat:set("")
+            self:setTyping(not self.typing)
+            r(text)
+          end
         else -- chat
           self:inputChat(self.input_chat.text)
+          self.input_chat:set("")
+          self:setTyping(not self.typing)
         end
-
-        self.input_chat:set("")
+      else
+        self:setTyping(not self.typing)
       end
-
-      self:setTyping(not self.typing)
     end
 
     if self.typing then
@@ -528,6 +555,23 @@ function Client:setTyping(typing)
   end
 end
 
+-- (async) prompt text
+-- will replace message window and input chat content
+-- value: (optional) default text value
+-- return entered text
+function Client:prompt(title, value)
+  local r = async()
+  self.prompt_r = r
+
+  self.message_window:set(title)
+  self.input_string_showing = true
+  self.input_chat:set(value or "")
+  self:setTyping(true)
+
+  return r:wait()
+end
+
+-- input a chat message to the remote server
 function Client:inputChat(msg)
   if string.len(msg) > 0 then
     self:sendPacket(net.INPUT_CHAT, msg)
