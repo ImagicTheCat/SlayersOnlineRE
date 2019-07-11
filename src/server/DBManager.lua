@@ -31,7 +31,7 @@ local function thread(ch_in, ch_out, db, user, password, host, port)
       local param = con:escape(tostring(v))
 
       if ptype ~= "number" then
-        param = "\""..param.."\""
+        param = "\'"..param.."\'"
       end
   
       query = string.gsub(query,"%{"..k.."%}", param)
