@@ -19,6 +19,7 @@ client:: LÖVE 11.x
 * https://luarocks.org/modules/luarocks/lua-iconv
 * https://github.com/leafo/magick
 * https://github.com/effil/effil
+* https://github.com/keplerproject/luasql/
 
 .Client dependencies
 * https://github.com/ImagicTheCat/Luaoop 
