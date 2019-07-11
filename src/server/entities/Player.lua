@@ -9,6 +9,15 @@ local Player = class("Player", LivingEntity)
 
 function Player:__construct()
   LivingEntity.__construct(self)
+
+  self.pseudo = "<anonymous>"
+end
+
+-- overload
+function Player:serializeNet()
+  local data = LivingEntity.serializeNet(self)
+  data.pseudo = self.pseudo
+  return data
 end
 
 function Player:mapChat(msg)

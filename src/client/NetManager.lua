@@ -1,6 +1,6 @@
 local msgpack = require("MessagePack")
 local utils = require("lib/utils")
-local md5 = require("md5")
+local sha2 = require("sha2")
 
 local NetManager = class("NetManager")
 
@@ -31,7 +31,6 @@ function NetManager:__construct(client)
   end
 
   self:loadLocalManifest()
-  self:loadRemoteManifest()
 end
 
 -- (async) request HTTP file body
@@ -68,21 +67,23 @@ function NetManager:loadLocalManifest()
   end
 end
 
+-- (async)
+-- return true on success or false
 function NetManager:loadRemoteManifest()
-  async(function()
-    local data = self:request(self.client.cfg.resource_repository.."repository.manifest")
-    if data then
-      local lines = utils.split(data, "\n")
-      for _, line in ipairs(lines) do
-        local path, hash = string.match(line, "^(.*)=(%x*)$")
-        if path then
-          self.remote_manifest[path] = hash
-        end
+  local data = self:request(self.client.cfg.resource_repository.."repository.manifest")
+  if data then
+    local lines = utils.split(data, "\n")
+    for _, line in ipairs(lines) do
+      local path, hash = string.match(line, "^(.*)=(%x*)$")
+      if path then
+        self.remote_manifest[path] = hash
       end
-    else
-      print("couldn't reach remote resources repository manifest")
     end
-  end)
+
+    return true
+  else
+    return false
+  end
 end
 
 -- (async) request a resource from the repository
@@ -107,7 +108,7 @@ function NetManager:requestResource(path)
         local data = love.filesystem.read("resources_repository/"..path)
         -- re-add manifest entry
         if data then
-          lhash = md5.sumhexa(data)
+          lhash = sha2.md5(data)
           self.local_manifest[path] = lhash
         end
       end
@@ -119,7 +120,7 @@ function NetManager:requestResource(path)
           -- write file
           local ok, err = love.filesystem.write("resources_repository/"..path, data)
           if ok then -- add manifest entry
-            self.local_manifest[path] = md5.sumhexa(data)
+            self.local_manifest[path] = sha2.md5(data)
           else
             print(err)
           end

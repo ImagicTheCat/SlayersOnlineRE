@@ -15,6 +15,8 @@ function Player:__construct(data)
   self.chat_window = Window(client)
   self.chat_text = love.graphics.newText(client.font)
   self.chat_time = 0
+
+  self.pseudo = data.pseudo
 end
 
 -- overload

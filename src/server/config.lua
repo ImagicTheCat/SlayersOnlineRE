@@ -9,5 +9,6 @@ return {
     user = "root",
     password = "",
     name = "slayers_online_re"
-  }
+  },
+  motd = "Welcome to SlayersOnlineRE."
 }
