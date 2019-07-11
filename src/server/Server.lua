@@ -6,6 +6,7 @@ local Map = require("Map")
 local utils = require("lib/utils")
 local Deserializer = require("Deserializer")
 local magick = require("magick")
+local DBManager = require("DBManager")
 
 local Server = class("Server")
 
@@ -235,7 +236,6 @@ function Server:__construct(cfg)
   self.maps = {} -- map of id => map instances
   self.vars = {} -- server variables, map of id (str) => value (string or number)
   self.var_listeners = {} -- map of id => map of callback
-
   self.commands = {} -- map of id => callback
 
   self.last_time = clock()
@@ -248,6 +248,10 @@ function Server:__construct(cfg)
 
     self:tick(dt)
   end)
+
+  -- DB
+  local cfg_db = self.cfg.db
+  self.db = DBManager(cfg_db.name, cfg_db.user, cfg_db.password, cfg_db.host, cfg_db.port)
 
   -- create host
   self.host = enet.host_create(self.cfg.host, self.cfg.max_clients)
@@ -262,6 +266,7 @@ end
 function Server:close()
   self.console_flags.running = false
   self.tick_task:remove()
+  self.db:close()
 
   print("shutdown.")
 end
