@@ -10,24 +10,12 @@ local DBManager = require("DBManager")
 
 local Server = class("Server")
 
--- STATICS
+-- PRIVATE STATICS
 
--- parse [cmd arg1 arg2 "arg 3" ...]
--- return command args
-function Server.parseCommand(str)
-  str = string.gsub(str, "\"(.-)\"", function(content)
-    return string.gsub(content, "%s", "\\s")
-  end)
+-- QUERIES
 
-  local args = {}
-
-  for arg in string.gmatch(str, "([^%s]+)") do
-    arg = string.gsub(arg, "\\s", " ")
-    table.insert(args, arg)
-  end
-
-  return args
-end
+local q_set_var = "INSERT INTO server_vars(id, value) VALUES({1}, {2}) ON DUPLICATE KEY UPDATE value = {2}"
+local q_get_vars = "SELECT id,value FROM server_vars"
 
 -- COMMANDS
 
@@ -216,6 +204,25 @@ local function console_main(flags, channel)
   end
 end
 
+-- STATICS
+
+-- parse [cmd arg1 arg2 "arg 3" ...]
+-- return command args
+function Server.parseCommand(str)
+  str = string.gsub(str, "\"(.-)\"", function(content)
+    return string.gsub(content, "%s", "\\s")
+  end)
+
+  local args = {}
+
+  for arg in string.gmatch(str, "([^%s]+)") do
+    arg = string.gsub(arg, "\\s", " ")
+    table.insert(args, arg)
+  end
+
+  return args
+end
+
 -- METHODS
 
 function Server:__construct(cfg)
@@ -235,6 +242,7 @@ function Server:__construct(cfg)
   self.clients = {} -- map of peer => client
   self.maps = {} -- map of id => map instances
   self.vars = {} -- server variables, map of id (str) => value (string or number)
+  self.changed_vars = {} -- map of server var id
   self.var_listeners = {} -- map of id => map of callback
   self.commands = {} -- map of id => callback
   self.motd = self.cfg.motd
@@ -250,9 +258,29 @@ function Server:__construct(cfg)
     self:tick(dt)
   end)
 
+  self.save_task = itask(self.cfg.save_interval, function()
+    async(function()
+      self:save()
+    end)
+  end)
+
   -- DB
   local cfg_db = self.cfg.db
   self.db = DBManager(cfg_db.name, cfg_db.user, cfg_db.password, cfg_db.host, cfg_db.port)
+
+  async(function()
+    -- load vars
+    local count = 0
+    local rows = self.db:query(q_get_vars)
+    if rows then
+      for i, row in ipairs(rows) do
+        self.vars[row.id] = row.value
+        count = count+1
+      end
+    end
+
+    print(count.." server vars loaded")
+  end)
 
   -- create host
   self.host = enet.host_create(self.cfg.host, self.cfg.max_clients)
@@ -264,9 +292,25 @@ function Server:__construct(cfg)
   self.console = effil.thread(console_main)(self.console_flags, self.console_channel)
 end
 
+-- (async) save check
+function Server:save()
+  -- save vars
+  for var in pairs(self.changed_vars) do
+    self.db:query(q_set_var, {var, self.vars[var]})
+  end
+  self.changed_vars = {}
+
+  -- clients
+  for _, client in pairs(self.clients) do
+    client:save()
+  end
+end
+
 function Server:close()
   self.console_flags.running = false
   self.tick_task:remove()
+  self.save_task:remove()
+  self:save()
   self.db:close()
 
   print("shutdown.")
@@ -298,8 +342,11 @@ function Server:tick(dt)
       print("client connection "..tostring(event.peer))
     elseif event.type == "disconnect" then
       local client = self.clients[event.peer]
-      client:onDisconnect()
+
       self.clients[event.peer] = nil
+      async(function()
+        client:onDisconnect()
+      end)
 
       print("client disconnection "..tostring(event.peer))
     end
@@ -393,6 +440,7 @@ end
 
 function Server:setVariable(id, value)
   if type(value) == "string" or type(value) == "number" then
+    self.changed_vars[id] = true
     self.vars[id] = value
 
     -- call listeners

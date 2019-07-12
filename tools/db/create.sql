@@ -5,7 +5,7 @@ CREATE TABLE users(
   CONSTRAINT pk_users PRIMARY KEY(id)
 );
 
-CREATE TABLE users_int_vars(
+CREATE TABLE users_vars(
   id INTEGER UNSIGNED,
   user_id INTEGER UNSIGNED,
   value INTEGER,

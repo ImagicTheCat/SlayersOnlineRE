@@ -12,6 +12,10 @@ local Client = class("Client", Player)
 -- PRIVATE STATICS
 
 local q_login = "SELECT id, pseudo FROM users WHERE pseudo = {1} AND password = UNHEX({2})"
+local q_get_vars = "SELECT id,value FROM users_vars WHERE user_id = {1}"
+local q_get_bool_vars = "SELECT id,value FROM users_bool_vars WHERE user_id = {1}"
+local q_set_var = "INSERT INTO users_vars(user_id, id, value) VALUES({1},{2},{3}) ON DUPLICATE KEY UPDATE value = {2}"
+local q_set_bool_var = "INSERT INTO users_bool_vars(user_id, id, value) VALUES({1},{2},{3}) ON DUPLICATE KEY UPDATE value = {2}"
 
 -- STATICS
 
@@ -34,8 +38,10 @@ function Client:__construct(server, peer)
 
   self.vars = {} -- map of id (number)  => value (number)
   self.var_listeners = {} -- map of id (number) => map of callback
+  self.changed_vars = {} -- map of vars id
   self.bool_vars = {} -- map of id (number) => value (number)
   self.bool_var_listeners = {} -- map of id (number) => map of callback
+  self.changed_bool_vars = {} -- map of bool vars id
   self.special_var_listeners = {} -- map of id (string) => map of callback
 
   self.player_config = {} -- stored player config
@@ -54,8 +60,24 @@ function Client:onPacket(protocol, data)
 
           local rows = self.server.db:query(q_login, {data.pseudo, pass_hash})
           if rows and rows[1] then
-            self.user_id = rows[1].id -- mark as logged
+            self.user_id = tonumber(rows[1].id) -- mark as logged
+
+            -- load user data
             self.pseudo = rows[1].pseudo
+            --- load vars
+            local rows = self.server.db:query(q_get_vars, {self.user_id})
+            if rows then
+              for i,row in ipairs(rows) do
+                self.vars[tonumber(row.id)] = tonumber(row.value)
+              end
+            end
+
+            rows = self.server.db:query(q_get_bool_vars, {self.user_id})
+            if rows then
+              for i,row in ipairs(rows) do
+                self.bool_vars[tonumber(row.id)] = tonumber(row.value)
+              end
+            end
 
             self:sendChatMessage("Logged in.")
 
@@ -133,7 +155,11 @@ function Client:requestInputString(title)
   return self.input_string_r:wait()
 end
 
+-- (async)
 function Client:onDisconnect()
+  self:save()
+  self.user_id = nil
+
   if self.map then
     self.map:removeEntity(self)
   end
@@ -211,14 +237,33 @@ function Client:applyConfig(config)
   self:send(Client.makePacket(net.PLAYER_CONFIG, config))
 end
 
+-- (async) save check
+function Client:save()
+  if self.user_id then
+    -- vars
+    for var in pairs(self.changed_vars) do
+      self.server.db:query(q_set_var, {self.user_id, var, self.vars[var]})
+    end
+    self.changed_vars = {}
+
+    -- bool vars
+    for var in pairs(self.changed_bool_vars) do
+      self.server.db:query(q_set_bool_var, {self.user_id, var, self.bool_vars[var]})
+    end
+    self.changed_bool_vars = {}
+  end
+end
+
 -- variables
 
 function Client:setVariable(vtype, id, value)
   if type(id) == "number" and type(value) == "number" then
     local vars = (vtype == "bool" and self.bool_vars or self.vars)
     local var_listeners = (vtype == "bool" and self.bool_var_listeners or self.var_listeners)
+    local changed_vars = (vtype == "bool" and self.changed_bool_vars or self.changed_vars)
 
     vars[id] = value
+    changed_vars[id] = true
 
     -- call listeners
     local listeners = var_listeners[id]
