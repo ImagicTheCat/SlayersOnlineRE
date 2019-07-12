@@ -311,6 +311,14 @@ function Server:close()
   self.tick_task:remove()
   self.save_task:remove()
   self:save()
+
+  -- disconnect clients
+  for peer, client in pairs(self.clients) do
+    peer:disconnect()
+    client:onDisconnect()
+  end
+
+  self.host:flush()
   self.db:close()
 
   print("shutdown.")
