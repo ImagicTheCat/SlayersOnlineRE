@@ -538,7 +538,7 @@ function Event:instructionSubstitution(str, f_input)
   local pat = Event.patterns
 
   if f_input then -- special: "InputString('')"
-    str = string.gsub(str, "InputString%('(.-)'%)", function(title)
+    str = utils.gsub(str, "InputString%('(.*)'%)", function(title)
       title = self:instructionSubstitution(title, f_input)
 
       return self.client:requestInputString(title)
@@ -546,7 +546,7 @@ function Event:instructionSubstitution(str, f_input)
   end
 
   -- special: variable functions "%func(...)%"
-  str = string.gsub(str, "%%([%w_]+)%((.-)%)%%", function(id, content)
+  str = utils.gsub(str, "%%([%w_]+)%((.-)%)%%", function(id, content)
     local f = client_special_vfunctions[id]
     if f then
       -- process function arguments
@@ -733,7 +733,7 @@ function Event:trigger(condition)
         op, expr = args[4], args[5]
 
         -- concat compatibility support
-        expr = string.gsub("Concat%('(.*)'%)", "Serveur["..args[3].."]%1")
+        expr = string.gsub(expr, "Concat%('(.*)'%)", "Serveur["..args[3].."]%1")
       elseif args[2] == Event.Variable.CLIENT then
         op, expr = args[5], args[6]
       elseif args[2] == Event.Variable.CLIENT_SPECIAL then
@@ -743,7 +743,7 @@ function Event:trigger(condition)
       end
 
       if op == "=" then
-        expr = self:instructionSubstitution(expr)
+        expr = self:instructionSubstitution(expr, true)
 
         if args[2] == Event.Variable.SERVER then
           self.client.server:setVariable(args[3], Event.computeExpression(expr) or expr)
@@ -775,7 +775,7 @@ function Event:trigger(condition)
       -- process function arguments
       local fargs = {}
       for i=3,#args do
-        table.insert(fargs, self:instructionSubstitution(args[i]))
+        table.insert(fargs, self:instructionSubstitution(args[i], true))
       end
 
       if f then

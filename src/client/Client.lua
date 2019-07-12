@@ -262,7 +262,7 @@ function Client:onPacket(protocol, data)
     self.input_query_showing = true
   elseif protocol == net.EVENT_INPUT_STRING then
     async(function()
-      local str = self:prompt(data)
+      local str = self:prompt(data.title)
       self:sendPacket(net.EVENT_INPUT_STRING_ANSWER, str)
     end)
   elseif protocol == net.PLAYER_CONFIG then
