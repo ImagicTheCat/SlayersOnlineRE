@@ -11,11 +11,13 @@ local Client = class("Client", Player)
 
 -- PRIVATE STATICS
 
-local q_login = "SELECT id, pseudo FROM users WHERE pseudo = {1} AND password = UNHEX({2})"
+local q_login = "SELECT id, pseudo, config, state FROM users WHERE pseudo = {1} AND password = UNHEX({2})"
 local q_get_vars = "SELECT id,value FROM users_vars WHERE user_id = {1}"
 local q_get_bool_vars = "SELECT id,value FROM users_bool_vars WHERE user_id = {1}"
-local q_set_var = "INSERT INTO users_vars(user_id, id, value) VALUES({1},{2},{3}) ON DUPLICATE KEY UPDATE value = {2}"
-local q_set_bool_var = "INSERT INTO users_bool_vars(user_id, id, value) VALUES({1},{2},{3}) ON DUPLICATE KEY UPDATE value = {2}"
+local q_set_var = "INSERT INTO users_vars(user_id, id, value) VALUES({1},{2},{3}) ON DUPLICATE KEY UPDATE value = {3}"
+local q_set_bool_var = "INSERT INTO users_bool_vars(user_id, id, value) VALUES({1},{2},{3}) ON DUPLICATE KEY UPDATE value = {3}"
+local q_set_config = "UPDATE users SET config = UNHEX({2}) WHERE id = {1}"
+local q_set_state = "UPDATE users SET state = UNHEX({2}) WHERE id = {1}"
 
 -- STATICS
 
@@ -45,6 +47,7 @@ function Client:__construct(server, peer)
   self.special_var_listeners = {} -- map of id (string) => map of callback
 
   self.player_config = {} -- stored player config
+  self.player_config_changed = false
 
   self:send(Client.makePacket(net.PROTOCOL, net)) -- send protocol
   self:send(Client.makePacket(net.MOTD_LOGIN, self.server.motd)) -- send motd (start login)
@@ -60,11 +63,17 @@ function Client:onPacket(protocol, data)
 
           local rows = self.server.db:query(q_login, {data.pseudo, pass_hash})
           if rows and rows[1] then
-            self.user_id = tonumber(rows[1].id) -- mark as logged
+            local user_row = rows[1]
+
+            self.user_id = tonumber(user_row.id) -- mark as logged
 
             -- load user data
-            self.pseudo = rows[1].pseudo
-            --- load vars
+            self.pseudo = user_row.pseudo
+
+            --- config
+            self:applyConfig(user_row.config and msgpack.unpack(user_row.config) or {}, true)
+
+            --- vars
             local rows = self.server.db:query(q_get_vars, {self.user_id})
             if rows then
               for i,row in ipairs(rows) do
@@ -81,9 +90,31 @@ function Client:onPacket(protocol, data)
 
             self:sendChatMessage("Logged in.")
 
+            --- state
+            local state = user_row.state and msgpack.unpack(user_row.state) or {}
+
+            ---- charaset
+            if state.charaset then
+              self:setCharaset(state.charaset)
+            end
+
+            ---- location
+            local map
+            if state.location then
+              map = self.server:getMap(state.location.map)
+              self:teleport(state.location.x, state.location.y)
+            end
+
+            if state.orientation then
+              self:setOrientation(state.orientation)
+            end
+
             -- testing spawn
-            local map = self.server:getMap(next(self.server.project.maps))
-            self:teleport(0,10*16)
+            if not map then
+              map = self.server:getMap(next(self.server.project.maps))
+              self:teleport(0,10*16)
+            end
+
             map:addEntity(self)
           else -- login failed
             self:sendChatMessage("Login failed.")
@@ -158,11 +189,12 @@ end
 -- (async)
 function Client:onDisconnect()
   self:save()
-  self.user_id = nil
 
   if self.map then
     self.map:removeEntity(self)
   end
+
+  self.user_id = nil
 end
 
 -- overload
@@ -232,8 +264,12 @@ function Client:interact()
 end
 
 -- modify player config
-function Client:applyConfig(config)
+-- no_save: if passed/true, will not trigger a DB save
+function Client:applyConfig(config, no_save)
   utils.mergeInto(config, self.player_config)
+  if not no_save then
+    self.player_config_changed = true
+  end
   self:send(Client.makePacket(net.PLAYER_CONFIG, config))
 end
 
@@ -251,6 +287,27 @@ function Client:save()
       self.server.db:query(q_set_bool_var, {self.user_id, var, self.bool_vars[var]})
     end
     self.changed_bool_vars = {}
+
+    -- config
+    if self.player_config_changed then
+      self.server.db:query(q_set_config, {self.user_id, utils.hex(msgpack.pack(self.player_config))})
+      self.player_config_changed = false
+    end
+
+    -- state
+    local state = {}
+    if self.map then
+      state.location = {
+        map = self.map.id,
+        x = self.x,
+        y = self.y
+      }
+
+      state.orientation = self.orientation
+    end
+
+    state.charaset = self.charaset
+    self.server.db:query(q_set_state, {self.user_id, utils.hex(msgpack.pack(state))})
   end
 end
 

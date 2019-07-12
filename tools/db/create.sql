@@ -2,6 +2,8 @@ CREATE TABLE users(
   id INTEGER UNSIGNED AUTO_INCREMENT,
   pseudo VARCHAR(50) UNIQUE,
   password BINARY(64),
+  config BLOB,
+  state BLOB,
   CONSTRAINT pk_users PRIMARY KEY(id)
 );
 

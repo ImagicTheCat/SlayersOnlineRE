@@ -81,4 +81,13 @@ function utils.clone(t)
   end
 end
 
+local function hex_conv(c)
+  return string.format('%02X', string.byte(c))
+end
+
+-- convert string to hexadecimal
+function utils.hex(str)
+  return string.gsub(str, '.', hex_conv)
+end
+
 return utils
