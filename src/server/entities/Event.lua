@@ -107,6 +107,12 @@ end
 function Event.parseCommand(instruction)
   if string.sub(instruction, 1, 2) == "//" then return end -- ignore comment
 
+  -- variable commands
+  local r = {Event.parseVariableInstruction(instruction)}
+  if r[1] then
+    return Event.Command.VARIABLE, unpack(r)
+  end
+
   -- function
   local id, content = string.match(instruction, "^([%w_]+)%(?(.-)%)?$")
   if id then -- parse arguments
@@ -120,12 +126,6 @@ function Event.parseCommand(instruction)
     end
 
     return Event.Command.FUNCTION, id, unpack(args)
-  end
-
-  -- variable commands
-  local r = {Event.parseVariableInstruction(instruction)}
-  if r[1] then
-    return Event.Command.VARIABLE, unpack(r)
   end
 end
 
