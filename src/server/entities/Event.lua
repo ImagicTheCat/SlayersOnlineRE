@@ -185,7 +185,7 @@ local client_special_vars = {}
 
 function client_special_vars:Name(value)
   if not value then
-    return self.client.id
+    return self.client.pseudo
   end
 end
 
