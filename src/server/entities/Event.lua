@@ -43,7 +43,7 @@ Event.Command = {
 }
 
 Event.patterns = {
-  server_var = "Serveur%[([%w_%-]+)%]", -- Serveur[string]
+  server_var = "Serveur%[([%w_%-%%]+)%]", -- Serveur[string]
   client_var = "Variable%[([%d%.]+)%]", -- Variable[int]
   client_bool_var = "Bool%[([%d%.]+)%]", -- Bool[int]
   event_special_var = "%%([^%.%%]+)%.([^%.%s%%]+)%%", -- %Nom Ev.Var%
@@ -482,6 +482,7 @@ function Event:__construct(client, data, page_index, x, y)
   self.page = self.data.pages[self.page_index]
 
   self.special_var_listeners = {} -- map of id (string) => map of callback
+  self.server_vars_listened = {} -- map of id (string)
 
   self.trigger_auto = false
   self.trigger_auto_once = false
@@ -607,7 +608,8 @@ function Event:checkCondition(instruction)
     local lhs, op, expr
 
     if args[2] == Event.Variable.SERVER then
-      lhs = self.client.server:getVariable(args[3])
+      local key = self:instructionSubstitution(args[3])
+      lhs = self.client.server:getVariable(key)
       op, expr = args[4], args[5]
     elseif args[2] == Event.Variable.CLIENT then
       lhs = self.client:getVariable(args[3], args[4][1])
@@ -746,7 +748,8 @@ function Event:trigger(condition)
         expr = self:instructionSubstitution(expr, true)
 
         if args[2] == Event.Variable.SERVER then
-          self.client.server:setVariable(args[3], Event.computeExpression(expr) or expr)
+          local key = self:instructionSubstitution(args[3])
+          self.client.server:setVariable(key, Event.computeExpression(expr) or expr)
         elseif args[2] == Event.Variable.CLIENT then
           local value = (Event.computeExpression(expr) or 0)
           for id=args[4][1], (args[4][2] or args[4][1]) do -- range set
@@ -919,7 +922,9 @@ function Event:onMapChange()
         local args = {Event.parseCondition(instruction)}
         if args[1] == Event.Condition.VARIABLE then
           if args[2] == Event.Variable.SERVER then
-            self.client.server:listenVariable(args[3], self.vars_callback)
+            local key = self:instructionSubstitution(args[3])
+            self.server_vars_listened[key] = true
+            self.client.server:listenVariable(key, self.vars_callback)
           elseif args[2] == Event.Variable.CLIENT then
             self.client:listenVariable(args[3], args[4], self.vars_callback)
           elseif args[2] == Event.Variable.CLIENT_SPECIAL then
@@ -966,10 +971,8 @@ function Event:onMapChange()
       for _, instruction in ipairs(page.conditions) do
         local args = {Event.parseCondition(instruction)}
         if args[1] == Event.Condition.VARIABLE then
-          if args[2] == Event.Variable.SERVER then
-            self.client.server:listenVariable(args[3], self.vars_callback)
-          elseif args[2] == Event.Variable.CLIENT then
-            self.client:listenVariable(args[3], args[4], self.vars_callback)
+          if args[2] == Event.Variable.CLIENT then
+            self.client:unlistenVariable(args[3], args[4], self.vars_callback)
           elseif args[2] == Event.Variable.CLIENT_SPECIAL then
             self.client:unlistenSpecialVariable(args[3], self.vars_callback)
           elseif args[2] == Event.Variable.EVENT_SPECIAL then
@@ -979,6 +982,11 @@ function Event:onMapChange()
         end
       end
     end
+
+    for id in pairs(self.server_vars_listened) do
+      self.client.server:unlistenVariable(id, self.vars_callback)
+    end
+    self.server_vars_listened = {}
 
     -- auto trigger
     if self.trigger_auto then
