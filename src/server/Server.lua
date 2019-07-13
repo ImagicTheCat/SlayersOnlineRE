@@ -280,6 +280,11 @@ function Server:__construct(cfg)
     end
 
     print(count.." server vars loaded")
+
+    -- init vars
+    for k,v in pairs(self.cfg.server_vars_init) do
+      self:setVariable(k,v)
+    end
   end)
 
   -- create host

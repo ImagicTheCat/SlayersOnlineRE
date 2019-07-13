@@ -11,5 +11,7 @@ return {
     password = "",
     name = "slayers_online_re"
   },
-  motd = "Welcome to SlayersOnlineRE."
+  motd = "Welcome to SlayersOnlineRE.",
+  server_vars_init = { -- map of key => value
+  }
 }
