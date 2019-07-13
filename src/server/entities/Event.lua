@@ -43,7 +43,7 @@ Event.Command = {
 }
 
 Event.patterns = {
-  server_var = "Serveur%[([%w_%-%%]+)%]", -- Serveur[string]
+  server_var = "Serveur%[([%w_%-%%éèàçê]+)%]", -- Serveur[string]
   client_var = "Variable%[([%d%.]+)%]", -- Variable[int]
   client_bool_var = "Bool%[([%d%.]+)%]", -- Bool[int]
   event_special_var = "%%([^%.%%]+)%.([^%.%s%%]+)%%", -- %Nom Ev.Var%
