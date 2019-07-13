@@ -314,15 +314,21 @@ function Client:onResize(w, h)
 
   self.xp_scale = utils.floorScale(w/self.xp_tex:getWidth()/self.gui_scale, self.xp_tex:getWidth())
 
-  self.input_chat:update(2/self.gui_scale, (h-self.font:getHeight()-2-12)/self.gui_scale, (w-4)/self.gui_scale, (self.font:getHeight()+12)/self.gui_scale)
+  local input_chat_y = h-self.font:getHeight()-2-12
+
+  if self.input_string_showing then
+    self.input_chat:update(2/self.gui_scale, (200+2)/self.gui_scale, (w-4)/self.gui_scale, (self.font:getHeight()+12)/self.gui_scale)
+  else
+    self.input_chat:update(2/self.gui_scale, input_chat_y/self.gui_scale, (w-4)/self.gui_scale, (self.font:getHeight()+12)/self.gui_scale)
+  end
 
   self.phials_scale = utils.floorScale((h*0.40/self.phials_atlas.cell_h)/self.gui_scale, self.phials_atlas.cell_h)
 
   self.phials_w = self.phials_atlas.cell_w*self.phials_scale
   self.phials_h = self.phials_atlas.cell_h*self.phials_scale
-  self.phials_y = self.input_chat.y-self.phials_h
+  self.phials_y = input_chat_y/self.gui_scale-self.phials_h
 
-  self.chat_history:update(2/self.gui_scale+self.phials_w, self.input_chat.y-(2+200)/self.gui_scale, (w-4)/self.gui_scale-self.phials_w*2, 200/self.gui_scale)
+  self.chat_history:update(2/self.gui_scale+self.phials_w, (input_chat_y-2-200)/self.gui_scale, (w-4)/self.gui_scale-self.phials_w*2, 200/self.gui_scale)
 
   self.xp_w = self.xp_tex:getWidth()*self.xp_scale
   self.xp_h = self.xp_tex:getHeight()*self.xp_scale
@@ -490,6 +496,7 @@ function Client:pressControl(id)
       if self.typing then
         if self.input_string_showing then -- input string
           self.input_string_showing = false
+          self:onResize(love.graphics.getDimensions())
 
           local r = self.prompt_r
           if r then
@@ -565,6 +572,7 @@ function Client:prompt(title, value)
 
   self.message_window:set(title)
   self.input_string_showing = true
+  self:onResize(love.graphics.getDimensions())
   self.input_chat:set(value or "")
   self:setTyping(true)
 
