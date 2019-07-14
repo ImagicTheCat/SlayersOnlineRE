@@ -1,7 +1,7 @@
 local utils = require("lib/utils")
 local Entity = require("Entity")
 local LivingEntity = require("entities/LivingEntity")
--- delayed
+-- deferred
 local Client
 task(0.01, function()
   Client = require("Client")

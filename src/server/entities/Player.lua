@@ -1,5 +1,6 @@
 local net = require("protocol")
 local LivingEntity = require("entities/LivingEntity")
+local Mob = require("entities/Mob")
 
 local Player = class("Player", LivingEntity)
 
@@ -11,6 +12,16 @@ function Player:__construct()
   LivingEntity.__construct(self)
 
   self.pseudo = "<anonymous>"
+  self.attack_sound = "Blow1.wav"
+  self.hurt_sound = "Kill1.wav"
+end
+
+-- overload
+function Player:onAttack(attacker)
+  if class.is(attacker, Mob) then
+    self:damage(10)
+    return true
+  end
 end
 
 -- overload

@@ -44,6 +44,9 @@ function LivingEntity:__construct(data)
     is_skin = false
   })
 
+  self.attack_sound = data.attack_sound
+  self.hurt_sound = data.hurt_sound
+
   if data.charaset then
     self:setCharaset(data.charaset)
   end
@@ -65,13 +68,26 @@ function LivingEntity:onPacket(action, data)
     self.attack_duration = data
     self.attack_time = 0
 
-    async(function()
-      client.net_manager:requestResource("audio/Sword3.wav")
-      local source = client:playSound("resources/audio/Sword3.wav")
-      source:setPosition(self.x, self.y, 0)
-      source:setVolume(0.75)
-      source:setAttenuationDistances(16, 16*15)
-    end)
+    if self.attack_sound then
+      async(function()
+        client.net_manager:requestResource("audio/"..self.attack_sound)
+        local source = client:playSound("resources/audio/"..self.attack_sound)
+        source:setPosition(self.x, self.y, 0)
+        source:setVolume(0.75)
+        source:setAttenuationDistances(16, 16*15)
+      end)
+    end
+  elseif action == "damage" then
+    local amount = data
+    if amount and self.hurt_sound then
+      async(function()
+        client.net_manager:requestResource("audio/"..self.hurt_sound)
+        local source = client:playSound("resources/audio/"..self.hurt_sound)
+        source:setPosition(self.x, self.y, 0)
+        source:setVolume(0.75)
+        source:setAttenuationDistances(16, 16*15)
+      end)
+    end
   elseif action == "ch_charaset" then
     self:setCharaset(data)
   elseif action == "move_to_cell" then
