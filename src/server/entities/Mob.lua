@@ -1,5 +1,6 @@
 local LivingEntity = require("entities/LivingEntity")
 local utils = require("lib/utils")
+local Player = require("entities/Player")
 
 local Mob = class("Mob", LivingEntity)
 
@@ -77,8 +78,12 @@ function Mob:moveAI()
   end
 end
 
-function Mob:onAttack(client)
-  self.target = client
+-- overload
+function Mob:onAttack(attacker)
+  if class.is(attacker, Player) then
+    self.target = attacker
+    return true
+  end
 end
 
 -- overload
