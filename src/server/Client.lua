@@ -229,23 +229,8 @@ function Client:onCellChange()
   end
 end
 
--- overload
-function Client:attack()
-  Player.attack(self)
-
-  -- attack check
-  local entities = self:raycastEntities(1)
-  for _, entity in ipairs(entities) do
-    if class.is(entity, Mob) then -- mob
-      entity:onAttack(self)
-      break
-    elseif class.is(entity, Event) and entity.client == self and entity.trigger_attack then -- event
-      async(function()
-        entity:trigger(Event.Condition.ATTACK)
-      end)
-      break
-    end
-  end
+function Client:isRunningEvent()
+  return self.event_queue[1] ~= nil
 end
 
 function Client:interact()

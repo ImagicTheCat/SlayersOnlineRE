@@ -1,6 +1,11 @@
 local utils = require("lib/utils")
 local Entity = require("Entity")
 local LivingEntity = require("entities/LivingEntity")
+-- delayed
+local Client
+task(0.01, function()
+  Client = require("Client")
+end)
 
 local Event = class("Event", LivingEntity)
 
@@ -860,7 +865,7 @@ function Event:moveAI()
       local ok
       local ncx, ncy
 
-      if not self.client.event_queue[1] then -- prevent movement when an event is in execution
+      if not self.client:isRunningEvent() then -- prevent movement when an event is in execution
         -- search for a passable cell
         local i = 1
         while not ok and i <= 10 do
@@ -889,6 +894,17 @@ function Event:moveAI()
 
       self:moveAI()
     end)
+  end
+end
+
+-- overload
+function Event:onAttack(attacker)
+  if class.is(attacker, Client) and self.trigger_attack then -- event
+    async(function()
+      self:trigger(Event.Condition.ATTACK)
+    end)
+
+    return true
   end
 end
 

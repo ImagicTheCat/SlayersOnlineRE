@@ -1,6 +1,11 @@
 local Entity = require("Entity")
 local utils = require("lib/utils")
 local cfg = require("config")
+-- delayed
+local Client
+task(0.01, function()
+  Client = require("Client")
+end)
 
 local LivingEntity = class("LivingEntity", Entity)
 
@@ -150,16 +155,31 @@ function LivingEntity:moveToCell(cx, cy, blocking)
   if blocking then r:wait() end
 end
 
--- do attack animation
 function LivingEntity:attack()
   if not self.attacking then
     self.attacking = true
+
+    -- attack check
+    local client = (class.is(self, Client) and self or self.client)
+    local entities = self:raycastEntities(1)
+    for _, entity in ipairs(entities) do
+      if class.is(entity, LivingEntity) and (not entity.client or entity.client == client) then
+        if entity:onAttack(self) then break end
+      end
+    end
+
+    -- do attack animation
     self:broadcastPacket("attack", self.attack_duration)
 
     task(self.attack_duration, function()
       self.attacking = false
     end)
   end
+end
+
+-- attacker: living entity attacking
+-- should return true on hit
+function LivingEntity:onAttack(attacker)
 end
 
 -- get all entities in sight (nearest first)
