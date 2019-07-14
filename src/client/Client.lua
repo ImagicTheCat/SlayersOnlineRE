@@ -171,9 +171,9 @@ function Client:tick(dt)
   end
 
   -- remove stopped sources
-  for i=1,#self.sound_sources do
+  for i=#self.sound_sources,1,-1 do
     if not self.sound_sources[i]:isPlaying() then
-      self.sound_sources[i] = nil
+      table.remove(self.sound_sources, i)
     end
   end
 

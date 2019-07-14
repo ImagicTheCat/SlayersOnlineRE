@@ -1,6 +1,10 @@
 local LivingEntity = require("entities/LivingEntity")
 local utils = require("lib/utils")
-local Player = require("entities/Player")
+-- deferred
+local Player
+task(0.01, function()
+  Player = require("entities/Player")
+end)
 
 local Mob = class("Mob", LivingEntity)
 
@@ -34,6 +38,9 @@ function Mob:__construct(data)
   self.speed = data.speed
   self.obstacle = data.obstacle
 
+  self.attack_sound = string.sub(data.attack_sound, 7) -- remove Sound\ part
+  self.hurt_sound = string.sub(data.hurt_sound, 7) -- remove Sound\ part
+
   -- self.target -- player aggro
 end
 
@@ -45,29 +52,40 @@ function Mob:moveAI()
 
     self.move_ai_task = task(utils.randf(0.75, (aggro and 1.5 or 7)), function()
       if self.map then
-        local ok
-        local ncx, ncy
+        if aggro then -- aggro
+          local dcx, dcy = self.target.cx-self.cx, self.target.cy-self.cy
+          if math.abs(dcx)+math.abs(dcy) > 1 then -- too far, move to target
+            local orientation = LivingEntity.vectorOrientation(dcx, dcy)
+            local dx, dy = LivingEntity.orientationVector(orientation)
+            local ncx, ncy = self.cx+dx, self.cy+dy
 
-        -- search for a passable cell
-        local i = 1
-        while not ok and i <= 10 do
-          local orientation
-          if aggro then
-            orientation = LivingEntity.vectorOrientation(self.target.x-self.x, self.target.y-self.y)
-          else
-            orientation = math.random(0,3)
+            if self.map:isCellPassable(self, ncx, ncy) then
+              self:moveToCell(ncx, ncy)
+            end
+          else -- try attack
+            self:setOrientation(LivingEntity.vectorOrientation(self.target.x-self.x, self.target.y-self.y))
+            self:attack()
+          end
+        else -- random movement
+          local ok
+          local ncx, ncy
+
+          -- search for a passable cell
+          local i = 1
+          while not ok and i <= 10 do
+            local orientation = math.random(0,3)
+
+            local dx, dy = LivingEntity.orientationVector(orientation)
+            ncx, ncy = self.cx+dx, self.cy+dy
+
+            ok = self.map:isCellPassable(self, ncx, ncy)
+
+            i = i+1
           end
 
-          local dx, dy = LivingEntity.orientationVector(orientation)
-          ncx, ncy = self.cx+dx, self.cy+dy
-
-          ok = self.map:isCellPassable(self, ncx, ncy)
-
-          i = i+1
-        end
-
-        if ok then
-          self:moveToCell(ncx, ncy)
+          if ok then
+            self:moveToCell(ncx, ncy)
+          end
         end
 
         self.move_ai_task = nil
@@ -82,6 +100,7 @@ end
 function Mob:onAttack(attacker)
   if class.is(attacker, Player) then
     self.target = attacker
+    self:damage(10) -- test
     return true
   end
 end

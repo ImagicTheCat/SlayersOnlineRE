@@ -1,7 +1,7 @@
 local Entity = require("Entity")
 local utils = require("lib/utils")
 local cfg = require("config")
--- delayed
+-- deferred
 local Client
 task(0.01, function()
   Client = require("Client")
@@ -50,6 +50,8 @@ function LivingEntity:__construct()
   self.attacking = false
 
   -- self.charaset {.path, .x, .y, .w, .h, .is_skin}
+  -- self.attack_sound
+  -- self.hurt_sound
 end
 
 -- overload
@@ -58,6 +60,8 @@ function LivingEntity:serializeNet()
 
   data.orientation = self.orientation
   data.charaset = self.charaset
+  data.attack_sound = self.attack_sound
+  data.hurt_sound = self.hurt_sound
 
   return data
 end
@@ -175,6 +179,11 @@ function LivingEntity:attack()
       self.attacking = false
     end)
   end
+end
+
+-- amount: nil for miss event
+function LivingEntity:damage(amount)
+  self:broadcastPacket("damage", amount)
 end
 
 -- attacker: living entity attacking
