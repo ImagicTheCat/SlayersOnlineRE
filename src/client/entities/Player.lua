@@ -47,6 +47,8 @@ end
 
 -- overload
 function Player:drawOver()
+  LivingEntity.drawOver(self)
+
   -- chat message
   if self.chat_time > 0 then
     local scale = client.gui_scale

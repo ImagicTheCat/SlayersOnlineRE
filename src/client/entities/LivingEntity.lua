@@ -50,6 +50,8 @@ function LivingEntity:__construct(data)
   if data.charaset then
     self:setCharaset(data.charaset)
   end
+
+  self.hints = {} -- list of {text, time}
 end
 
 -- overload
@@ -79,6 +81,8 @@ function LivingEntity:onPacket(action, data)
     end
   elseif action == "damage" then
     local amount = data
+
+    -- sound
     if amount and self.hurt_sound then
       async(function()
         client.net_manager:requestResource("audio/"..self.hurt_sound)
@@ -87,6 +91,13 @@ function LivingEntity:onPacket(action, data)
         source:setVolume(0.75)
         source:setAttenuationDistances(16, 16*15)
       end)
+    end
+
+    -- hint
+    if not amount then
+      self:emitHint({{1,0.5,0}, "Miss"})
+    else
+      self:emitHint({{1,1,1}, amount..""})
     end
   elseif action == "ch_charaset" then
     self:setCharaset(data)
@@ -132,6 +143,12 @@ function LivingEntity:onUpdatePosition(x,y)
   self.ty = y
 end
 
+function LivingEntity:emitHint(colored_text)
+  local text = love.graphics.newText(client.font)
+  text:set(colored_text)
+  table.insert(self.hints, {text, 2})
+end
+
 -- overload
 function LivingEntity:tick(dt)
   if self.move_to_cell then
@@ -174,6 +191,39 @@ function LivingEntity:tick(dt)
       self.attacking = false
       self.anim_x = 1
     end
+  end
+
+  -- hints
+  for i=#self.hints,1,-1 do
+    local hint = self.hints[i]
+    hint[2] = hint[2]-dt
+    if hint[2] <= 0 then
+      table.remove(self.hints, i)
+    end
+  end
+end
+
+-- overload
+function LivingEntity:drawOver()
+  -- draw hints
+  if next(self.hints) then
+    local scale = client.gui_scale
+    local world_gui_scale = scale/client.world_scale -- world to GUI scale
+
+    love.graphics.push()
+    love.graphics.scale(world_gui_scale)
+
+    for _, hint in ipairs(self.hints) do
+      local text, time = hint[1], hint[2]
+
+      local w, h = text:getWidth()/scale, text:getHeight()/scale
+      local x, y = (self.x+8)/world_gui_scale-w/2, (self.y-16*(1-time/2))/world_gui_scale-h
+      love.graphics.setColor(1,1,1,math.min(1,time))
+      love.graphics.draw(text, x, y, 0, 1/scale)
+      love.graphics.setColor(1,1,1,1)
+    end
+
+    love.graphics.pop()
   end
 end
 
