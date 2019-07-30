@@ -354,6 +354,7 @@ function Client:onSetFont()
     for id, entity in pairs(self.map.entities) do
       if class.is(entity, Player) then
         entity.chat_text:setFont(self.font)
+        entity.pseudo_text:setFont(self.font)
       end
     end
   end

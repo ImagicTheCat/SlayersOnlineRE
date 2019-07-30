@@ -17,6 +17,8 @@ function Player:__construct(data)
   self.chat_time = 0
 
   self.pseudo = data.pseudo
+  self.pseudo_text = love.graphics.newText(client.font)
+  self.pseudo_text:set(self.pseudo)
 end
 
 -- overload
@@ -26,6 +28,21 @@ function Player:tick(dt)
   if self.chat_time > 0 then
     self.chat_time = self.chat_time-dt
   end
+end
+
+-- overload
+function Player:drawUnder()
+  -- draw pseudo
+  local scale = client.gui_scale
+  local world_gui_scale = scale/client.world_scale -- world to GUI scale
+  love.graphics.push()
+  love.graphics.scale(world_gui_scale)
+
+  local x = (self.x+8)/world_gui_scale-self.pseudo_text:getWidth()/(scale*2)
+  local y = (self.y+16)/world_gui_scale
+  love.graphics.draw(self.pseudo_text, x, y, 0, 1/scale)
+
+  love.graphics.pop()
 end
 
 -- overload
