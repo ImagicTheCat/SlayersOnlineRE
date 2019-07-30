@@ -29,19 +29,28 @@ function Player:tick(dt)
 end
 
 -- overload
-function Player:drawHUD()
+function Player:drawOver()
+  -- chat message
   if self.chat_time > 0 then
-    local w, h = self.chat_text:getWidth()/client.world_scale+8, self.chat_text:getHeight()/client.world_scale+6
-    local x, y = self.x+8-w/2, self.y-16-h
+    local scale = client.gui_scale
+    local world_gui_scale = scale/client.world_scale -- world to GUI scale
+
+    love.graphics.push()
+    love.graphics.scale(world_gui_scale)
+
+    local w, h = self.chat_text:getWidth()/scale+8, self.chat_text:getHeight()/scale+8
+    local x, y = (self.x+8)/world_gui_scale-w/2, (self.y-12)/world_gui_scale-h
     self.chat_window:update(x,y,w,h)
     self.chat_window:draw()
-    love.graphics.draw(self.chat_text, x+4, y+3, 0, 1/client.world_scale)
+    love.graphics.draw(self.chat_text, x+3, y+3, 0, 1/scale)
+
+    love.graphics.pop()
   end
 end
 
 function Player:onMapChat(msg)
   self.chat_time = utils.clamp(utf8.len(msg)/5, 5, 20)
-  self.chat_text:setf(msg, 150*client.world_scale, "left")
+  self.chat_text:setf(msg, 150*client.gui_scale, "left")
 end
 
 return Player

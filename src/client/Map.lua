@@ -88,36 +88,52 @@ function Map:draw()
   love.graphics.draw(self.low_layer)
   love.graphics.draw(self.high_layer)
 
-  -- back entities
+  -- under
+  --- back entities
+  for _, entity in ipairs(self.back_draw_list) do
+    entity:drawUnder()
+  end
+
+  --- dynamic entities
+  for _, entity in ipairs(self.dynamic_draw_list) do
+    entity:drawUnder()
+  end
+
+  --- front entities
+  for _, entity in ipairs(self.front_draw_list) do
+    entity:drawUnder()
+  end
+
+  -- base
+  --- back entities
   for _, entity in ipairs(self.back_draw_list) do
     entity:draw()
   end
 
-  -- dynamic entities
+  --- dynamic entities
   for _, entity in ipairs(self.dynamic_draw_list) do
     entity:draw()
   end
 
-  -- front entities
+  --- front entities
   for _, entity in ipairs(self.front_draw_list) do
     entity:draw()
   end
 
-  -- HUD
-
-  -- back entities
+  -- over
+  --- back entities
   for _, entity in ipairs(self.back_draw_list) do
-    entity:drawHUD()
+    entity:drawOver()
   end
 
-  -- dynamic entities
+  --- dynamic entities
   for _, entity in ipairs(self.dynamic_draw_list) do
-    entity:drawHUD()
+    entity:drawOver()
   end
 
-  -- front entities
+  --- front entities
   for _, entity in ipairs(self.front_draw_list) do
-    entity:drawHUD()
+    entity:drawOver()
   end
 end
 
