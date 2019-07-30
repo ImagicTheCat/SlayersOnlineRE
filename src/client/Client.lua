@@ -204,6 +204,8 @@ function Client:onPacket(protocol, data)
       --- load remote manifest
       if not self.net_manager:loadRemoteManifest() then
         print("couldn't reach remote resources repository manifest")
+        self.chat_history:add({{0,1,0.5}, "Couldn't reach remote resources repository manifest."})
+        self.chat_history_time = 10
         return
       end
 
