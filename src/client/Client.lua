@@ -13,6 +13,7 @@ local InputQuery = require("gui/InputQuery")
 local TextureAtlas = require("TextureAtlas")
 local Menu = require("gui/Menu")
 local sha2 = require("sha2")
+local client_version = require("client_version")
 
 local Client = class("Client")
 
@@ -196,6 +197,7 @@ end
 function Client:onPacket(protocol, data)
   if protocol == net.PROTOCOL then
     net = data
+    self:sendPacket(net.VERSION_CHECK, client_version)
   elseif protocol == net.MOTD_LOGIN then
     local motd = data
 
