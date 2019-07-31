@@ -186,6 +186,11 @@ function Client:requestInputString(title)
   return self.input_string_r:wait()
 end
 
+function Client:kick(reason)
+  self:sendChatMessage("Kicked: "..reason)
+  self.peer:disconnect_later()
+end
+
 -- (async)
 function Client:onDisconnect()
   self:save()

@@ -280,6 +280,8 @@ function Client:sendPacket(protocol, data, unsequenced)
 end
 
 function Client:onDisconnect()
+  self.chat_history:add({{0,1,0.5}, "Disconnected from server."})
+  self.chat_history_time = 10
 end
 
 function Client:close()
