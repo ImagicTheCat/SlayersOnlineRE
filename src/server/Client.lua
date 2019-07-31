@@ -5,6 +5,7 @@ local Event = require("entities/Event")
 local Mob = require("entities/Mob")
 local utils = require("lib/utils")
 local sha2 = require("sha2")
+local client_version = require("client_version")
 
 -- server-side client
 local Client = class("Client", Player)
@@ -33,6 +34,7 @@ function Client:__construct(server, peer)
 
   self.server = server
   self.peer = peer
+  self.valid = false
 
   self.entities = {} -- bound map entities, map of entity
   self.events_by_name = {} -- map of name => event entity
@@ -50,13 +52,19 @@ function Client:__construct(server, peer)
   self.player_config_changed = false
 
   self:send(Client.makePacket(net.PROTOCOL, net)) -- send protocol
-  self:send(Client.makePacket(net.MOTD_LOGIN, self.server.motd)) -- send motd (start login)
 end
 
 function Client:onPacket(protocol, data)
   -- not logged
   if not self.user_id then
-    if protocol == net.LOGIN then -- login
+    if not self.valid and protocol == net.VERSION_CHECK then -- check client version
+      if type(data) == "string" and data == client_version then
+        self.valid = true
+        self:send(Client.makePacket(net.MOTD_LOGIN, self.server.motd)) -- send motd (start login)
+      else
+        self:kick("server/client version mismatch, download the latest client release to fix the issue")
+      end
+    elseif self.valid and protocol == net.LOGIN then -- login
       if type(data) == "table" and type(data.pseudo) == "string" and type(data.password) == "string" then
         async(function()
           local pass_hash = sha2.sha512("<server_salt>"..data.pseudo..data.password)
