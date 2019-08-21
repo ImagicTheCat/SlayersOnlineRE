@@ -40,6 +40,10 @@ function InputQuery:build()
   end
 end
 
+function InputQuery:tick(dt)
+  self.selector:tick(dt)
+end
+
 -- overload
 function InputQuery:update(x,y,w,h)
   Window.update(self, x,y,w,h)

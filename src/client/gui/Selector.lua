@@ -7,6 +7,8 @@ local Selector = class("Selector", Widget)
 function Selector:__construct(client, wc, hc)
   Widget.__construct(self, client)
 
+  self.blink_time = 0
+
   self:init(wc,hc)
 end
 
@@ -70,6 +72,10 @@ function Selector:select()
   end
 end
 
+function Selector:tick(dt)
+  self.blink_time = (self.blink_time+dt)%1
+end
+
 -- overload
 function Selector:draw()
   local scale = self.client.gui_scale
@@ -77,6 +83,7 @@ function Selector:draw()
 
   local cell_w, cell_h = self.w/self.wc, self.client.font:getHeight()*inv_scale+6
   local selected_idx = self:getIndex(self.cx, self.cy)
+  local blink = (self.blink_time < 0.5) -- used for 1s blinking states
 
   -- shift to current selected entry if not visible
   local shift_cy = 0
@@ -85,8 +92,11 @@ function Selector:draw()
     shift_cy = math.ceil(overflow_y/cell_h)
   end
 
+  -- compute last visible cell y
+  local last_cy = math.min(math.ceil(self.h/cell_h)+shift_cy, self.hc-1)
+
   for cx=0, self.wc-1 do
-    for cy=shift_cy, self.hc-1 do
+    for cy=shift_cy, last_cy do
       local idx = self:getIndex(cx,cy)
       local cell = self.cells[idx]
 
@@ -109,6 +119,19 @@ function Selector:draw()
   end
 
   love.graphics.setScissor()
+
+  if blink then
+    -- draw blinking arrows
+    --- up
+    if shift_cy > 0 then
+      love.graphics.draw(self.system.tex, self.system.up_arrow, self.x+self.w-16-4, self.y+self.h-16-4)
+    end
+
+    --- down
+    if (last_cy-shift_cy+1)*cell_h > self.h then
+      love.graphics.draw(self.system.tex, self.system.down_arrow, self.x+self.w-16-4, self.y+self.h-8-4)
+    end
+  end
 end
 
 return Selector
