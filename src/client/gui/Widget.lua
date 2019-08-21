@@ -38,6 +38,9 @@ function Widget.loadSystem(client)
     system.tex = client:loadTexture("resources/textures/system.png")
     system.background = love.graphics.newQuad(0,0,32,32,160,80)
 
+    system.up_arrow = love.graphics.newQuad(40,8,16,8,160,80)
+    system.down_arrow = love.graphics.newQuad(40,16,16,8,160,80)
+
     system.window_borders = Widget.loadSystemBorders(32, 0, 32, 32, 5)
     system.select_borders = Widget.loadSystemBorders(64, 0, 32, 32, 5)
   end

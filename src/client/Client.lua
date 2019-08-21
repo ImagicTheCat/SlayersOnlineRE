@@ -157,6 +157,11 @@ function Client:tick(dt)
     self.chat_history_time = self.chat_history_time-dt
   end
 
+  -- GUI
+  if self.input_query_showing then
+    self.input_query:tick(dt)
+  end
+
   -- phials animation
   self.phials_time = self.phials_time+dt
   if self.phials_time > self.phials_delay then
