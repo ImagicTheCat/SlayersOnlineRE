@@ -115,12 +115,18 @@ commands.gui = {function(self, client, args)
 
     if param == "font_size" then
       client:applyConfig({gui = {font_size = tonumber(value) or 25}})
+    elseif param == "dialog_height" then
+      client:applyConfig({gui = {dialog_height = tonumber(value) or 0.25}})
+    elseif param == "chat_height" then
+      client:applyConfig({gui = {chat_height = tonumber(value) or 0.25}})
     else
       client:sendChatMessage("invalid parameter \""..param.."\"")
     end
   end
 end, "<parameter> <value>", [[set GUI parameters
-    - font_size (size in pixels)]]
+    - font_size (size in pixels)
+    - dialog_height (0-1 factor)
+    - chat_height (0-1 factor)]]
 }
 
 commands.memory = {function(self, client, args)

@@ -51,7 +51,9 @@ function Client:__construct(cfg)
       escape = "menu"
     },
     gui = {
-      font_size = 25
+      font_size = 25,
+      dialog_height = 0.25,
+      chat_height = 0.25
     }
   }
 
@@ -310,8 +312,9 @@ function Client:onApplyConfig(config)
       love.graphics.setFont(self.font)
 
       self:onSetFont()
-      self:onResize(love.graphics.getDimensions()) -- trigger GUI update
     end
+
+    self:onResize(love.graphics.getDimensions()) -- trigger GUI update
   end
 end
 
@@ -321,9 +324,11 @@ function Client:onResize(w, h)
   self.xp_scale = utils.floorScale(w/self.xp_tex:getWidth()/self.gui_scale, self.xp_tex:getWidth())
 
   local input_chat_y = h-self.font:getHeight()-2-12
+  local message_height = math.floor(self.player_config.gui.dialog_height*h)
+  local chat_height = math.floor(self.player_config.gui.chat_height*h)
 
   if self.input_string_showing then
-    self.input_chat:update(2/self.gui_scale, (200+2)/self.gui_scale, (w-4)/self.gui_scale, (self.font:getHeight()+12)/self.gui_scale)
+    self.input_chat:update(2/self.gui_scale, (message_height+2)/self.gui_scale, (w-4)/self.gui_scale, (self.font:getHeight()+12)/self.gui_scale)
   else
     self.input_chat:update(2/self.gui_scale, input_chat_y/self.gui_scale, (w-4)/self.gui_scale, (self.font:getHeight()+12)/self.gui_scale)
   end
@@ -334,14 +339,14 @@ function Client:onResize(w, h)
   self.phials_h = self.phials_atlas.cell_h*self.phials_scale
   self.phials_y = input_chat_y/self.gui_scale-self.phials_h
 
-  self.chat_history:update(2/self.gui_scale+self.phials_w, (input_chat_y-2-200)/self.gui_scale, (w-4)/self.gui_scale-self.phials_w*2, 200/self.gui_scale)
+  self.chat_history:update(2/self.gui_scale+self.phials_w, (input_chat_y-2-chat_height)/self.gui_scale, (w-4)/self.gui_scale-self.phials_w*2, chat_height/self.gui_scale)
 
   self.xp_w = self.xp_tex:getWidth()*self.xp_scale
   self.xp_h = self.xp_tex:getHeight()*self.xp_scale
   self.xp_y = h/self.gui_scale-self.xp_h+7*self.xp_scale
 
-  self.message_window:update(2/self.gui_scale, 2/self.gui_scale, (w-4)/self.gui_scale, 200/self.gui_scale)
-  self.input_query:update(2/self.gui_scale, 2/self.gui_scale, (w-4)/self.gui_scale, 200/self.gui_scale)
+  self.message_window:update(2/self.gui_scale, 2/self.gui_scale, (w-4)/self.gui_scale, message_height/self.gui_scale)
+  self.input_query:update(2/self.gui_scale, 2/self.gui_scale, (w-4)/self.gui_scale, message_height/self.gui_scale)
 
   local w_menu = self.font:getWidth("Inventory")+12*self.gui_scale
   local h_menu = (self.font:getHeight()+6*self.gui_scale)*5+6*self.gui_scale
