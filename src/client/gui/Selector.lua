@@ -50,8 +50,8 @@ function Selector:moveSelect(dx, dy)
   self.cx = self.cx+dx
   self.cy = self.cy+dy
 
-  if self.cx < 0 then self.cx = self.wc-math.abs(self.cx)%self.wc else self.cx = self.cx%self.wc end
-  if self.cy < 0 then self.cy = self.hc-math.abs(self.cy)%self.hc else self.cy = self.cy%self.hc end
+  if self.cx < 0 then self.cx = (self.wc-(-self.cx)%self.wc)%self.wc else self.cx = self.cx%self.wc end
+  if self.cy < 0 then self.cy = (self.hc-(-self.cy)%self.hc)%self.hc else self.cy = self.cy%self.hc end
 
   local idx = self:getIndex(self.cx, self.cy)
   local cell = self.cells[idx]
