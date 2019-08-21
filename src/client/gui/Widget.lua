@@ -85,4 +85,13 @@ end
 function Widget:draw()
 end
 
+-- play unspatialized GUI sound
+-- return source
+function Widget:playSound(path)
+  local source = self.client:playSound(path)
+  source:setRelative(true)
+
+  return source
+end
+
 return Widget
