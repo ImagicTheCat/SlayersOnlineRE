@@ -10,6 +10,7 @@ local TextInput = require("gui/TextInput")
 local ChatHistory = require("gui/ChatHistory")
 local MessageWindow = require("gui/MessageWindow")
 local InputQuery = require("gui/InputQuery")
+local Inventory = require("gui/Inventory")
 local TextureAtlas = require("TextureAtlas")
 local Menu = require("gui/Menu")
 local sha2 = require("sha2")
@@ -95,6 +96,9 @@ function Client:__construct(cfg)
   self.menu = Menu(self)
   self.menu_showing = false
 
+  self.inventory = Inventory(self)
+  self.inventory_showing = false
+
   self.phials_atlas = TextureAtlas(0,0,64,216,16,72)
   self.phials_tex = self:loadTexture("resources/textures/phials.png")
   self.phials_time = 0
@@ -158,9 +162,8 @@ function Client:tick(dt)
   end
 
   -- GUI
-  if self.input_query_showing then
-    self.input_query:tick(dt)
-  end
+  if self.input_query_showing then self.input_query:tick(dt) end
+  if self.inventory_showing then self.inventory:tick(dt) end
 
   -- phials animation
   self.phials_time = self.phials_time+dt
@@ -356,6 +359,8 @@ function Client:onResize(w, h)
   local w_menu = self.font:getWidth("Inventory")+12*self.gui_scale
   local h_menu = (self.font:getHeight()+6*self.gui_scale)*5+6*self.gui_scale
   self.menu:update(2/self.gui_scale, (h/2-h_menu/2)/self.gui_scale, w_menu/self.gui_scale, h_menu/self.gui_scale)
+
+  self.inventory:update(self.menu.w+2/self.gui_scale, 2/self.gui_scale, (w-4)/self.gui_scale-self.menu.w, (h-4)/self.gui_scale)
 end
 
 function Client:onSetFont()
@@ -474,21 +479,35 @@ function Client:pressControl(id)
       if id == "up" then
         if self.input_query_showing then
           self.input_query.selector:moveSelect(0,-1)
+        elseif self.inventory_showing then
+          self.inventory.selector:moveSelect(0,-1)
         elseif self.menu_showing then
           self.menu.selector:moveSelect(0,-1)
         else
           self:pressOrientation(0)
         end
-      elseif id == "right" then self:pressOrientation(1)
+      elseif id == "right" then
+        if self.inventory_showing then
+          self.inventory.selector:moveSelect(1,0)
+        else
+          self:pressOrientation(1)
+        end
       elseif id == "down" then
         if self.input_query_showing then
           self.input_query.selector:moveSelect(0,1)
+        elseif self.inventory_showing then
+          self.inventory.selector:moveSelect(0,1)
         elseif self.menu_showing then
           self.menu.selector:moveSelect(0,1)
         else
           self:pressOrientation(2)
         end
-      elseif id == "left" then self:pressOrientation(3)
+      elseif id == "left" then
+        if self.inventory_showing then
+          self.inventory.selector:moveSelect(-1,0)
+        else
+          self:pressOrientation(3)
+        end
       elseif id == "attack" then self:inputAttack()
       elseif id == "interact" then
         if self.message_showing then
@@ -498,6 +517,8 @@ function Client:pressControl(id)
           self.input_query_showing = false
           self.input_query.selector:select()
           self:sendPacket(net.EVENT_INPUT_QUERY_ANSWER, self.input_query.options[self.input_query.selected] or "")
+        elseif self.inventory_showing then self.inventory.selector:select()
+        elseif self.menu_showing then self.menu.selector:select()
         else
           self:inputInteract()
         end
@@ -505,7 +526,10 @@ function Client:pressControl(id)
     end
 
     if id == "menu" then
-      self.menu_showing = not self.menu_showing
+      if self.inventory_showing then self.inventory_showing = false -- close inventory
+      else
+        self.menu_showing = not self.menu_showing
+      end
     end
 
     -- input text
@@ -666,6 +690,10 @@ function Client:draw()
 
   if self.menu_showing then
     self.menu:draw()
+  end
+
+  if self.inventory_showing then
+    self.inventory:draw()
   end
 
   love.graphics.pop()

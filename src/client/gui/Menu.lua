@@ -4,6 +4,19 @@ local Selector = require("gui/Selector")
 local Menu = class("Menu", Window)
 
 local function m_all(selector, x, y, selected)
+  -- triggered
+  if selected then
+    if y == 0 then -- open Inventory
+      selector.client.inventory_showing = true
+      local items = {}
+      for i=1,100 do
+        table.insert(items, {name = "My item #"..i, amount = math.random(1,100)})
+      end
+      selector.client.inventory:setItems(items)
+    elseif y == 4 then -- quit
+      love.event.quit()
+    end
+  end
 end
 
 function Menu:__construct(client)
