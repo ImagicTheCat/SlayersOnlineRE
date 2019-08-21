@@ -56,6 +56,9 @@ function Selector:moveSelect(dx, dy)
   local idx = self:getIndex(self.cx, self.cy)
   local cell = self.cells[idx]
   if cell and cell.callback then
+    -- sound effect
+    self:playSound("resources/audio/Cursor1.wav")
+
     cell.callback(self, self.cx, self.cy, false)
   end
 end
@@ -67,6 +70,9 @@ function Selector:select()
     local idx = self:getIndex(cx, cy)
     local cell = self.cells[idx]
     if cell and cell.callback then
+      -- sound effect
+      self:playSound("resources/audio/Item1.wav")
+
       cell.callback(self, cx, cy, true)
     end
   end

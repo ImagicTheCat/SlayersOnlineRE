@@ -824,10 +824,7 @@ function Client:playMusic(path)
   end
 end
 
--- play a source and return it
--- x,y: (optional) spatialized if passed
--- volume: (optional)
--- pitch: (optional)
+-- play a sound source and return it
 -- return source
 function Client:playSound(path)
   local data = self.sounds[path]
@@ -835,7 +832,6 @@ function Client:playSound(path)
     data = love.sound.newSoundData(path)
     self.sounds[path] = data
   end
-
 
   local source = love.audio.newSource(data, "static")
   source:play()
