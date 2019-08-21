@@ -53,12 +53,12 @@ function Selector:moveSelect(dx, dy)
   if self.cx < 0 then self.cx = (self.wc-(-self.cx)%self.wc)%self.wc else self.cx = self.cx%self.wc end
   if self.cy < 0 then self.cy = (self.hc-(-self.cy)%self.hc)%self.hc else self.cy = self.cy%self.hc end
 
+  -- sound effect
+  self:playSound("resources/audio/Cursor1.wav")
+
   local idx = self:getIndex(self.cx, self.cy)
   local cell = self.cells[idx]
   if cell and cell.callback then
-    -- sound effect
-    self:playSound("resources/audio/Cursor1.wav")
-
     cell.callback(self, self.cx, self.cy, false)
   end
 end
