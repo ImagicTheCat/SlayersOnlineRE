@@ -6,6 +6,7 @@ local Mob = require("entities/Mob")
 local utils = require("lib/utils")
 local sha2 = require("sha2")
 local client_version = require("client_version")
+local Inventory = require("Inventory")
 
 -- server-side client
 local Client = class("Client", Player)
@@ -96,7 +97,11 @@ function Client:onPacket(protocol, data)
               end
             end
 
-            self:sendChatMessage("Logged in.")
+            --- inventories
+            self.inventory = Inventory(self.user_id, 1, 100)
+            self.chest_inventory = Inventory(self.user_id, 2, 1000)
+            self.inventory:load(self.server.db)
+            self.chest_inventory:load(self.server.db)
 
             --- state
             local state = user_row.state and msgpack.unpack(user_row.state) or {}
@@ -124,6 +129,8 @@ function Client:onPacket(protocol, data)
             end
 
             map:addEntity(self)
+
+            self:sendChatMessage("Logged in.")
           else -- login failed
             self:sendChatMessage("Login failed.")
             self:send(Client.makePacket(net.MOTD_LOGIN, self.server.motd)) -- send motd (start login)
@@ -285,6 +292,10 @@ function Client:save()
       self.server.db:query(q_set_bool_var, {self.user_id, var, self.bool_vars[var]})
     end
     self.changed_bool_vars = {}
+
+    -- inventories
+    self.inventory:save(self.server.db)
+    self.chest_inventory:save(self.server.db)
 
     -- config
     if self.player_config_changed then
