@@ -130,7 +130,7 @@ function Selector:draw()
     -- draw blinking arrows
     --- up
     if shift_cy > 0 then
-      love.graphics.draw(self.system.tex, self.system.up_arrow, self.x+self.w-16-4, self.y+self.h-16-4)
+      love.graphics.draw(self.system.tex, self.system.up_arrow, self.x+self.w-16-4, self.y+4)
     end
 
     --- down
