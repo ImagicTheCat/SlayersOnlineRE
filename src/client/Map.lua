@@ -1,4 +1,4 @@
-local entities = require("entities/entities")
+local entities = require("entities.entities")
 local TextureAtlas = require("TextureAtlas")
 
 local Map = class("Map")

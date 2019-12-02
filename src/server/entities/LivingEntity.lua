@@ -1,5 +1,5 @@
 local Entity = require("Entity")
-local utils = require("lib/utils")
+local utils = require("lib.utils")
 local cfg = require("config")
 -- deferred
 local Client

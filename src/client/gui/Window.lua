@@ -1,28 +1,45 @@
-local Widget = require("gui/Widget")
+local Widget = require("ALGUI.Widget")
 
 local Window = class("Window", Widget)
 
+local MARGIN = 6
+
+local function sort_layout(a,b)
+  return a.iz < b.iz
+end
+
 -- METHODS
 
-function Window:__construct(client)
-  Widget.__construct(self, client)
+-- wrap: (optional) if true, will wrap/extend on content (vertically)
+function Window:__construct(wrap)
+  Widget.__construct(self)
 
-  self.system = Window.loadSystem(client)
+  self.wrap = wrap
 end
 
--- overload
-function Window:draw()
-  local x,y,w,h = self.x, self.y, self.w, self.h
+function Window:updateLayout(w,h)
+  local widgets = {}
+  for widget in pairs(self.widgets) do table.insert(widgets, widget) end
+  table.sort(widgets, sort_layout) -- sort by implicit z (added order)
 
-  -- background
-  love.graphics.draw(self.system.tex, self.system.background, x+1, y+1, 0, (w-2)/32, (h-2)/32)
-
-  self:drawBorders(self.system.window_borders, x, y, w, h)
-end
-
-function Window:clip()
-  local scale = self.client.gui_scale
-  love.graphics.setScissor((self.x+3)*scale, (self.y+3)*scale, (self.w-6)*scale, (self.h-6)*scale)
+  if self.wrap then -- vertical flow and wrap
+    local y, max_w = MARGIN, 0
+    for _, child in ipairs(widgets) do
+      child:setPosition(MARGIN,y)
+      child:updateLayout(max_w, h-y-MARGIN)
+      max_w = math.max(max_w, child.w)
+      y = y+child.h
+    end
+    self:setSize(max_w+MARGIN*2,y+MARGIN)
+  else -- vertical flow
+    local y = MARGIN
+    for _, child in ipairs(widgets) do
+      child:setPosition(MARGIN,y)
+      child:updateLayout(w-MARGIN*2, h-y-MARGIN)
+      y = y+child.h
+    end
+    self:setSize(w,h)
+  end
 end
 
 return Window

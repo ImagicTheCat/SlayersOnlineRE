@@ -1,7 +1,9 @@
 local utf8 = require("utf8")
-local utils = require("lib/utils")
-local LivingEntity = require("entities/LivingEntity")
-local Window = require("gui/Window")
+local utils = require("lib.utils")
+local LivingEntity = require("entities.LivingEntity")
+local GUI = require("gui.GUI")
+local Window = require("gui.Window")
+local Text = require("gui.Text")
 
 local Player = class("Player", LivingEntity)
 
@@ -12,9 +14,12 @@ local Player = class("Player", LivingEntity)
 function Player:__construct(data)
   LivingEntity.__construct(self, data)
 
-  self.chat_window = Window(client)
-  self.chat_text = love.graphics.newText(client.font)
-  self.chat_time = 0
+  self.chat_gui = GUI(client, true)
+  self.chat_w = Window(true)
+  self.chat_text = Text(400)
+  self.chat_w:add(self.chat_text)
+  self.chat_gui:add(self.chat_w)
+  self.chat_time = 1
 
   self.pseudo = data.pseudo
   self.pseudo_text = love.graphics.newText(client.font)
@@ -30,46 +35,34 @@ function Player:tick(dt)
   end
 end
 
--- overload
+-- override
 function Player:drawUnder()
   -- draw pseudo
-  local scale = client.gui_scale
-  local world_gui_scale = scale/client.world_scale -- world to GUI scale
-  love.graphics.push()
-  love.graphics.scale(world_gui_scale)
-
-  local x = (self.x+8)/world_gui_scale-self.pseudo_text:getWidth()/(scale*2)
-  local y = (self.y+16)/world_gui_scale
-  love.graphics.draw(self.pseudo_text, x, y, 0, 1/scale)
-
-  love.graphics.pop()
+  local inv_scale = 1/client.world_scale
+  local x = (self.x+8)-self.pseudo_text:getWidth()/2*inv_scale
+  local y = self.y+16
+  love.graphics.draw(self.pseudo_text, x, y, 0, inv_scale)
 end
 
--- overload
+-- override
 function Player:drawOver()
   LivingEntity.drawOver(self)
 
-  -- chat message
+  -- draw chat GUI
   if self.chat_time > 0 then
-    local scale = client.gui_scale
-    local world_gui_scale = scale/client.world_scale -- world to GUI scale
-
+    self.chat_gui:update()
+    local inv_scale = 1/client.world_scale
     love.graphics.push()
-    love.graphics.scale(world_gui_scale)
-
-    local w, h = self.chat_text:getWidth()/scale+8, self.chat_text:getHeight()/scale+8
-    local x, y = (self.x+8)/world_gui_scale-w/2, (self.y-12)/world_gui_scale-h
-    self.chat_window:update(x,y,w,h)
-    self.chat_window:draw()
-    love.graphics.draw(self.chat_text, x+3, y+3, 0, 1/scale)
-
+    love.graphics.translate(self.x+8-self.chat_gui.w/2*inv_scale, self.y-self.chat_gui.h*inv_scale-12)
+    love.graphics.scale(inv_scale)
+    client.gui_renderer:render(self.chat_gui) -- render
     love.graphics.pop()
   end
 end
 
 function Player:onMapChat(msg)
   self.chat_time = utils.clamp(utf8.len(msg)/5, 5, 20)
-  self.chat_text:setf(msg, 150*client.gui_scale, "left")
+  self.chat_text:set(msg)
 end
 
 return Player

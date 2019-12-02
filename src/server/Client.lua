@@ -1,9 +1,9 @@
 local msgpack = require("MessagePack")
 local net = require("protocol")
-local Player = require("entities/Player")
-local Event = require("entities/Event")
-local Mob = require("entities/Mob")
-local utils = require("lib/utils")
+local Player = require("entities.Player")
+local Event = require("entities.Event")
+local Mob = require("entities.Mob")
+local utils = require("lib.utils")
 local sha2 = require("sha2")
 local client_version = require("client_version")
 local Inventory = require("Inventory")
@@ -161,12 +161,16 @@ function Client:onPacket(protocol, data)
     elseif protocol == net.EVENT_MESSAGE_SKIP then
       if self.message_r then self.message_r() end
     elseif protocol == net.EVENT_INPUT_QUERY_ANSWER then
-      if self.input_query_r and type(data) == "string" then
-        self.input_query_r(data)
+      local r = self.input_query_r
+      if r and type(data) == "number" then
+        self.input_query_r = nil
+        r(data)
       end
     elseif protocol == net.EVENT_INPUT_STRING_ANSWER then
-      if self.input_string_r and type(data) == "string" then
-        self.input_string_r(data)
+      local r = self.input_string_r
+      if r and type(data) == "string" then
+        self.input_string_r = nil
+        r(data)
       end
     end
   end
@@ -189,6 +193,8 @@ function Client:requestMessage(msg)
   self.message_r:wait()
 end
 
+-- (async)
+-- return option index (may be invalid)
 function Client:requestInputQuery(title, options)
   self.input_query_r = async()
   self:send(Client.makePacket(net.EVENT_INPUT_QUERY, {title = title, options = options}))

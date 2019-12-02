@@ -1,9 +1,9 @@
-local LivingEntity = require("entities/LivingEntity")
-local utils = require("lib/utils")
+local LivingEntity = require("entities.LivingEntity")
+local utils = require("lib.utils")
 -- deferred
 local Player
 task(0.01, function()
-  Player = require("entities/Player")
+  Player = require("entities.Player")
 end)
 
 local Mob = class("Mob", LivingEntity)

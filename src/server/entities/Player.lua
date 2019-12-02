@@ -1,6 +1,6 @@
 local net = require("protocol")
-local LivingEntity = require("entities/LivingEntity")
-local Mob = require("entities/Mob")
+local LivingEntity = require("entities.LivingEntity")
+local Mob = require("entities.Mob")
 
 local Player = class("Player", LivingEntity)
 
