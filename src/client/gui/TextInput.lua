@@ -1,28 +1,48 @@
 local utf8 = require("utf8")
+local Widget = require("ALGUI.Widget")
 
-local Window = require("gui/Window")
+local TextInput = class("TextInput", Widget)
 
-local TextInput = class("TextInput", Window)
-
-function TextInput:__construct(client)
-  Window.__construct(self, client)
-
-  self.text = ""
-  self.display_text = love.graphics.newText(client.font)
+local function gui_change(self, old_gui)
+  if old_gui then old_gui:unlisten("font_update", self.font_update) end
+  if self.gui then self.gui:listen("font_update", self.font_update) end
 end
 
--- overload
-function TextInput:draw()
-  Window.draw(self)
+local function key_press(self, keycode, scancode, repeated)
+  if scancode == "backspace" then
+    self:erase(-1)
+  end
+end
 
-  local scale = self.client.gui_scale
-  love.graphics.setScissor((self.x+3)*scale, (self.y+3)*scale, (self.w-6)*scale, (self.h-6)*scale)
+local function control_press(self, id)
+  if id == "copy" then
+    love.system.setClipboardText(self.text)
+  elseif id == "paste" then
+    self:set(self.text..love.system.getClipboardText())
+  end
+end
 
-  -- scroll
-  local x = math.min(self.x+4, self.w-6-self.display_text:getWidth()/scale)
+local function focus_change(self, state)
+  love.keyboard.setTextInput(state)
+end
 
-  love.graphics.draw(self.display_text, x, self.y+3, 0, 1/scale)
-  love.graphics.setScissor()
+-- METHODS
+
+function TextInput:__construct()
+  Widget.__construct(self)
+
+  self.text = ""
+  self.display_text = love.graphics.newText(love.graphics.getFont())
+  self:listen("gui_change", gui_change)
+  self:listen("text_input", self.input)
+  self:listen("key_press", key_press)
+  self:listen("control_press", control_press)
+  self:listen("focus_change", focus_change)
+
+  -- GUI events
+  function self.font_update(gui)
+    self.display_text:setFont(love.graphics.getFont())
+  end
 end
 
 function TextInput:input(data)
@@ -33,6 +53,11 @@ end
 function TextInput:set(text)
   self.text = text
   self.display_text:set(self.text)
+end
+
+-- override
+function TextInput:updateLayout(w,h)
+  self:setSize(w,h)
 end
 
 -- erase character

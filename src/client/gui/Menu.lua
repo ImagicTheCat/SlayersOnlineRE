@@ -1,5 +1,5 @@
-local Window = require("gui/Window")
-local Selector = require("gui/Selector")
+local Window = require("gui.Window")
+local Selector = require("gui.Selector")
 
 local Menu = class("Menu", Window)
 
@@ -25,7 +25,7 @@ function Menu:__construct(client)
   self.selector = Selector(client, 1, 5)
 end
 
--- overload
+-- override
 function Menu:update(x, y, w, h)
   Window.update(self,x,y,w,h)
 
@@ -38,7 +38,7 @@ function Menu:update(x, y, w, h)
   self.selector:set(0,4, "Quit", m_all)
 end
 
--- overload
+-- override
 function Menu:draw()
   Window.draw(self)
 

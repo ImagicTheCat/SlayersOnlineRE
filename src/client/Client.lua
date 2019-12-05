@@ -1,18 +1,23 @@
 local enet = require("enet")
-local utils = require("lib/utils")
+local utils = require("lib.utils")
 local msgpack = require("MessagePack")
 local Map = require("Map")
-local LivingEntity = require("entities/LivingEntity")
-local Player = require("entities/Player")
+local LivingEntity = require("entities.LivingEntity")
+local Player = require("entities.Player")
 local NetManager = require("NetManager")
 local URL = require("socket.url")
-local TextInput = require("gui/TextInput")
-local ChatHistory = require("gui/ChatHistory")
-local MessageWindow = require("gui/MessageWindow")
-local InputQuery = require("gui/InputQuery")
-local Inventory = require("gui/Inventory")
+local GUI = require("gui.GUI")
+local GUI_Renderer = require("gui.Renderer")
+local TextInput = require("gui.TextInput")
+local ChatHistory = require("gui.ChatHistory")
+local Window = require("gui.Window")
+local Text = require("gui.Text")
+local GridInterface = require("gui.GridInterface")
+local Inventory = require("gui.Inventory")
 local TextureAtlas = require("TextureAtlas")
-local Menu = require("gui/Menu")
+local Phial = require("gui.Phial")
+local XPBar = require("gui.XPBar")
+local Menu = require("gui.Menu")
 local sha2 = require("sha2")
 local client_version = require("client_version")
 
@@ -76,39 +81,12 @@ function Client:__construct(cfg)
   self.font = love.graphics.newFont("resources/font.ttf", self.player_config.gui.font_size)
   love.graphics.setFont(self.font)
 
+  self.gui = GUI(self)
+  self.gui_renderer = GUI_Renderer(self)
+
   self.world_scale = 4
-  self.gui_scale = 2
-
-  self.input_chat = TextInput(self)
-  self.typing = false
-
-  self.chat_history = ChatHistory(self)
-  self.chat_history_time = 0
-
-  self.message_window = MessageWindow(self)
-  self.message_showing = false
-
-  self.input_query = InputQuery(self)
-  self.input_query_showing = false
-
-  self.input_string_showing = false
-
-  self.menu = Menu(self)
-  self.menu_showing = false
-
-  self.inventory = Inventory(self)
-  self.inventory_showing = false
-
-  self.phials_atlas = TextureAtlas(0,0,64,216,16,72)
-  self.phials_tex = self:loadTexture("resources/textures/phials.png")
-  self.phials_time = 0
-  self.phials_delay = 2/3 -- animation step duration (anim_duration/3)
-  self.phials_index = 0
-  self.phials_scale = 3/self.gui_scale
-  self.phials_ps = 21/72 -- empty progress display shift
-  self.phials_h = 0
-  self.phials_w = 0
-  self.phials_y = 0
+  self.phials_scale = 3
+  self.xp_scale = 3
 
   self.health_max = 100
   self.health = 100
@@ -116,11 +94,97 @@ function Client:__construct(cfg)
   self.mana_max = 100
   self.mana = 100
 
-  self.xp_tex = self:loadTexture("resources/textures/xp.png")
-  self.xp_scale = 3/self.gui_scale
-  self.xp_w = 0
-  self.xp_h = 0
-  self.xp_y = 0
+  self.health_phial = Phial("health")
+  self.health_phial.factor = self.health/self.health_max
+  self.gui:add(self.health_phial)
+
+  self.mana_phial = Phial("mana")
+  self.mana_phial.factor = self.mana/self.mana_max
+  self.gui:add(self.mana_phial)
+
+  self.xp_bar = XPBar()
+  self.gui:add(self.xp_bar)
+
+  self.input_chat = TextInput()
+  -- input chat/string valid event
+  self.input_chat:listen("control_press", function(widget, id)
+    if id == "return" then
+      if self.prompt_r then -- input string
+        local r = self.prompt_r
+        self.prompt_r = nil
+
+        local text = self.input_chat.text
+        self.input_chat:set("")
+        self.gui:setFocus()
+        self.w_input_chat:setVisible(false)
+        self.message_window:setVisible(false)
+        self:onResize(love.graphics.getDimensions())
+
+        r(text)
+      else -- chat
+        self:inputChat(self.input_chat.text)
+        self.input_chat:set("")
+        self.gui:setFocus()
+        self.w_input_chat:setVisible(false)
+        self.chat_history:hide()
+      end
+    end
+  end)
+
+  self.w_input_chat = Window()
+  self.w_input_chat:add(self.input_chat)
+  self.w_input_chat:setVisible(false)
+  self.gui:add(self.w_input_chat)
+
+  self.chat_history = ChatHistory()
+  self.chat_history:setVisible(false)
+  self.gui:add(self.chat_history)
+
+  -- chat events
+  self.gui:listen("control_press", function(gui, id)
+    if id == "return" then
+      if not gui.focus then
+        self.w_input_chat:setVisible(true)
+        gui:setFocus(self.input_chat)
+      end
+    end
+  end)
+
+  self.message_window = Window()
+  self.message_window_text = Text()
+  self.message_window:add(self.message_window_text)
+  self.message_window:setVisible(false)
+  -- message skip event
+  self.message_window:listen("control_press", function(widget, id)
+    if id == "interact" then
+      self:sendPacket(net.EVENT_MESSAGE_SKIP)
+      widget:setVisible(false)
+      self.gui:setFocus()
+    end
+  end)
+  self.gui:add(self.message_window)
+
+  self.input_query = Window()
+  self.input_query:setVisible(false)
+  self.input_query_title = Text()
+  self.input_query_grid = GridInterface(0,0)
+  self.input_query_grid:listen("cell_select", function(widget, cx, cy)
+    self:sendPacket(net.EVENT_INPUT_QUERY_ANSWER, cy+1)
+    self.input_query:setVisible(false)
+    self.gui:setFocus()
+  end)
+  self.input_query:add(self.input_query_title)
+  self.input_query:add(self.input_query_grid)
+  self.gui:add(self.input_query)
+
+  self.input_string_showing = false
+
+  self.menu = Menu(self)
+  self.menu:setVisible(false)
+  self.gui:add(self.menu)
+
+  self.inventory = Inventory(self)
+  self.inventory:setVisible(false)
 
   self:onResize(love.graphics.getDimensions())
 end
@@ -148,30 +212,19 @@ function Client:tick(dt)
   end
 
   -- movement input
-  if not self.typing then
-    local control = "up"
-    if self.orientation == 1 then control = "right"
-    elseif self.orientation == 2 then control = "down"
-    elseif self.orientation == 3 then control = "left" end
+  local control = "up"
+  if self.orientation == 1 then control = "right"
+  elseif self.orientation == 2 then control = "down"
+  elseif self.orientation == 3 then control = "left" end
 
-    self:setMoveForward(self:isControlPressed(control))
-  end
-
-  if self.chat_history_time > 0 then
-    self.chat_history_time = self.chat_history_time-dt
-  end
+  self:setMoveForward(not self.gui.focus and self:isControlPressed(control))
 
   -- GUI
-  if self.input_query_showing then self.input_query:tick(dt) end
-  if self.inventory_showing then self.inventory:tick(dt) end
-
-  -- phials animation
-  self.phials_time = self.phials_time+dt
-  if self.phials_time > self.phials_delay then
-    local steps = math.floor(self.phials_time/self.phials_delay)
-    self.phials_index = (self.phials_index+steps)%3
-    self.phials_time = self.phials_time-steps*self.phials_delay
+  if not self.prompt_r and self.gui.focus == self.input_chat then
+    self.chat_history:show()
   end
+
+  self.gui:triggerTick(dt)
 
   if self.map then
     -- set listener on player
@@ -216,8 +269,7 @@ function Client:onPacket(protocol, data)
       --- load remote manifest
       if not self.net_manager:loadRemoteManifest() then
         print("couldn't reach remote resources repository manifest")
-        self.chat_history:add({{0,1,0.5}, "Couldn't reach remote resources repository manifest."})
-        self.chat_history_time = 10
+        self.chat_history:addMessage({{0,1,0.5}, "Couldn't reach remote resources repository manifest."})
         return
       end
 
@@ -261,19 +313,25 @@ function Client:onPacket(protocol, data)
       local entity = self.map.entities[data.id]
       if class.is(entity, Player) then
         entity:onMapChat(data.msg)
-        self.chat_history:add({{0,0.5,1}, tostring(entity.pseudo)..": ", {1,1,1}, data.msg})
-        self.chat_history_time = 10
+        self.chat_history:addMessage({{0,0.5,1}, tostring(entity.pseudo)..": ", {1,1,1}, data.msg})
       end
     end
   elseif protocol == net.CHAT_MESSAGE_SERVER then
-    self.chat_history:add({{0,1,0.5}, data})
-    self.chat_history_time = 10
+    self.chat_history:addMessage({{0,1,0.5}, data})
   elseif protocol == net.EVENT_MESSAGE then
-    self.message_window:set(data)
-    self.message_showing = true
+    self.message_window_text:set(data)
+    self.message_window:setVisible(true)
+    self.gui:setFocus(self.message_window)
   elseif protocol == net.EVENT_INPUT_QUERY then
-    self.input_query:set(data.title, data.options)
-    self.input_query_showing = true
+    self.input_query_title:set(data.title)
+    self.input_query_grid:init(1, #data.options)
+    for i, option in ipairs(data.options) do
+      local text = Text()
+      text:set(option)
+      self.input_query_grid:set(0,i-1,text,true)
+    end
+    self.input_query:setVisible(true)
+    self.gui:setFocus(self.input_query_grid)
   elseif protocol == net.EVENT_INPUT_STRING then
     async(function()
       local str = self:prompt(data.title)
@@ -292,8 +350,7 @@ function Client:sendPacket(protocol, data, unsequenced)
 end
 
 function Client:onDisconnect()
-  self.chat_history:add({{0,1,0.5}, "Disconnected from server."})
-  self.chat_history_time = 10
+  self.chat_history:addMessage({{0,1,0.5}, "Disconnected from server."})
 end
 
 function Client:close()
@@ -327,65 +384,75 @@ function Client:onApplyConfig(config)
 end
 
 function Client:onResize(w, h)
-  self.world_scale = math.ceil(h/16/15) -- display 15 tiles max (height)
+  self.gui:setSize(w,h)
 
-  self.xp_scale = utils.floorScale(w/self.xp_tex:getWidth()/self.gui_scale, self.xp_tex:getWidth())
+  local xp_w = self.gui_renderer.xp_tex:getWidth()
+  local xp_h = self.gui_renderer.xp_tex:getHeight()
+  local phials_w = self.gui_renderer.phials_atlas.cell_w
+  local phials_h = self.gui_renderer.phials_atlas.cell_h
+
+  self.world_scale = math.ceil(h/16/15) -- display 15 tiles max (height)
+  self.xp_scale = utils.floorScale(w/xp_w, xp_w)
+  self.phials_scale = utils.floorScale((h*0.30/phials_h), phials_h)
 
   local input_chat_y = h-self.font:getHeight()-2-12
   local message_height = math.floor(self.player_config.gui.dialog_height*h)
   local chat_height = math.floor(self.player_config.gui.chat_height*h)
 
-  if self.input_string_showing then
-    self.input_chat:update(2/self.gui_scale, (message_height+2)/self.gui_scale, (w-4)/self.gui_scale, (self.font:getHeight()+12)/self.gui_scale)
+  if self.prompt_r then
+    self.w_input_chat:setPosition(2, message_height+2)
+    self.w_input_chat:setSize(w-4, self.font:getHeight()+12)
   else
-    self.input_chat:update(2/self.gui_scale, input_chat_y/self.gui_scale, (w-4)/self.gui_scale, (self.font:getHeight()+12)/self.gui_scale)
+    self.w_input_chat:setPosition(2, input_chat_y)
+    self.w_input_chat:setSize(w-4, self.font:getHeight()+12)
   end
 
-  self.phials_scale = utils.floorScale((h*0.40/self.phials_atlas.cell_h)/self.gui_scale, self.phials_atlas.cell_h)
+  self.health_phial:setSize(phials_w*self.phials_scale, phials_h*self.phials_scale)
+  self.mana_phial:setSize(phials_w*self.phials_scale, phials_h*self.phials_scale)
 
-  self.phials_w = self.phials_atlas.cell_w*self.phials_scale
-  self.phials_h = self.phials_atlas.cell_h*self.phials_scale
-  self.phials_y = input_chat_y/self.gui_scale-self.phials_h
+  self.health_phial:setPosition(0, input_chat_y-self.health_phial.h)
+  self.mana_phial:setPosition(w-self.mana_phial.w, input_chat_y-self.mana_phial.h)
 
-  self.chat_history:update(2/self.gui_scale+self.phials_w, (input_chat_y-2-chat_height)/self.gui_scale, (w-4)/self.gui_scale-self.phials_w*2, chat_height/self.gui_scale)
+  self.chat_history:setPosition(2+self.health_phial.w, input_chat_y-2-chat_height)
+  self.chat_history:setSize(w-4-self.health_phial.w*2, chat_height)
 
-  self.xp_w = self.xp_tex:getWidth()*self.xp_scale
-  self.xp_h = self.xp_tex:getHeight()*self.xp_scale
-  self.xp_y = h/self.gui_scale-self.xp_h+7*self.xp_scale
+  self.xp_bar:setSize(xp_w*self.xp_scale, xp_h*self.xp_scale)
+  self.xp_bar:setPosition(w/2-self.xp_bar.w/2, h-self.xp_bar.h)
 
-  self.message_window:update(2/self.gui_scale, 2/self.gui_scale, (w-4)/self.gui_scale, message_height/self.gui_scale)
-  self.input_query:update(2/self.gui_scale, 2/self.gui_scale, (w-4)/self.gui_scale, message_height/self.gui_scale)
+  self.message_window:setPosition(2, 2)
+  self.message_window:setSize(w-4, message_height)
+  self.input_query:setPosition(2, 2)
+  self.input_query:setSize(w-4, message_height)
 
-  local w_menu = self.font:getWidth("Inventory")+12*self.gui_scale
-  local h_menu = (self.font:getHeight()+6*self.gui_scale)*5+6*self.gui_scale
-  self.menu:update(2/self.gui_scale, (h/2-h_menu/2)/self.gui_scale, w_menu/self.gui_scale, h_menu/self.gui_scale)
+  local w_menu = self.font:getWidth("Inventory")+12
+  local h_menu = (self.font:getHeight()+6)*5+6
+  self.menu:setPosition(2, h/2-h_menu/2)
+  self.menu:setSize(w_menu, h_menu)
 
-  self.inventory:update(self.menu.w+2/self.gui_scale, 2/self.gui_scale, (w-4)/self.gui_scale-self.menu.w, (h-4)/self.gui_scale)
+  self.inventory:setPosition(self.menu.w+2, 2)
+  self.inventory:setSize(w-4-self.menu.w, h-4)
 end
 
 function Client:onSetFont()
-  self.input_chat.display_text:setFont(self.font)
-  self.chat_history.text:setFont(self.font)
-  self.message_window.text:setFont(self.font)
-  self.input_query.text:setFont(self.font)
+  self.gui:trigger("font_update")
 
   if self.map then
     for id, entity in pairs(self.map.entities) do
       if class.is(entity, Player) then
-        entity.chat_text:setFont(self.font)
         entity.pseudo_text:setFont(self.font)
+        entity.chat_gui:trigger("font_update")
       end
     end
   end
 end
 
 function Client:onTextInput(data)
-  if self.typing then
-    self.input_chat:input(data)
-  end
+  self.gui:triggerTextInput(data)
 end
 
-function Client:onKeyPressed(key, scancode, isrepeat)
+function Client:onKeyPressed(keycode, scancode, isrepeat)
+  self.gui:triggerKeyPress(keycode, scancode, isrepeat)
+
   -- control handling
   if not isrepeat then
     local control = self.player_config.scancode_controls[scancode]
@@ -394,26 +461,21 @@ function Client:onKeyPressed(key, scancode, isrepeat)
     end
   end
 
-  -- input text handling
-  if scancode == "backspace" then
-    if self.typing then
-      self.input_chat:erase(-1)
-    end
-  end
-
   -- input chat copy/paste
   if not isrepeat and love.keyboard.isDown("lctrl") then
-    if key == "c" then
+    if keycode == "c" then
       self:pressControl("copy")
       self:releaseControl("copy")
-    elseif key == "v" then
+    elseif keycode == "v" then
       self:pressControl("paste")
       self:releaseControl("paste")
     end
   end
 end
 
-function Client:onKeyReleased(key, scancode)
+function Client:onKeyReleased(keycode, scancode)
+  self.gui:triggerKeyRelease(keycode, scancode)
+
   local control = self.player_config.scancode_controls[scancode]
   if control then
     self:releaseControl(control)
@@ -472,98 +534,19 @@ function Client:pressControl(id)
   if not control then
     self.controls[id] = true
 
-    -- handling
-
     -- character controls
-    if not self.typing then
-      if id == "up" then
-        if self.input_query_showing then
-          self.input_query.selector:moveSelect(0,-1)
-        elseif self.inventory_showing then
-          self.inventory.selector:moveSelect(0,-1)
-        elseif self.menu_showing then
-          self.menu.selector:moveSelect(0,-1)
-        else
-          self:pressOrientation(0)
-        end
-      elseif id == "right" then
-        if self.inventory_showing then
-          self.inventory.selector:moveSelect(1,0)
-        else
-          self:pressOrientation(1)
-        end
-      elseif id == "down" then
-        if self.input_query_showing then
-          self.input_query.selector:moveSelect(0,1)
-        elseif self.inventory_showing then
-          self.inventory.selector:moveSelect(0,1)
-        elseif self.menu_showing then
-          self.menu.selector:moveSelect(0,1)
-        else
-          self:pressOrientation(2)
-        end
-      elseif id == "left" then
-        if self.inventory_showing then
-          self.inventory.selector:moveSelect(-1,0)
-        else
-          self:pressOrientation(3)
-        end
+    if not self.gui.focus then
+      if id == "up" then self:pressOrientation(0)
+      elseif id == "right" then self:pressOrientation(1)
+      elseif id == "down" then self:pressOrientation(2)
+      elseif id == "left" then self:pressOrientation(3)
       elseif id == "attack" then self:inputAttack()
-      elseif id == "interact" then
-        if self.message_showing then
-          self:sendPacket(net.EVENT_MESSAGE_SKIP)
-          self.message_showing = false
-        elseif self.input_query_showing then
-          self.input_query_showing = false
-          self.input_query.selector:select()
-          self:sendPacket(net.EVENT_INPUT_QUERY_ANSWER, self.input_query.options[self.input_query.selected] or "")
-        elseif self.inventory_showing then self.inventory.selector:select()
-        elseif self.menu_showing then self.menu.selector:select()
-        else
-          self:inputInteract()
-        end
+      elseif id == "interact" then self:inputInteract()
       end
     end
 
-    if id == "menu" then
-      if self.inventory_showing then self.inventory_showing = false -- close inventory
-      else
-        self.menu_showing = not self.menu_showing
-      end
-    end
-
-    -- input text
-    if id == "return" then -- valid text input
-      if self.typing then
-        if self.input_string_showing then -- input string
-          self.input_string_showing = false
-          self:onResize(love.graphics.getDimensions())
-
-          local r = self.prompt_r
-          if r then
-            self.prompt_r = nil
-            local text = self.input_chat.text
-            self.input_chat:set("")
-            self:setTyping(not self.typing)
-            r(text)
-          end
-        else -- chat
-          self:inputChat(self.input_chat.text)
-          self.input_chat:set("")
-          self:setTyping(not self.typing)
-        end
-      else
-        self:setTyping(not self.typing)
-      end
-    end
-
-    if self.typing then
-      if id == "copy" then
-        love.system.setClipboardText(self.input_chat.text)
-      elseif id == "paste" then
-        self.input_chat:set(self.input_chat.text..love.system.getClipboardText())
-      end
-    end
+    -- handling
+    self.gui:triggerControlPress(id)
   end
 end
 
@@ -573,34 +556,18 @@ function Client:releaseControl(id)
     self.controls[id] = nil
 
     -- handling
+    self.gui:triggerControlRelease(id)
+
     if id == "up" then self:releaseOrientation(0)
     elseif id == "right" then self:releaseOrientation(1)
     elseif id == "down" then self:releaseOrientation(2)
-    elseif id == "left" then self:releaseOrientation(3) end
+    elseif id == "left" then self:releaseOrientation(3)
+    end
   end
 end
 
 function Client:isControlPressed(id)
   return (self.controls[id] ~= nil)
-end
-
-function Client:setTyping(typing)
-  if self.typing ~= typing then
-    self.typing = typing
-
-    if self.typing then
-      self:setMoveForward(false)
-      self.typing = true
-
-      local s = self.gui_scale
-      love.keyboard.setTextInput(true, self.input_chat.x*s, self.input_chat.y*s, self.input_chat.w*s, self.input_chat.h*s)
-    else
-      self.typing = false
-      self.chat_history_time = 0
-
-      love.keyboard.setTextInput(false)
-    end
-  end
 end
 
 -- (async) prompt text
@@ -611,11 +578,13 @@ function Client:prompt(title, value)
   local r = async()
   self.prompt_r = r
 
-  self.message_window:set(title)
-  self.input_string_showing = true
+  self.message_window_text:set(title)
+  self.message_window:setVisible(true)
+
   self:onResize(love.graphics.getDimensions())
+  self.w_input_chat:setVisible(true)
   self.input_chat:set(value or "")
-  self:setTyping(true)
+  self.gui:setFocus(self.input_chat)
 
   return r:wait()
 end
@@ -651,52 +620,7 @@ function Client:draw()
   end
 
   -- interface rendering
-  love.graphics.push()
-  love.graphics.scale(self.gui_scale)
-
-  --- xp
-  love.graphics.draw(self.xp_tex, w/self.gui_scale*0.5-self.xp_w/2, self.xp_y, 0, self.xp_scale)
-
-  --- phials (full pass, then empty pass)
-  local phealth_quad = self.phials_atlas:getQuad(1, self.phials_index)
-  local hx, hy, hw, hh = phealth_quad:getViewport()
-  local health_quad = love.graphics.newQuad(hx, hy, hw, hh*(self.phials_ps+(1-self.phials_ps)*(1-self.health/self.health_max)), phealth_quad:getTextureDimensions())
-
-  love.graphics.draw(self.phials_tex, self.phials_atlas:getQuad(0, self.phials_index), 0, self.phials_y, 0, self.phials_scale)
-  love.graphics.draw(self.phials_tex, health_quad, 0, self.phials_y, 0, self.phials_scale)
-
-  local pmana_quad = self.phials_atlas:getQuad(3, self.phials_index)
-  local mx, my, mw, mh = pmana_quad:getViewport()
-  local mana_quad = love.graphics.newQuad(mx, my, mw, mh*(self.phials_ps+(1-self.phials_ps)*(1-self.mana/self.mana_max)), pmana_quad:getTextureDimensions())
-
-  love.graphics.draw(self.phials_tex, self.phials_atlas:getQuad(2, self.phials_index), w/self.gui_scale-self.phials_atlas.cell_w*self.phials_scale, self.phials_y, 0, self.phials_scale)
-  love.graphics.draw(self.phials_tex, mana_quad, w/self.gui_scale-self.phials_atlas.cell_w*self.phials_scale, self.phials_y, 0, self.phials_scale)
-
-  if self.typing then
-    self.input_chat:draw()
-  end
-
-  if self.typing or self.chat_history_time > 0 then
-    self.chat_history:draw()
-  end
-
-  if self.message_showing or self.input_string_showing then
-    self.message_window:draw()
-  end
-
-  if self.input_query_showing then
-    self.input_query:draw()
-  end
-
-  if self.menu_showing then
-    self.menu:draw()
-  end
-
-  if self.inventory_showing then
-    self.inventory:draw()
-  end
-
-  love.graphics.pop()
+  self.gui_renderer:render(self.gui)
 
   -- loading screen
   if self.loading_screen_tex then
@@ -788,7 +712,7 @@ function Client:loadSkin(file)
     else -- load
       self.loading_skins[file] = {r}
 
-      local data = client.net_manager:request(self.cfg.skin_repository..file)
+      local data = self.net_manager:request(self.cfg.skin_repository..file)
       if data then
         local filedata = love.filesystem.newFileData(data, "skin.png")
         local image = love.graphics.newImage(love.image.newImageData(filedata))

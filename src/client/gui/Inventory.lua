@@ -1,6 +1,6 @@
 
-local Window = require("gui/Window")
-local Selector = require("gui/Selector")
+local Window = require("gui.Window")
+local Selector = require("gui.Selector")
 
 local Inventory = class("Inventory", Window)
 
@@ -15,11 +15,13 @@ end
 
 -- METHODS
 
-function Inventory:__construct(client)
-  Window.__construct(self, client)
+function Inventory:__construct()
+  Window.__construct(self)
 
-  self.selector = Selector(client, 1, 1)
+  self.selector = Selector(1, 1)
   self.items = {}
+
+  self:add(self.selector)
 end
 
 -- items: list of item
@@ -39,18 +41,7 @@ function Inventory:setItems(items)
   end
 end
 
--- overload
-function Inventory:update(x, y, w, h)
-  Window.update(self,x,y,w,h)
-
-  self.selector:update(x+3,y+3,w-6,h-6)
-end
-
-function Inventory:tick(dt)
-  self.selector:tick(dt)
-end
-
--- overload
+-- override
 function Inventory:draw()
   Window.draw(self)
 

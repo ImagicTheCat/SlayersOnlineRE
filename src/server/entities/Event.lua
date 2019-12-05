@@ -1,6 +1,6 @@
-local utils = require("lib/utils")
+local utils = require("lib.utils")
 local Entity = require("Entity")
-local LivingEntity = require("entities/LivingEntity")
+local LivingEntity = require("entities.LivingEntity")
 -- deferred
 local Client
 task(0.01, function()
@@ -431,7 +431,7 @@ end
 function command_functions:InputQuery(state, title, ...)
   local options = {...}
 
-  local answer = self.client:requestInputQuery(title, options)
+  local answer = options[self.client:requestInputQuery(title, options)] or ""
 
   local i = state.cursor+1
   local size = #self.page.commands

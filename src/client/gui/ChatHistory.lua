@@ -1,51 +1,72 @@
-local Window = require("gui/Window")
+local Window = require("gui.Window")
+local Text = require("gui.Text")
 
 local ChatHistory = class("ChatHistory", Window)
 
-function ChatHistory:__construct(client)
-  Window.__construct(self, client)
+local function gui_change(self, old_gui)
+  if old_gui then old_gui:unlisten("tick", self.tick) end
+  if self.gui then self.gui:listen("tick", self.tick) end
+end
 
-  self.text = love.graphics.newText(client.font)
-  self.messages = {}
+-- METHODS
+
+function ChatHistory:__construct()
+  Window.__construct(self)
+
+  self.messages = {} -- list/queue of Text (newest first)
   self.max = 100 -- maximum messages
-  self.text_factor = 1
-  self.max_display = self.max
-end
+  self.timer = 0
+  self:listen("gui_change", gui_change)
 
-function ChatHistory:buildText()
-  self.max_display = math.ceil((self.h-6)*self.client.gui_scale/(self.client.font:getHeight()))
-
-  local coloredtext = {}
-
-  for i=math.min(#self.messages, self.max_display),1,-1 do
-    for _, entry in ipairs(self.messages[i]) do
-      table.insert(coloredtext, entry)
+  -- GUI events
+  function self.tick(gui, dt)
+    if self.timer and self.timer > 0 then
+      self.timer = self.timer-dt
+      if self.timer <= 0 then
+        self:setVisible(false)
+      end
     end
-    table.insert(coloredtext, "\n")
   end
-
-  self.text:setf(coloredtext, (self.w-6)*self.client.gui_scale, "left")
 end
 
--- coloredtext: see LÖVE
-function ChatHistory:add(coloredtext)
-  table.insert(self.messages, 1, coloredtext)
+-- time: (optional) seconds or nil (infinite)
+function ChatHistory:show(time)
+  self:setVisible(true)
+  self.timer = time
+end
+
+function ChatHistory:hide()
+  self:setVisible(false)
+  self.timer = 0
+end
+
+-- ftext: string or coloredtext (see löve)
+function ChatHistory:addMessage(ftext)
+  local text = Text()
+  text:set(ftext)
+  self:add(text)
+  table.insert(self.messages, 1, text)
 
   if #self.messages > self.max then
-    table.remove(self.messages)
+    self:remove(table.remove(self.messages))
   end
 
-  self:buildText()
+  self:show(10)
 end
 
--- overload
-function ChatHistory:update(x,y,w,h)
-  Window.update(self, x,y,w,h)
+-- override
+function ChatHistory:updateLayout(w,h)
+  Window.updateLayout(self, w,h)
 
-  self:buildText()
+  local ih = 0
+  for child in pairs(self.widgets) do
+    ih = math.max(ih, child.y+child.h)
+  end
+
+  self:setInnerShift(self.ix, self.h-ih-3) -- scroll to bottom
 end
 
--- overload
+-- override
 function ChatHistory:draw()
   Window.draw(self)
 

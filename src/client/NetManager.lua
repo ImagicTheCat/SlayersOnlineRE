@@ -1,5 +1,5 @@
 local msgpack = require("MessagePack")
-local utils = require("lib/utils")
+local utils = require("lib.utils")
 local sha2 = require("sha2")
 
 local NetManager = class("NetManager")
