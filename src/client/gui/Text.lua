@@ -9,12 +9,13 @@ end
 
 -- METHODS
 
+-- ftext: (optional) set() shortcut
 -- wrap_w: (optional) wrap width (will use the layout width if nil)
-function Text:__construct(wrap_w)
+function Text:__construct(ftext, wrap_w)
   Widget.__construct(self)
 
+  self.ftext = ftext or ""
   self.wrap_w = wrap_w
-  self.ftext = ""
   self.display_text = love.graphics.newText(love.graphics.getFont())
   self:listen("gui_change", gui_change)
 

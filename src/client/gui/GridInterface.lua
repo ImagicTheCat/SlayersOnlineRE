@@ -3,6 +3,8 @@ local Widget = require("ALGUI.Widget")
 -- textual grid widget
 local GridInterface = class("GridInterface", Widget)
 
+GridInterface.MARGIN = 5
+
 -- Overlay
 
 GridInterface.Overlay = class("GridInterface.Overlay", Widget)
@@ -114,7 +116,7 @@ function GridInterface:moveSelect(dx, dy)
   local cell = self.cells[idx]
   if cell and cell[2] then -- valid selectable cell
     -- shift inner to current selected entry if not visible
-    local overflow_y = cell[1].y+cell[1].h-self.h
+    local overflow_y = cell[1].y+cell[1].h+GridInterface.MARGIN-self.h
     self:setInnerShift(0, overflow_y > 0 and -overflow_y or 0)
 
     self:trigger("cell_focus", cx, cy)
@@ -140,22 +142,27 @@ end
 
 -- override
 function GridInterface:updateLayout(w,h)
+  local MARGIN = GridInterface.MARGIN
+
   self:setSize(w,h)
 
   -- place widgets line by line with fixed width and height based on max cell height
-  local y, cell_w = 0, self.w/self.wc
+  -- (vertical flow)
+  local y, cell_w = MARGIN, self.w/self.wc
   for cy=0,self.hc do
     local max_h = 0
+    local x = MARGIN
     for cx=0,self.wc do
       local cell = self.cells[self:getIndex(cx,cy)]
       if cell then
-        cell[1]:setPosition(cx*cell_w, y)
-        cell[1]:updateLayout(cell_w, max_h)
+        cell[1]:setPosition(x,y)
+        cell[1]:updateLayout(cell_w-MARGIN*2, max_h)
         max_h = math.max(max_h, cell[1].h)
+        x = x+cell[1].w+MARGIN
       end
     end
 
-    y = y+max_h
+    y = y+max_h+MARGIN
   end
 
   self.overlay:updateLayout(self.w,y) -- update inner overlay

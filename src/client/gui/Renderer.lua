@@ -6,6 +6,7 @@ local Text = require("gui.Text")
 local TextInput = require("gui.TextInput")
 local ChatHistory = require("gui.ChatHistory")
 local GridInterface = require("gui.GridInterface")
+local Inventory = require("gui.Inventory")
 local TextureAtlas = require("TextureAtlas")
 
 local Renderer = class("Renderer", Base)
@@ -97,6 +98,7 @@ widgets[TextInput] = function(self, widget)
 end
 
 widgets[GridInterface.Overlay] = function(self, widget)
+  local MARGIN = GridInterface.MARGIN
   local grid = widget.parent
   local blink = (widget.gui:getTime()%1 < 0.5) -- used for 0.5s blinking interval
   local cell = grid.cells[grid:getIndex(grid.cx, grid.cy)]
@@ -104,9 +106,13 @@ widgets[GridInterface.Overlay] = function(self, widget)
   -- draw selection
   if cell and cell[2] then
     love.graphics.push()
-    love.graphics.translate(cell[1].x, cell[1].y)
+    love.graphics.translate(cell[1].x-MARGIN, cell[1].y-MARGIN)
     love.graphics.scale(self.system_scale)
-    self:drawBorders(self.system.select_borders, 0, 0, cell[1].w/self.system_scale, cell[1].h/self.system_scale)
+
+    if blink then love.graphics.setColor(1,1,1,0.75) end
+    self:drawBorders(self.system.select_borders, 0, 0, (cell[1].w+MARGIN*2)/self.system_scale, (cell[1].h+MARGIN*2)/self.system_scale)
+    if blink then love.graphics.setColor(1,1,1) end
+
     love.graphics.pop()
   end
 
@@ -118,13 +124,14 @@ widgets[GridInterface.Overlay] = function(self, widget)
     end
 
     --- down (bottom-right corner)
-    if widget.h+grid.iy > grid.h then
+    if widget.h+grid.iy > grid.h+MARGIN*2 then
       love.graphics.draw(self.system.tex, self.system.down_arrow, widget.w-16*self.system_scale-4, -grid.iy+grid.h-8*self.system_scale-4, 0, self.system_scale)
     end
   end
 end
 
 widgets[ChatHistory] = widgets[Window]
+widgets[Inventory] = widgets[Window]
 
 -- METHODS
 
@@ -160,11 +167,9 @@ end
 -- x,y,w,h: (optional) relative surface
 function Renderer:clip(x,y,w,h)
   if x then
-    x,y = love.graphics.transformPoint(x,y)
-    x,y = math.max(x,0), math.max(y,0)
+    local x1,y1 = love.graphics.transformPoint(x,y)
     local x2,y2 = love.graphics.transformPoint(x+w,y+h)
-    x2,y2 = math.max(x2,0), math.max(y2,0)
-    love.graphics.setScissor(x,y,x2-x,y2-y)
+    love.graphics.setScissor(x1,y1,x2-x1,y2-y1)
   else
     love.graphics.setScissor()
   end

@@ -17,7 +17,6 @@ local Inventory = require("gui.Inventory")
 local TextureAtlas = require("TextureAtlas")
 local Phial = require("gui.Phial")
 local XPBar = require("gui.XPBar")
-local Menu = require("gui.Menu")
 local sha2 = require("sha2")
 local client_version = require("client_version")
 
@@ -147,6 +146,14 @@ function Client:__construct(cfg)
         self.w_input_chat:setVisible(true)
         gui:setFocus(self.input_chat)
       end
+    elseif id == "menu" then
+      if not gui.focus then -- open menu
+        self.menu:setVisible(true)
+        gui:setFocus(self.menu_grid)
+      elseif gui.focus == self.menu_grid then -- close menu
+        gui:setFocus()
+        self.menu:setVisible(false)
+      end
     end
   end)
 
@@ -179,12 +186,35 @@ function Client:__construct(cfg)
 
   self.input_string_showing = false
 
-  self.menu = Menu(self)
+  self.menu = Window()
   self.menu:setVisible(false)
+
+  self.menu_grid = GridInterface(1,5)
+  self.menu_grid:set(0,0, Text("Inventory"), true)
+  self.menu_grid:set(0,1, Text("Spells"), true)
+  self.menu_grid:set(0,2, Text("Stats"), true)
+  self.menu_grid:set(0,3, Text("Trade"), true)
+  self.menu_grid:set(0,4, Text("Quit"), true)
+  self.menu_grid:listen("cell_select", function(grid, cx, cy)
+    if cy == 0 then
+      self:openInventory()
+    elseif cy == 4 then
+      love.event.quit()
+    end
+  end)
+
+  self.menu.content:add(self.menu_grid)
   self.gui:add(self.menu)
 
   self.inventory = Inventory(self)
   self.inventory:setVisible(false)
+  self.inventory.grid:listen("control_press", function(grid, id)
+    if id == "menu" then
+      self.inventory:setVisible(false)
+      self.gui:setFocus(self.menu_grid)
+    end
+  end)
+  self.gui:add(self.inventory)
 
   self:onResize(love.graphics.getDimensions())
 end
@@ -326,9 +356,7 @@ function Client:onPacket(protocol, data)
     self.input_query_title:set(data.title)
     self.input_query_grid:init(1, #data.options)
     for i, option in ipairs(data.options) do
-      local text = Text()
-      text:set(option)
-      self.input_query_grid:set(0,i-1,text,true)
+      self.input_query_grid:set(0,i-1,Text(option),true)
     end
     self.input_query:setVisible(true)
     self.gui:setFocus(self.input_query_grid)
@@ -424,8 +452,8 @@ function Client:onResize(w, h)
   self.input_query:setPosition(2, 2)
   self.input_query:setSize(w-4, message_height)
 
-  local w_menu = self.font:getWidth("Inventory")+12
-  local h_menu = (self.font:getHeight()+6)*5+6
+  local w_menu = self.font:getWidth("Inventory")+24
+  local h_menu = (self.font:getHeight()+6)*5+12
   self.menu:setPosition(2, h/2-h_menu/2)
   self.menu:setSize(w_menu, h_menu)
 
@@ -772,6 +800,18 @@ function Client:showLoading()
     self.loading_screen_tex = self:loadTexture("resources/textures/loadings/"..path)
     self.loading_screen_time = 0
   end
+end
+
+function Client:openInventory()
+  -- TEST
+  local items = {}
+  for i=1,100 do
+    table.insert(items, {name = "Item #"..i, description = "", amount = math.random(1,3)})
+  end
+
+  self.inventory:setItems(items)
+  self.inventory:setVisible(true)
+  self.gui:setFocus(self.inventory.grid)
 end
 
 return Client
