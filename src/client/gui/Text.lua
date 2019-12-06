@@ -25,20 +25,6 @@ function Text:__construct(wrap_w)
   end
 end
 
--- override
-function Text:draw()
-  Window.draw(self)
-
-  local scale = self.client.gui_scale
-  love.graphics.setScissor((self.x+3)*scale, (self.y+3)*scale, (self.w-6)*scale, (self.h-6)*scale)
-
-  -- scroll
-  local x = math.min(self.x+4, self.w-6-self.display_text:getWidth()/scale)
-
-  love.graphics.draw(self.display_text, x, self.y+3, 0, 1/scale)
-  love.graphics.setScissor()
-end
-
 -- ftext: löve text (colored or string)
 function Text:set(ftext)
   self.ftext = ftext

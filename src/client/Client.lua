@@ -132,7 +132,7 @@ function Client:__construct(cfg)
   end)
 
   self.w_input_chat = Window()
-  self.w_input_chat:add(self.input_chat)
+  self.w_input_chat.content:add(self.input_chat)
   self.w_input_chat:setVisible(false)
   self.gui:add(self.w_input_chat)
 
@@ -152,7 +152,7 @@ function Client:__construct(cfg)
 
   self.message_window = Window()
   self.message_window_text = Text()
-  self.message_window:add(self.message_window_text)
+  self.message_window.content:add(self.message_window_text)
   self.message_window:setVisible(false)
   -- message skip event
   self.message_window:listen("control_press", function(widget, id)
@@ -173,8 +173,8 @@ function Client:__construct(cfg)
     self.input_query:setVisible(false)
     self.gui:setFocus()
   end)
-  self.input_query:add(self.input_query_title)
-  self.input_query:add(self.input_query_grid)
+  self.input_query.content:add(self.input_query_title)
+  self.input_query.content:add(self.input_query_grid)
   self.gui:add(self.input_query)
 
   self.input_string_showing = false

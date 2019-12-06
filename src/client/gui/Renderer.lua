@@ -160,13 +160,11 @@ end
 -- x,y,w,h: (optional) relative surface
 function Renderer:clip(x,y,w,h)
   if x then
-    print(x,y,w,h)
     x,y = love.graphics.transformPoint(x,y)
     x,y = math.max(x,0), math.max(y,0)
     local x2,y2 = love.graphics.transformPoint(x+w,y+h)
     x2,y2 = math.max(x2,0), math.max(y2,0)
     love.graphics.setScissor(x,y,x2-x,y2-y)
-    print("a",x,y,x2,y2)
   else
     love.graphics.setScissor()
   end
