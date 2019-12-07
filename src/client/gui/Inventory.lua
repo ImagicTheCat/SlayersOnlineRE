@@ -1,6 +1,6 @@
-
 local Window = require("gui.Window")
-local Selector = require("gui.Selector")
+local GridInterface = require("gui.GridInterface")
+local Text = require("gui.Text")
 
 local Inventory = class("Inventory", Window)
 
@@ -8,20 +8,15 @@ local Inventory = class("Inventory", Window)
 
 local COLUMNS = 3
 
--- PRIVATE METHODS
-
-local function m_all(selector, x, y, selected)
-end
-
 -- METHODS
 
 function Inventory:__construct()
   Window.__construct(self)
 
-  self.selector = Selector(1, 1)
-  self.items = {}
+  self.grid = GridInterface(0,0)
+  self.content:add(self.grid)
 
-  self:add(self.selector)
+  self.items = {}
 end
 
 -- items: list of item
@@ -33,19 +28,12 @@ function Inventory:setItems(items)
   self.items = items
 
   local rows = math.ceil(#items/COLUMNS)
-  self.selector:init(COLUMNS, rows)
+  self.grid:init(COLUMNS, rows)
 
   for i, item in ipairs(items) do
     local cx, cy = (i-1)%COLUMNS, math.floor((i-1)/COLUMNS)
-    self.selector:set(cx, cy, "("..item.amount..") "..item.name, m_all)
+    self.grid:set(cx, cy, Text("("..item.amount..") "..item.name), true)
   end
-end
-
--- override
-function Inventory:draw()
-  Window.draw(self)
-
-  self.selector:draw()
 end
 
 return Inventory
