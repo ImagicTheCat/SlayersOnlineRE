@@ -15,7 +15,7 @@ function Player:__construct(data)
   LivingEntity.__construct(self, data)
 
   self.chat_gui = GUI(client, true)
-  self.chat_w = Window(true)
+  self.chat_w = Window("both")
   self.chat_text = Text("", 400)
   self.chat_w.content:add(self.chat_text)
   self.chat_gui:add(self.chat_w)
