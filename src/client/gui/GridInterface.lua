@@ -111,7 +111,10 @@ function GridInterface:moveSelect(dx, dy)
 
   -- sound effect
   self.gui:playSound("resources/audio/Cursor1.wav")
+  self:updateScroll()
+end
 
+function GridInterface:updateScroll()
   local idx = self:getIndex(self.cx, self.cy)
   local cell = self.cells[idx]
   if cell and cell[2] then -- valid selectable cell
@@ -119,7 +122,7 @@ function GridInterface:moveSelect(dx, dy)
     local overflow_y = cell[1].y+cell[1].h+GridInterface.MARGIN-self.h
     self:setInnerShift(0, overflow_y > 0 and -overflow_y or 0)
 
-    self:trigger("cell_focus", cx, cy)
+    self:trigger("cell_focus", self.cx, self.cy)
   else
     -- invalid selection, reset inner shift
     self:setInnerShift(0,0)
@@ -166,6 +169,7 @@ function GridInterface:updateLayout(w,h)
   end
 
   self.overlay:updateLayout(self.w,y) -- update inner overlay
+  self:updateScroll()
 end
 
 return GridInterface

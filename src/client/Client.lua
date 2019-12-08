@@ -806,7 +806,7 @@ function Client:openInventory()
   -- TEST
   local items = {}
   for i=1,100 do
-    table.insert(items, {name = "Item #"..i, description = "", amount = math.random(1,3)})
+    table.insert(items, {name = "Item #"..i, description = string.rep("uwu ", i), amount = math.random(1,3)})
   end
 
   self.inventory:setItems(items)

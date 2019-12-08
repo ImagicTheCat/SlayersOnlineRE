@@ -25,7 +25,7 @@ function Window.Content:updateLayout(w,h)
   for widget in pairs(self.widgets) do table.insert(widgets, widget) end
   table.sort(widgets, sort_layout) -- sort by implicit z (added order)
 
-  if self.wrap then -- vertical flow and wrap
+  if self.wrap == "both" then -- vertical flow and wrap
     local y, max_w = 0, 0
     for _, child in ipairs(widgets) do
       child:setPosition(0,y)
@@ -34,6 +34,14 @@ function Window.Content:updateLayout(w,h)
       y = y+child.h
     end
     self:setSize(max_w,y)
+  elseif self.wrap == "vertical" then -- vertical flow and vertical wrap
+    local y = 0
+    for _, child in ipairs(widgets) do
+      child:setPosition(0,y)
+      child:updateLayout(w, h-y)
+      y = y+child.h
+    end
+    self:setSize(w,y)
   else -- vertical flow
     local y = 0
     for _, child in ipairs(widgets) do
@@ -50,7 +58,10 @@ end
 
 -- METHODS
 
--- wrap: (optional) if true, will wrap/extend on content (vertically)
+-- wrap: (optional)
+--- nil: no wrapping (fixed size)
+--- "both": wrap/extend on content
+--- "vertical": wrap/extend on content (only vertically)
 function Window:__construct(wrap)
   Widget.__construct(self)
 
