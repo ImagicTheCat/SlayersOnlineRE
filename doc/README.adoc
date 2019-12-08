@@ -15,7 +15,7 @@ client:: LÖVE 11.x
 * https://github.com/ImagicTheCat/Luaseq 
 * https://github.com/brimworks/lua-ev
 * https://github.com/leafo/lua-enet
-* https://github.com/iryont/lua-struct
+* https://luarocks.org/modules/luarocks/struct
 * https://luarocks.org/modules/luarocks/lua-iconv
 * https://github.com/leafo/magick
 * https://github.com/effil/effil
