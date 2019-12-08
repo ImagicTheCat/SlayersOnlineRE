@@ -8,11 +8,7 @@ local Deserializer = class("Deserializer")
 Deserializer.string_conv = iconv.new("UTF-8", "ISO-8859-1")
 
 function Deserializer.readString(file, padding_size)
-  local size = struct.unpack("B", file:read(1))
-  local str = Deserializer.string_conv:iconv(struct.unpack("c"..size, file:read(size)))
-
-  -- padding
-  file:seek("cur", padding_size-size)
+  local str = Deserializer.string_conv:iconv(struct.unpack("B c0", file:read(1+padding_size)))
   return str
 end
 
@@ -27,7 +23,7 @@ function Deserializer.readProjectEntry(file)
   map.width, _, map.height = struct.unpack("BBB", file:read(3))
   file:seek("cur", 51)
   map.death = struct.unpack("B", file:read(1))
-  map.si_v, map.v_c = struct.unpack("HH", file:read(4))
+  map.si_v, map.v_c = struct.unpack("<I2 I2", file:read(4))
   map.svar, map.sval = Deserializer.readString(file, 255), Deserializer.readString(file, 255)
 
   file:seek("cur", 1)
@@ -43,10 +39,10 @@ function Deserializer.readProjectClassEntry(file)
   cls.hurt_sound = Deserializer.readString(file, 255)
   cls.focus_sound = Deserializer.readString(file, 255)
   file:seek("cur",1)
-  cls.max_strength, cls.max_dexterity, cls.max_constitution, cls.max_magic = struct.unpack("iiii", file:read(4*4))
-  cls.max_level, cls.level_up_points = struct.unpack("ii", file:read(2*4))
-  cls.strength, cls.dexterity, cls.constitution, cls.magic = struct.unpack("iiii", file:read(4*4))
-  cls.off_index, cls.def_index, cls.pow_index, cls.health_index, cls.mag_index = struct.unpack("HHHHH", file:read(5*2))
+  cls.max_strength, cls.max_dexterity, cls.max_constitution, cls.max_magic = struct.unpack("<i4 i4 i4 i4", file:read(4*4))
+  cls.max_level, cls.level_up_points = struct.unpack("<i4 i4", file:read(2*4))
+  cls.strength, cls.dexterity, cls.constitution, cls.magic = struct.unpack("<i4 i4 i4 i4", file:read(4*4))
+  cls.off_index, cls.def_index, cls.pow_index, cls.health_index, cls.mag_index = struct.unpack("<I2 I2 I2 I2 I2", file:read(5*2))
   file:seek("cur",2)
 
   return cls
@@ -57,13 +53,13 @@ function Deserializer.readProjectObjectEntry(file)
 
   obj.name = Deserializer.readString(file, 50)
   obj.description = Deserializer.readString(file, 50)
-  obj.usable_class, obj.type, obj.spell = struct.unpack("HHH", file:read(2*3))
-  obj.price = struct.unpack("I", file:read(4))
-  obj.mod_strength, obj.mod_dexterity, obj.mod_constitution, obj.mod_magic = struct.unpack("HHHH", file:read(2*4))
-  obj.mod_attack_a, obj.mod_attack_b, obj.mod_defense = struct.unpack("hhh", file:read(2*3))
+  obj.usable_class, obj.type, obj.spell = struct.unpack("<I2 I2 I2", file:read(2*3))
+  obj.price = struct.unpack("<I4", file:read(4))
+  obj.mod_strength, obj.mod_dexterity, obj.mod_constitution, obj.mod_magic = struct.unpack("<I2 I2 I2 I2", file:read(2*4))
+  obj.mod_attack_a, obj.mod_attack_b, obj.mod_defense = struct.unpack("<i2 i2 i2", file:read(2*3))
   file:seek("cur", 2)
-  obj.mod_hp, obj.mod_mp = struct.unpack("ii", file:read(4*2))
-  obj.req_strength, obj.req_dexterity, obj.req_constitution, obj.req_magic, obj.req_level = struct.unpack("HHHHH", file:read(2*5))
+  obj.mod_hp, obj.mod_mp = struct.unpack("<i4 i4", file:read(4*2))
+  obj.req_strength, obj.req_dexterity, obj.req_constitution, obj.req_magic, obj.req_level = struct.unpack("<I2 I2 I2 I2 I2", file:read(2*5))
   file:seek("cur", 2)
 
   return obj
@@ -79,23 +75,23 @@ function Deserializer.readProjectMobEntry(file)
   mob.hurt_sound = Deserializer.readString(file, 100)
   mob.focus_sound = Deserializer.readString(file, 100)
   file:seek("cur", 1)
-  mob.speed, mob.w, mob.h = struct.unpack("HHH", file:read(2*3))
-  mob.attack, mob.defense, mob.damage = struct.unpack("HHH", file:read(2*3))
+  mob.speed, mob.w, mob.h = struct.unpack("<I2 I2 I2", file:read(2*3))
+  mob.attack, mob.defense, mob.damage = struct.unpack("<I2 I2 I2", file:read(2*3))
   file:seek("cur", 2)
-  mob.health = struct.unpack("I", file:read(4))
-  mob.xp_min, mob.xp_max, mob.gold_min, mob.gold_max = struct.unpack("IIII", file:read(4*4))
-  mob.loot_object, mob.loot_chance = struct.unpack("HH", file:read(2*2))
-  mob.var_id, mob.var_increment = struct.unpack("HH", file:read(2*2))
+  mob.health = struct.unpack("<I4", file:read(4))
+  mob.xp_min, mob.xp_max, mob.gold_min, mob.gold_max = struct.unpack("<I4 I4 I4 I4", file:read(4*4))
+  mob.loot_object, mob.loot_chance = struct.unpack("<I2 I2", file:read(2*2))
+  mob.var_id, mob.var_increment = struct.unpack("<I2 I2", file:read(2*2))
 
   mob.spells = {}
   -- 10 spells id
   for i=1,10 do
-    mob.spells[i] = {struct.unpack("H", file:read(2))}
+    mob.spells[i] = {struct.unpack("<I2", file:read(2))}
   end
 
   -- 10 spells number
   for i=1,10 do
-    mob.spells[i][2] = struct.unpack("H", file:read(2))
+    mob.spells[i][2] = struct.unpack("<I2", file:read(2))
   end
 
   mob.obstacle = (struct.unpack("B", file:read(1)) > 0)
@@ -117,10 +113,10 @@ function Deserializer.readProjectSpellEntry(file)
   spell.touch_expr = Deserializer.readString(file, 255)
   spell.effect_expr = Deserializer.readString(file, 255)
   file:seek("cur", 2)
-  spell.x, spell.y, spell.w, spell.h, spell.opacity = struct.unpack("IIIII", file:read(4*5))
-  spell.position_type, spell.anim_duration = struct.unpack("HH", file:read(2*2))
-  spell.usable_class, spell.type = struct.unpack("HH", file:read(2*2))
-  spell.mp, spell.req_level, spell.target_type, spell.cast_duration = struct.unpack("IHHH", file:read(4+2*3))
+  spell.x, spell.y, spell.w, spell.h, spell.opacity = struct.unpack("<I4 I4 I4 I4 I4", file:read(4*5))
+  spell.position_type, spell.anim_duration = struct.unpack("<I2 I2", file:read(2*2))
+  spell.usable_class, spell.type = struct.unpack("<I2 I2", file:read(2*2))
+  spell.mp, spell.req_level, spell.target_type, spell.cast_duration = struct.unpack("<I4 I2 I2 I2", file:read(4+2*3))
 
   file:seek("cur", 2)
 
@@ -136,9 +132,9 @@ function Deserializer.readMapEventEntry(file)
   file:seek("cur", 3)
   event.y = struct.unpack("B", file:read(1))
   file:seek("cur", 3)
-  event.set_x = struct.unpack("<H", file:read(2))
+  event.set_x = struct.unpack("<I2", file:read(2))
   file:seek("cur", 2)
-  event.set_y = struct.unpack("<H", file:read(2))
+  event.set_y = struct.unpack("<I2", file:read(2))
   file:seek("cur", 2)
   event.active = struct.unpack("B", file:read(1)) > 0
   event.obstacle = struct.unpack("B", file:read(1)) > 0
@@ -150,11 +146,11 @@ function Deserializer.readMapEventEntry(file)
   file:seek("cur", 1)
   event.speed = struct.unpack("B", file:read(1))
   file:seek("cur", 1)
-  event.w = struct.unpack("<H", file:read(2))
-  event.h = struct.unpack("<H", file:read(2))
+  event.w = struct.unpack("<I2", file:read(2))
+  event.h = struct.unpack("<I2", file:read(2))
   event.position_type = struct.unpack("B", file:read(1))
   file:seek("cur", 1)
-  event.animation_number = struct.unpack("<H", file:read(2)) -- (animation number, anim left-right)
+  event.animation_number = struct.unpack("<I2", file:read(2)) -- (animation number, anim left-right)
 
   file:seek("cur", 2)
 
@@ -164,11 +160,11 @@ end
 function Deserializer.readMapMobAreaEntry(file)
   local area = {}
 
-  area.x1, area.x2, area.y1, area.y2 = struct.unpack("IIII", file:read(4*4))
+  area.x1, area.x2, area.y1, area.y2 = struct.unpack("<I4 I4 I4 I4", file:read(4*4))
   file:seek("cur", 4)
-  area.max_mobs, area.type = struct.unpack("Ii", file:read(4*2))
+  area.max_mobs, area.type = struct.unpack("<I4 i4", file:read(4*2))
   file:seek("cur", 4)
-  area.spawn_speed = struct.unpack("I", file:read(4))
+  area.spawn_speed = struct.unpack("<I4", file:read(4))
   area.server_var = Deserializer.readString(file, 255)
   area.server_var_expr = Deserializer.readString(file, 255)
 
