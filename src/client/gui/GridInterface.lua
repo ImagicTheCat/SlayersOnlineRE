@@ -37,9 +37,12 @@ end
 -- METHODS
 
 -- wc, hc: number of columns/rows
-function GridInterface:__construct(wc, hc)
+-- wrap: (optional)
+--- "vertical": wrap/extend vertically
+function GridInterface:__construct(wc, hc, wrap)
   Widget.__construct(self)
 
+  self.wrap = wrap
   self.overlay = GridInterface.Overlay()
   self:add(self.overlay)
   self:init(wc,hc)
@@ -147,11 +150,9 @@ end
 function GridInterface:updateLayout(w,h)
   local MARGIN = GridInterface.MARGIN
 
-  self:setSize(w,h)
-
   -- place widgets line by line with fixed width and height based on max cell height
   -- (vertical flow)
-  local y, cell_w = MARGIN, self.w/self.wc
+  local y, cell_w = MARGIN, w/self.wc
   for cy=0,self.hc do
     local max_h = 0
     local x = MARGIN
@@ -166,6 +167,12 @@ function GridInterface:updateLayout(w,h)
     end
 
     y = y+max_h+MARGIN
+  end
+
+  if self.wrap == "vertical" then
+    self:setSize(w,y)
+  else
+    self:setSize(w,h)
   end
 
   self.overlay:updateLayout(self.w,y) -- update inner overlay

@@ -208,7 +208,7 @@ function Client:__construct(cfg)
 
   self.inventory = Inventory(self)
   self.inventory:setVisible(false)
-  self.inventory.grid:listen("control_press", function(grid, id)
+  self.inventory.content:listen("control_press", function(grid, id)
     if id == "menu" then
       self.inventory:setVisible(false)
       self.gui:setFocus(self.menu_grid)
@@ -806,12 +806,12 @@ function Client:openInventory()
   -- TEST
   local items = {}
   for i=1,100 do
-    table.insert(items, {name = "Item #"..i, description = string.rep("uwu ", i), amount = math.random(1,3)})
+    table.insert(items, {id = i, name = "Item #"..i, description = string.rep("uwu ", i), amount = math.random(1,3)})
   end
 
   self.inventory:setItems(items)
   self.inventory:setVisible(true)
-  self.gui:setFocus(self.inventory.grid)
+  self.gui:setFocus(self.inventory.content)
 end
 
 return Client
