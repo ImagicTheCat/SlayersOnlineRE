@@ -25,8 +25,8 @@ function ChatHistory:__construct()
   self.messages = {} -- list/queue of Text (newest first)
   self.max = 100 -- maximum messages
   self.timer = 0
-  self:listen("gui_change", gui_change)
-  self:listen("content_update", content_update)
+  self:listen("gui-change", gui_change)
+  self:listen("content-update", content_update)
 
   -- GUI events
   function self.tick(gui, dt)

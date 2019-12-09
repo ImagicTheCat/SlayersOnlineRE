@@ -49,15 +49,15 @@ end
 -- trigger "control_press" on GUI and focused widget
 function GUI:triggerControlPress(id)
   local focus = self.focus
-  self:trigger("control_press", id)
-  if focus then focus:trigger("control_press", id) end
+  self:trigger("control-press", id)
+  if focus then focus:trigger("control-press", id) end
 end
 
 -- trigger "control_release" on GUI and focused widget
 function GUI:triggerControlRelease(id)
   local focus = self.focus
-  self:trigger("control_release", id)
-  if focus then focus:trigger("control_release", id) end
+  self:trigger("control-release", id)
+  if focus then focus:trigger("control-release", id) end
 end
 
 return GUI

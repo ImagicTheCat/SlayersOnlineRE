@@ -3,8 +3,11 @@ local Widget = require("ALGUI.Widget")
 local Text = class("Text", Widget)
 
 local function gui_change(self, old_gui)
-  if old_gui then old_gui:unlisten("font_update", self.font_update) end
-  if self.gui then self.gui:listen("font_update", self.font_update) end
+  if old_gui then old_gui:unlisten("font-update", self.font_update) end
+  if self.gui then
+    self.gui:listen("font-update", self.font_update)
+    self:font_update(self.gui) -- trigger update when added
+  end
 end
 
 -- METHODS
@@ -17,7 +20,7 @@ function Text:__construct(ftext, wrap_w)
   self.ftext = ftext or ""
   self.wrap_w = wrap_w
   self.display_text = love.graphics.newText(love.graphics.getFont())
-  self:listen("gui_change", gui_change)
+  self:listen("gui-change", gui_change)
 
   -- GUI events
   function self.font_update(gui)

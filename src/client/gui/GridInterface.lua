@@ -46,7 +46,7 @@ function GridInterface:__construct(wc, hc, wrap)
   self.overlay = GridInterface.Overlay()
   self:add(self.overlay)
   self:init(wc,hc)
-  self:listen("control_press", control_press)
+  self:listen("control-press", control_press)
 end
 
 function GridInterface:init(wc, hc)
@@ -125,7 +125,7 @@ function GridInterface:updateScroll()
     local overflow_y = cell[1].y+cell[1].h+GridInterface.MARGIN-self.h
     self:setInnerShift(0, overflow_y > 0 and -overflow_y or 0)
 
-    self:trigger("cell_focus", self.cx, self.cy)
+    self:trigger("cell-focus", self.cx, self.cy)
   else
     -- invalid selection, reset inner shift
     self:setInnerShift(0,0)
@@ -141,7 +141,7 @@ function GridInterface:select()
     if cell and cell[2] then -- valid selectable cell
       -- sound effect
       self.gui:playSound("resources/audio/Item1.wav")
-      self:trigger("cell_select", cx, cy)
+      self:trigger("cell-select", cx, cy)
     end
   end
 end

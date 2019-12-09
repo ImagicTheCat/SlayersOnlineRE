@@ -4,8 +4,11 @@ local Widget = require("ALGUI.Widget")
 local TextInput = class("TextInput", Widget)
 
 local function gui_change(self, old_gui)
-  if old_gui then old_gui:unlisten("font_update", self.font_update) end
-  if self.gui then self.gui:listen("font_update", self.font_update) end
+  if old_gui then old_gui:unlisten("font-update", self.font_update) end
+  if self.gui then
+    self.gui:listen("font-update", self.font_update)
+    self.display_text:setFont(love.graphics.getFont()) -- update font when added
+  end
 end
 
 local function key_press(self, keycode, scancode, repeated)
@@ -33,11 +36,11 @@ function TextInput:__construct()
 
   self.text = ""
   self.display_text = love.graphics.newText(love.graphics.getFont())
-  self:listen("gui_change", gui_change)
-  self:listen("text_input", self.input)
-  self:listen("key_press", key_press)
-  self:listen("control_press", control_press)
-  self:listen("focus_change", focus_change)
+  self:listen("gui-change", gui_change)
+  self:listen("text-input", self.input)
+  self:listen("key-press", key_press)
+  self:listen("control-press", control_press)
+  self:listen("focus-change", focus_change)
 
   -- GUI events
   function self.font_update(gui)

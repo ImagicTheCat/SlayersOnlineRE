@@ -30,12 +30,12 @@ function Inventory:__construct()
   self.w_menu.content:add(self.description)
   self:add(self.w_menu)
 
-  self.content:listen("cell_focus", function(grid, cx, cy)
+  self.content:listen("cell-focus", function(grid, cx, cy)
     local item = self.items[cy*COLUMNS+cx+1]
     self.description:set(item and item.description or "")
   end)
 
-  self.content:listen("cell_select", function(grid, cx, cy)
+  self.content:listen("cell-select", function(grid, cx, cy)
     local item = self.items[cy*COLUMNS+cx+1]
     if item then
       -- open item action menu
@@ -45,7 +45,7 @@ function Inventory:__construct()
     end
   end)
 
-  self.menu:listen("control_press", function(grid, id)
+  self.menu:listen("control-press", function(grid, id)
     if id == "menu" then
       -- close item action menu
       self.gui:setFocus(self.content)
