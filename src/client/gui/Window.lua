@@ -53,7 +53,7 @@ function Window.Content:updateLayout(w,h)
   end
 
   -- trigger window event
-  self.parent:trigger("content_update")
+  self.parent:trigger("content-update")
 end
 
 -- METHODS

@@ -106,7 +106,7 @@ function Client:__construct(cfg)
 
   self.input_chat = TextInput()
   -- input chat/string valid event
-  self.input_chat:listen("control_press", function(widget, id)
+  self.input_chat:listen("control-press", function(widget, id)
     if id == "return" then
       if self.prompt_r then -- input string
         local r = self.prompt_r
@@ -140,7 +140,7 @@ function Client:__construct(cfg)
   self.gui:add(self.chat_history)
 
   -- chat events
-  self.gui:listen("control_press", function(gui, id)
+  self.gui:listen("control-press", function(gui, id)
     if id == "return" then
       if not gui.focus then
         self.w_input_chat:setVisible(true)
@@ -162,7 +162,7 @@ function Client:__construct(cfg)
   self.message_window.content:add(self.message_window_text)
   self.message_window:setVisible(false)
   -- message skip event
-  self.message_window:listen("control_press", function(widget, id)
+  self.message_window:listen("control-press", function(widget, id)
     if id == "interact" then
       self:sendPacket(net.EVENT_MESSAGE_SKIP)
       widget:setVisible(false)
@@ -175,7 +175,7 @@ function Client:__construct(cfg)
   self.input_query:setVisible(false)
   self.input_query_title = Text()
   self.input_query_grid = GridInterface(0,0)
-  self.input_query_grid:listen("cell_select", function(widget, cx, cy)
+  self.input_query_grid:listen("cell-select", function(widget, cx, cy)
     self:sendPacket(net.EVENT_INPUT_QUERY_ANSWER, cy+1)
     self.input_query:setVisible(false)
     self.gui:setFocus()
@@ -195,7 +195,7 @@ function Client:__construct(cfg)
   self.menu_grid:set(0,2, Text("Stats"), true)
   self.menu_grid:set(0,3, Text("Trade"), true)
   self.menu_grid:set(0,4, Text("Quit"), true)
-  self.menu_grid:listen("cell_select", function(grid, cx, cy)
+  self.menu_grid:listen("cell-select", function(grid, cx, cy)
     if cy == 0 then
       self:openInventory()
     elseif cy == 4 then
@@ -208,7 +208,7 @@ function Client:__construct(cfg)
 
   self.inventory = Inventory(self)
   self.inventory:setVisible(false)
-  self.inventory.content:listen("control_press", function(grid, id)
+  self.inventory.content:listen("control-press", function(grid, id)
     if id == "menu" then
       self.inventory:setVisible(false)
       self.gui:setFocus(self.menu_grid)
@@ -462,13 +462,13 @@ function Client:onResize(w, h)
 end
 
 function Client:onSetFont()
-  self.gui:trigger("font_update")
+  self.gui:trigger("font-update")
 
   if self.map then
     for id, entity in pairs(self.map.entities) do
       if class.is(entity, Player) then
         entity.pseudo_text:setFont(self.font)
-        entity.chat_gui:trigger("font_update")
+        entity.chat_gui:trigger("font-update")
       end
     end
   end
