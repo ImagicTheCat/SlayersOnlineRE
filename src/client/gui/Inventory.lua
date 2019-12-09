@@ -39,7 +39,6 @@ function Inventory:__construct()
     local item = self.items[cy*COLUMNS+cx+1]
     if item then
       -- open item action menu
-      self.w_menu.content:remove(self.description)
       self.w_menu.content:add(self.menu)
       self.gui:setFocus(self.menu)
     end
@@ -50,7 +49,6 @@ function Inventory:__construct()
       -- close item action menu
       self.gui:setFocus(self.content)
       self.w_menu.content:remove(self.menu)
-      self.w_menu.content:add(self.description)
     end
   end)
 
@@ -82,6 +80,8 @@ function Inventory:setItems(items)
     local cx, cy = (i-1)%COLUMNS, math.floor((i-1)/COLUMNS)
     self.content:set(cx, cy, Text("("..item.amount..") "..item.name), true)
   end
+
+  self.description:set(items[1] and items[1].description or "")
 end
 
 return Inventory
