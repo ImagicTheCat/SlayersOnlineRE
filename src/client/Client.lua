@@ -14,6 +14,7 @@ local Window = require("gui.Window")
 local Text = require("gui.Text")
 local GridInterface = require("gui.GridInterface")
 local Inventory = require("gui.Inventory")
+local Chest = require("gui.Chest")
 local TextureAtlas = require("TextureAtlas")
 local Phial = require("gui.Phial")
 local XPBar = require("gui.XPBar")
@@ -206,7 +207,7 @@ function Client:__construct(cfg)
   self.menu.content:add(self.menu_grid)
   self.gui:add(self.menu)
 
-  self.inventory = Inventory(self)
+  self.inventory = Inventory()
   self.inventory:setVisible(false)
   self.inventory.content:listen("control-press", function(grid, id)
     if id == "menu" then
@@ -215,6 +216,10 @@ function Client:__construct(cfg)
     end
   end)
   self.gui:add(self.inventory)
+
+  self.chest = Chest()
+  self.chest:setVisible(false)
+  self.gui:add(self.chest)
 
   self:onResize(love.graphics.getDimensions())
 end
@@ -459,6 +464,9 @@ function Client:onResize(w, h)
 
   self.inventory:setPosition(self.menu.w+2, 2)
   self.inventory:setSize(w-4-self.menu.w, h-4)
+
+  self.chest:setPosition(2,2)
+  self.chest:setSize(w-4,h-4)
 end
 
 function Client:onSetFont()
