@@ -198,7 +198,9 @@ function Client:__construct(cfg)
   self.menu_grid:set(0,4, Text("Quit"), true)
   self.menu_grid:listen("cell-select", function(grid, cx, cy)
     if cy == 0 then
-      self:openInventory()
+      if self.inventory.dirty then self.inventory:updateContent() end
+      self.inventory:setVisible(true)
+      self.gui:setFocus(self.inventory.content)
     elseif cy == 4 then
       love.event.quit()
     end
@@ -372,6 +374,8 @@ function Client:onPacket(protocol, data)
     -- apply player config
     utils.mergeInto(data, self.player_config)
     self:onApplyConfig(data)
+  elseif protocol == net.INVENTORY_UPDATE_ITEMS then
+    self.inventory:updateItems(data)
   end
 end
 
@@ -806,18 +810,6 @@ function Client:showLoading()
     self.loading_screen_tex = self:loadTexture("resources/textures/loadings/"..path)
     self.loading_screen_time = 0
   end
-end
-
-function Client:openInventory()
-  -- TEST
-  local items = {}
-  for i=1,100 do
-    table.insert(items, {id = i, name = "Item #"..i, description = string.rep("uwu ", i), amount = math.random(1,3)})
-  end
-
-  self.inventory:setItems(items)
-  self.inventory:setVisible(true)
-  self.gui:setFocus(self.inventory.content)
 end
 
 return Client
