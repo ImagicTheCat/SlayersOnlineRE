@@ -19,20 +19,10 @@ function Player:__construct(data)
   self.chat_text = Text("", 400)
   self.chat_w.content:add(self.chat_text)
   self.chat_gui:add(self.chat_w)
-  self.chat_time = 1
 
   self.pseudo = data.pseudo
   self.pseudo_text = love.graphics.newText(client.font)
   self.pseudo_text:set(self.pseudo)
-end
-
--- overload
-function Player:tick(dt)
-  LivingEntity.tick(self, dt)
-
-  if self.chat_time > 0 then
-    self.chat_time = self.chat_time-dt
-  end
 end
 
 -- override
@@ -49,7 +39,7 @@ function Player:drawOver()
   LivingEntity.drawOver(self)
 
   -- draw chat GUI
-  if self.chat_time > 0 then
+  if self.chat_timer then
     self.chat_gui:update()
     local inv_scale = 1/client.world_scale
     love.graphics.push()
@@ -61,7 +51,11 @@ function Player:drawOver()
 end
 
 function Player:onMapChat(msg)
-  self.chat_time = utils.clamp(utf8.len(msg)/5, 5, 20)
+  if self.chat_timer then self.chat_timer:remove() end
+  self.chat_timer = scheduler:timer(utils.clamp(utf8.len(msg)/5, 5, 20), function()
+    self.chat_timer = nil
+  end)
+
   self.chat_text:set(msg)
 end
 

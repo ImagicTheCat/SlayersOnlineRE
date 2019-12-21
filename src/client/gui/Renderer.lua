@@ -64,7 +64,7 @@ widgets[XPBar] = function(self, widget)
 end
 
 widgets[Phial] = function(self, widget)
-  local frame = math.floor(widget.gui:getTime()/Phial.STEP_DELAY)%3
+  local frame = math.floor(scheduler.time/Phial.STEP_DELAY)%3
 
   local full_quad = self.phials_atlas:getQuad((widget.ptype == "health" and 1 or 3), frame)
   local vx,vy,vw,vh = full_quad:getViewport()
@@ -100,7 +100,7 @@ end
 widgets[GridInterface.Overlay] = function(self, widget)
   local MARGIN = GridInterface.MARGIN
   local grid = widget.parent
-  local blink = (widget.gui:getTime()%1 < 0.5) -- used for 0.5s blinking interval
+  local blink = (scheduler.time%1 < 0.5) -- used for 0.5s blinking interval
   local cell = grid.cells[grid:getIndex(grid.cx, grid.cy)]
 
   -- draw selection

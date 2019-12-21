@@ -2,6 +2,7 @@ local Luaoop = require("Luaoop")
 class = Luaoop.class
 local Luaseq = require("Luaseq")
 async = Luaseq.async
+local Scheduler = require("ELScheduler")
 
 local Client = require("Client")
 
@@ -12,10 +13,12 @@ function love.threaderror(thread, err)
 end
 
 function love.load()
+  scheduler = Scheduler(love.timer.getTime())
   client = Client(cfg) -- global
 end
 
 function love.update(dt)
+  scheduler:tick(love.timer.getTime())
   client:tick(dt)
 end
 

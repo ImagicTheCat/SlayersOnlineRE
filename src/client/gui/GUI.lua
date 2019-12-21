@@ -41,11 +41,6 @@ function GUI:playSound(path)
   return source
 end
 
--- override
-function GUI:getTime()
-  return love.timer.getTime()
-end
-
 -- trigger "control_press" on GUI and focused widget
 function GUI:triggerControlPress(id)
   local focus = self.focus
