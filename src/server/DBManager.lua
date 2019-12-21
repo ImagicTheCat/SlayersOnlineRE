@@ -72,13 +72,10 @@ function DBManager:__construct(db, user, password, host, port)
   self.thread = effil.thread(thread)(self.ch_out, self.ch_in, db, user, password, host, port)
   self.queries = {} -- list of query callbacks, queue
 
-  -- start task (25 tps)
-  self.task = itask(1/25, function() self:do_task() end)
-
   self.running = true
 end
 
-function DBManager:do_task()
+function DBManager:tick()
   local status, err = self.thread:status()
   if err then
     self:close()
@@ -128,7 +125,6 @@ function DBManager:close()
     if err then
       error(err)
     end
-    self.task:remove() -- end task
   end
 end
 
