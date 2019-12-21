@@ -373,6 +373,9 @@ function Server:tick(dt)
     event = self.host:service()
   end
 
+  -- DB
+  self.db:tick()
+
   -- maps tick
   for id, map in pairs(self.maps) do
     map:tick(dt)
