@@ -32,7 +32,6 @@ function Event:__construct(data)
   self.anim_hc = data.animation_hc or 0
   self.anim_index = 1
   self.anim_interval = 1/3
-  self.anim_time = 0
 
   self.active = data.active
 
@@ -67,12 +66,7 @@ function Event:tick(dt)
 
   if self.active then
     if self.animation_type == Event.Animation.VISUAL_EFFECT then -- effect
-      self.anim_time = self.anim_time+dt
-
-      local steps = math.floor(self.anim_time/self.anim_interval)
-      self.anim_time = self.anim_time-steps*self.anim_interval
-
-      self.anim_index = (self.anim_index+steps)%(self.anim_wc*self.anim_hc)
+      self.anim_index = math.floor(scheduler.time/self.anim_interval)%(self.anim_wc*self.anim_hc)
       self.anim_x = self.anim_index%self.anim_wc
       self.anim_y = math.floor(self.anim_index/self.anim_wc)
     end

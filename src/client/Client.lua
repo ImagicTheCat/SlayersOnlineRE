@@ -259,8 +259,6 @@ function Client:tick(dt)
     self.chat_history:show()
   end
 
-  self.gui:triggerTick(dt)
-
   if self.map then
     -- set listener on player
     local player = self.map.entities[self.id]
