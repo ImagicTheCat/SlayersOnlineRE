@@ -60,6 +60,7 @@ function Inventory:set(id, amount)
   end
 
   self.changed_items[id] = true
+  self:onItemUpdate(id)
 end
 
 -- take one item
@@ -89,6 +90,10 @@ function Inventory:getAmount()
   end
 
   return total
+end
+
+-- called when an item slot is updated (amount/nil)
+function Inventory:onItemUpdate(id)
 end
 
 return Inventory

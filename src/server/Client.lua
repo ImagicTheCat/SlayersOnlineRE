@@ -103,6 +103,39 @@ function Client:onPacket(protocol, data)
             self.inventory:load(self.server.db)
             self.chest_inventory:load(self.server.db)
 
+            ---- on item update
+            function self.inventory.onItemUpdate(inv, id)
+              local data
+              local amount = inv.items[id]
+              local object = self.server.project.objects[id]
+              if object and inv.items[id] then
+                data = {
+                  amount = inv.items[id],
+                  name = object.name,
+                  description = object.description
+                }
+              end
+              self:send(Client.makePacket(net.INVENTORY_UPDATE_ITEMS, {{id,data}}))
+            end
+
+            ---- send inventory init items
+            do
+              local objects = self.server.project.objects
+              local items = {}
+              for id, amount in pairs(self.inventory.items) do
+                local object = objects[id]
+                if object then
+                  table.insert(items, {id, {
+                    amount = amount,
+                    name = object.name,
+                    description = object.description
+                  }})
+                end
+              end
+
+              self:send(Client.makePacket(net.INVENTORY_UPDATE_ITEMS, items))
+            end
+
             --- state
             local state = user_row.state and msgpack.unpack(user_row.state) or {}
 
