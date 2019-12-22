@@ -36,15 +36,14 @@ function Inventory:load(db)
   end
 end
 
--- (async)
 -- db: DBManager
 function Inventory:save(db)
   for id in pairs(self.changed_items) do
     local amount = self.items[id]
     if amount and amount > 0 then
-      db:query(q_set_item, {self.user_id, self.id, id, amount})
+      db:_query(q_set_item, {self.user_id, self.id, id, amount})
     else
-      db:query(q_rm_item, {self.user_id, self.id, id})
+      db:_query(q_rm_item, {self.user_id, self.id, id})
     end
   end
 
