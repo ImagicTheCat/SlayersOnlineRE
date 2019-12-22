@@ -318,8 +318,11 @@ function Server:save()
 end
 
 function Server:close()
+  -- guard
+  if self.task_close then self.task_close:wait() return end
+  self.task_close = async()
+
   self.console_flags.running = false
-  self.tick_task:remove()
   self.save_task:remove()
   self:save()
 
@@ -331,8 +334,13 @@ function Server:close()
 
   self.host:flush()
   self.db:close()
+  self.tick_task:remove()
 
   print("shutdown.")
+
+  -- end guard
+  self.task_close()
+  self.task_close = nil
 end
 
 function Server:tick(dt)
@@ -362,10 +370,8 @@ function Server:tick(dt)
     elseif event.type == "disconnect" then
       local client = self.clients[event.peer]
 
+      client:onDisconnect()
       self.clients[event.peer] = nil
-      async(function()
-        client:onDisconnect()
-      end)
 
       print("client disconnection "..tostring(event.peer))
     end

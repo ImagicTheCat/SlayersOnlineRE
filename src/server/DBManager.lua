@@ -91,14 +91,12 @@ function DBManager:tick()
       end
 
       r(a,b) -- send return values
-    else
-      print("invalid database thread message")
     end
   end
 end
 
 -- (async)
--- perform query, row fields data are textual
+-- perform query, returned row fields data are textual
 -- return affected, lastid OR rows OR nil on error
 function DBManager:query(query, params)
   if not query then
@@ -115,6 +113,20 @@ function DBManager:query(query, params)
 
   return r:wait()
 end
+
+-- perform query (no wait)
+function DBManager:_query(query, params)
+  if not query then
+    error("query is nil")
+  end
+
+  -- add no callback flag
+  table.insert(self.queries, false)
+
+  -- send to channel
+  self.ch_out:push(query, msgpack.pack(params or {}))
+end
+
 
 function DBManager:close()
   if self.running then

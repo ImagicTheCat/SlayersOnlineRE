@@ -245,14 +245,11 @@ function Client:kick(reason)
   self.peer:disconnect_later()
 end
 
--- (async)
 function Client:onDisconnect()
   self:save()
-
   if self.map then
     self.map:removeEntity(self)
   end
-
   self.user_id = nil
 end
 
@@ -317,18 +314,17 @@ function Client:applyConfig(config, no_save)
   self:send(Client.makePacket(net.PLAYER_CONFIG, config))
 end
 
--- (async) save check
 function Client:save()
   if self.user_id then
     -- vars
     for var in pairs(self.changed_vars) do
-      self.server.db:query(q_set_var, {self.user_id, var, self.vars[var]})
+      self.server.db:_query(q_set_var, {self.user_id, var, self.vars[var]})
     end
     self.changed_vars = {}
 
     -- bool vars
     for var in pairs(self.changed_bool_vars) do
-      self.server.db:query(q_set_bool_var, {self.user_id, var, self.bool_vars[var]})
+      self.server.db:_query(q_set_bool_var, {self.user_id, var, self.bool_vars[var]})
     end
     self.changed_bool_vars = {}
 
@@ -338,7 +334,7 @@ function Client:save()
 
     -- config
     if self.player_config_changed then
-      self.server.db:query(q_set_config, {self.user_id, utils.hex(msgpack.pack(self.player_config))})
+      self.server.db:_query(q_set_config, {self.user_id, utils.hex(msgpack.pack(self.player_config))})
       self.player_config_changed = false
     end
 
@@ -355,7 +351,7 @@ function Client:save()
     end
 
     state.charaset = self.charaset
-    self.server.db:query(q_set_state, {self.user_id, utils.hex(msgpack.pack(state))})
+    self.server.db:_query(q_set_state, {self.user_id, utils.hex(msgpack.pack(state))})
   end
 end
 
