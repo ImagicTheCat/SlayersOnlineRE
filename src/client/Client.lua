@@ -198,9 +198,9 @@ function Client:__construct(cfg)
   self.menu_grid:set(0,4, Text("Quit"), true)
   self.menu_grid:listen("cell-select", function(grid, cx, cy)
     if cy == 0 then
-      if self.inventory.dirty then self.inventory:updateContent() end
+      self.inventory.content:updateContent()
       self.inventory:setVisible(true)
-      self.gui:setFocus(self.inventory.content)
+      self.gui:setFocus(self.inventory.content.grid)
     elseif cy == 4 then
       love.event.quit()
     end
@@ -211,7 +211,7 @@ function Client:__construct(cfg)
 
   self.inventory = Inventory()
   self.inventory:setVisible(false)
-  self.inventory.content:listen("control-press", function(grid, id)
+  self.inventory.content.grid:listen("control-press", function(grid, id)
     if id == "menu" then
       self.inventory:setVisible(false)
       self.gui:setFocus(self.menu_grid)
@@ -220,7 +220,7 @@ function Client:__construct(cfg)
   self.gui:add(self.inventory)
 
   self.chest = Chest()
-  self.chest:setVisible(false)
+--  self.chest:setVisible(false)
   self.gui:add(self.chest)
 
   self:onResize(love.graphics.getDimensions())
@@ -375,7 +375,10 @@ function Client:onPacket(protocol, data)
     utils.mergeInto(data, self.player_config)
     self:onApplyConfig(data)
   elseif protocol == net.INVENTORY_UPDATE_ITEMS then
-    self.inventory:updateItems(data)
+    self.inventory.content:updateItems(data)
+    if self.inventory.visible then
+      self.inventory.content:updateContent()
+    end
   end
 end
 
