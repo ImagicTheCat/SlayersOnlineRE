@@ -131,7 +131,7 @@ widgets[GridInterface.Overlay] = function(self, widget)
 end
 
 widgets[ChatHistory] = widgets[Window]
-widgets[Inventory] = widgets[Window]
+widgets[Inventory.Content] = widgets[Window]
 
 -- METHODS
 

@@ -3,6 +3,7 @@ local Window = require("gui.Window")
 local GridInterface = require("gui.GridInterface")
 local Text = require("gui.Text")
 local TextInput = require("gui.TextInput")
+local Inventory = require("gui.Inventory")
 
 local Chest = class("Chest", Widget)
 
@@ -42,22 +43,27 @@ function Chest:__construct()
   self:add(self.w_gold_r)
 
   -- inventory content
-  self.w_content_l = Window()
-  self.content_l = GridInterface(0,0)
-  self.w_content_l.content:add(self.content_l)
-  self:add(self.w_content_l)
+  self.content_l = Inventory.Content()
+  self:add(self.content_l)
 
   -- chest content
-  self.w_content_r = Window()
-  self.content_r = GridInterface(0,0)
-  self.w_content_r.content:add(self.content_r)
-  self:add(self.w_content_r)
+  self.content_r = Inventory.Content()
+  self:add(self.content_r)
 
   -- info
   self.w_info = Window("vertical")
   self.info = Text("info")
   self.w_info.content:add(self.info)
   self:add(self.w_info)
+
+  -- info updates
+  local function selection_update(content)
+    local item = content:getSelection()
+    self.info:set(item and Inventory.formatItemDescription(item[2]) or "")
+  end
+
+  self.content_l:listen("selection-update", selection_update)
+  self.content_r:listen("selection-update", selection_update)
 end
 
 -- override
@@ -75,10 +81,10 @@ function Chest:updateLayout(w,h)
   self.w_info:setPosition(0,h-self.w_info.h)
 
   local content_y = self.w_gold_l.y+math.max(self.w_gold_l.h, self.w_gold_r.h)
-  self.w_content_l:setPosition(0, content_y)
-  self.w_content_l:updateLayout(w/2, h-content_y-self.w_info.h)
-  self.w_content_r:setPosition(w/2, content_y)
-  self.w_content_r:updateLayout(w/2, h-content_y-self.w_info.h)
+  self.content_l:setPosition(0, content_y)
+  self.content_l:updateLayout(w/2, h-content_y-self.w_info.h)
+  self.content_r:setPosition(w/2, content_y)
+  self.content_r:updateLayout(w/2, h-content_y-self.w_info.h)
 end
 
 return Chest
