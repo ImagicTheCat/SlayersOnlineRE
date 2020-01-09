@@ -38,7 +38,10 @@ function Inventory.Content:__construct()
 end
 
 -- items: list of {id, data}
-function Inventory.Content:updateItems(items)
+-- clear: (optional) flag, if truthy, will clear the inventory first
+function Inventory.Content:updateItems(items, clear)
+  if clear then self.items = {} end
+
   for _, item in ipairs(items) do
     self.items[item[1]] = item[2]
   end

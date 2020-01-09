@@ -202,6 +202,15 @@ commands.tp = {function(self, client, args)
   end
 end, "<map> <cx> <cy>", "teleport to coordinates"}
 
+-- testing command
+commands.chest = {function(self, client, args)
+  if client then
+    async(function()
+      client:openChest("Test.")
+    end)
+  end
+end, "", "open chest"}
+
 -- CONSOLE THREAD
 local function console_main(flags, channel)
   while flags.running do

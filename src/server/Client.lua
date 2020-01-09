@@ -136,6 +136,23 @@ function Client:onPacket(protocol, data)
               self:send(Client.makePacket(net.INVENTORY_UPDATE_ITEMS, items))
             end
 
+            ---- on chest item update
+            function self.chest_inventory.onItemUpdate(inv, id)
+              if not self.chest_task then return end -- chest isn't open
+
+              local data
+              local amount = inv.items[id]
+              local object = self.server.project.objects[id]
+              if object and inv.items[id] then
+                data = {
+                  amount = inv.items[id],
+                  name = object.name,
+                  description = object.description
+                }
+              end
+              self:send(Client.makePacket(net.CHEST_UPDATE_ITEMS, {{id,data}}))
+            end
+
             --- state
             local state = user_row.state and msgpack.unpack(user_row.state) or {}
 
@@ -192,18 +209,28 @@ function Client:onPacket(protocol, data)
         end
       end
     elseif protocol == net.EVENT_MESSAGE_SKIP then
-      if self.message_r then self.message_r() end
+      local r = self.message_task
+      if r then
+        self.message_task = nil
+        r()
+      end
     elseif protocol == net.EVENT_INPUT_QUERY_ANSWER then
-      local r = self.input_query_r
+      local r = self.input_query_task
       if r and type(data) == "number" then
-        self.input_query_r = nil
+        self.input_query_task = nil
         r(data)
       end
     elseif protocol == net.EVENT_INPUT_STRING_ANSWER then
-      local r = self.input_string_r
+      local r = self.input_string_task
       if r and type(data) == "string" then
-        self.input_string_r = nil
+        self.input_string_task = nil
         r(data)
+      end
+    elseif protocol == net.CHEST_CLOSE then
+      local r = self.chest_task
+      if r then
+        self.chest_task = nil
+        r()
       end
     end
   end
@@ -221,23 +248,43 @@ end
 -- (async) trigger event message box
 -- return when the message is skipped by the client
 function Client:requestMessage(msg)
-  self.message_r = async()
+  self.message_task = async()
   self:send(Client.makePacket(net.EVENT_MESSAGE, msg))
-  self.message_r:wait()
+  self.message_task:wait()
 end
 
 -- (async)
 -- return option index (may be invalid)
 function Client:requestInputQuery(title, options)
-  self.input_query_r = async()
+  self.input_query_task = async()
   self:send(Client.makePacket(net.EVENT_INPUT_QUERY, {title = title, options = options}))
-  return self.input_query_r:wait()
+  return self.input_query_task:wait()
 end
 
 function Client:requestInputString(title)
-  self.input_string_r = async()
+  self.input_string_task = async()
   self:send(Client.makePacket(net.EVENT_INPUT_STRING, {title = title}))
-  return self.input_string_r:wait()
+  return self.input_string_task:wait()
+end
+
+-- (async) open chest GUI
+function Client:openChest(title)
+  self.chest_task = async()
+  -- send init items
+  local objects = self.server.project.objects
+  local items = {}
+  for id, amount in pairs(self.chest_inventory.items) do
+    local object = objects[id]
+    if object then
+      table.insert(items, {id, {
+        amount = amount,
+        name = object.name,
+        description = object.description
+      }})
+    end
+  end
+  self:send(Client.makePacket(net.CHEST_OPEN, {title, items}))
+  self.chest_task:wait()
 end
 
 function Client:kick(reason)
