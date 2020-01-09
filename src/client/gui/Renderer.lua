@@ -109,9 +109,15 @@ widgets[GridInterface.Overlay] = function(self, widget)
     love.graphics.translate(cell[1].x-MARGIN, cell[1].y-MARGIN)
     love.graphics.scale(self.system_scale)
 
-    if blink then love.graphics.setColor(1,1,1,0.75) end
-    self:drawBorders(self.system.select_borders, 0, 0, (cell[1].w+MARGIN*2)/self.system_scale, (cell[1].h+MARGIN*2)/self.system_scale)
-    if blink then love.graphics.setColor(1,1,1) end
+    if grid.gui.focus == grid then -- blink on focus
+      if blink then love.graphics.setColor(1,1,1,0.75) end
+      self:drawBorders(self.system.select_borders, 0, 0, (cell[1].w+MARGIN*2)/self.system_scale, (cell[1].h+MARGIN*2)/self.system_scale)
+      if blink then love.graphics.setColor(1,1,1) end
+    else -- unfocus
+      love.graphics.setColor(1,1,1,0.25)
+      self:drawBorders(self.system.select_borders, 0, 0, (cell[1].w+MARGIN*2)/self.system_scale, (cell[1].h+MARGIN*2)/self.system_scale)
+      love.graphics.setColor(1,1,1,1)
+    end
 
     love.graphics.pop()
   end
