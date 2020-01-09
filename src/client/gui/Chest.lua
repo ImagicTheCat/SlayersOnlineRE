@@ -28,7 +28,7 @@ function Chest:__construct()
   self.gold_l:set(0,0,Text("Gold:"))
   self.gold_l:set(0,1,Text("Trade:"))
   self.gold_l:set(1,0,Text("0"))
-  self.gold_l:set(1,1,TextInput())
+  self.gold_l:set(1,1,TextInput(), true)
   self.w_gold_l.content:add(self.gold_l)
   self:add(self.w_gold_l)
 
@@ -38,7 +38,7 @@ function Chest:__construct()
   self.gold_r:set(0,0,Text("Gold:"))
   self.gold_r:set(0,1,Text("Trade:"))
   self.gold_r:set(1,0,Text("0"))
-  self.gold_r:set(1,1,TextInput())
+  self.gold_r:set(1,1,TextInput(), true)
   self.w_gold_r.content:add(self.gold_r)
   self:add(self.w_gold_r)
 
@@ -64,6 +64,23 @@ function Chest:__construct()
 
   self.content_l:listen("selection-update", selection_update)
   self.content_r:listen("selection-update", selection_update)
+
+  local function control_press(widget, id)
+    if id == "menu" then
+      self:setVisible(false)
+      self.gui:setFocus()
+      self:trigger("close")
+    end
+  end
+
+  self.gold_l:listen("control-press", control_press)
+  self.gold_r:listen("control-press", control_press)
+  self.content_l.grid:listen("control-press", control_press)
+  self.content_r.grid:listen("control-press", control_press)
+end
+
+-- called when closed
+function Chest:onClose()
 end
 
 -- override

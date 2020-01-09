@@ -220,7 +220,10 @@ function Client:__construct(cfg)
   self.gui:add(self.inventory)
 
   self.chest = Chest()
---  self.chest:setVisible(false)
+  self.chest:setVisible(false)
+  self.chest:listen("close", function(chest)
+    self:sendPacket(net.CHEST_CLOSE)
+  end)
   self.gui:add(self.chest)
 
   self:onResize(love.graphics.getDimensions())
@@ -379,6 +382,21 @@ function Client:onPacket(protocol, data)
     if self.inventory.visible then
       self.inventory.content:updateContent()
     end
+
+    self.chest.content_l:updateItems(data)
+    if self.chest.visible then
+      self.chest.content:updateContent()
+    end
+  elseif protocol == net.CHEST_OPEN then
+    self.chest.title:set(data[1])
+    self.chest.content_r:updateItems(data[2], true)
+    self.chest.content_r:updateContent()
+    self.chest.content_l:updateContent()
+    self.chest:setVisible(true)
+    self.gui:setFocus(self.chest.content_l.grid)
+  elseif protocol == net.CHEST_UPDATE_ITEMS then
+    self.chest.content_r:updateItems(data)
+    self.chest.content_r:updateContent()
   end
 end
 
