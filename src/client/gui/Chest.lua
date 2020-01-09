@@ -7,10 +7,6 @@ local Inventory = require("gui.Inventory")
 
 local Chest = class("Chest", Widget)
 
--- PRIVATE STATICS
-
-local COLUMNS = 2
-
 -- METHODS
 
 function Chest:__construct()
@@ -29,6 +25,7 @@ function Chest:__construct()
   self.gold_l:set(0,1,Text("Trade:"))
   self.gold_l:set(1,0,Text("0"))
   self.gold_l:set(1,1,TextInput(), true)
+  self.gold_l.cx, self.gold_l.cy = 1,1
   self.w_gold_l.content:add(self.gold_l)
   self:add(self.w_gold_l)
 
@@ -39,15 +36,16 @@ function Chest:__construct()
   self.gold_r:set(0,1,Text("Trade:"))
   self.gold_r:set(1,0,Text("0"))
   self.gold_r:set(1,1,TextInput(), true)
+  self.gold_r.cx, self.gold_r.cy = 1,1
   self.w_gold_r.content:add(self.gold_r)
   self:add(self.w_gold_r)
 
   -- inventory content
-  self.content_l = Inventory.Content()
+  self.content_l = Inventory.Content(2)
   self:add(self.content_l)
 
   -- chest content
-  self.content_r = Inventory.Content()
+  self.content_r = Inventory.Content(2)
   self:add(self.content_r)
 
   -- info
@@ -65,6 +63,7 @@ function Chest:__construct()
   self.content_l:listen("selection-update", selection_update)
   self.content_r:listen("selection-update", selection_update)
 
+  -- escape chest GUI
   local function control_press(widget, id)
     if id == "menu" then
       self:setVisible(false)
@@ -77,6 +76,43 @@ function Chest:__construct()
   self.gold_r:listen("control-press", control_press)
   self.content_l.grid:listen("control-press", control_press)
   self.content_r.grid:listen("control-press", control_press)
+
+  -- navigation between panels
+  self.gold_l:listen("move-select", function(grid, dx, dy)
+    if dx == 1 then
+      self.gui:setFocus(self.gold_r)
+    elseif dy == 1 then
+      self.gui:setFocus(self.content_l.grid)
+    end
+  end)
+
+  self.gold_r:listen("move-select", function(grid, dx, dy)
+    if dx == -1 then
+      self.gui:setFocus(self.gold_l)
+    elseif dy == 1 then
+      self.gui:setFocus(self.content_r.grid)
+    end
+  end)
+
+  self.content_l.grid:listen("move-select", function(grid, dx, dy)
+    if dx == 1 and grid.cx == grid.wc-1 then
+      grid.cx = grid.cx-dx
+      self.gui:setFocus(self.content_r.grid)
+    elseif dy == -1 and grid.cy == 0 then
+      grid.cy = grid.cy-dy
+      self.gui:setFocus(self.gold_l)
+    end
+  end)
+
+  self.content_r.grid:listen("move-select", function(grid, dx, dy)
+    if dx == -1 and grid.cx == 0 then
+      grid.cx = grid.cx-dx
+      self.gui:setFocus(self.content_l.grid)
+    elseif dy == -1 and grid.cy == 0 then
+      grid.cy = grid.cy-dy
+      self.gui:setFocus(self.gold_r)
+    end
+  end)
 end
 
 -- called when closed

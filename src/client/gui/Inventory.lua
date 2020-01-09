@@ -7,10 +7,6 @@ local Inventory = class("Inventory", Widget)
 
 Inventory.Content = class("Inventory.Content", Window)
 
--- PRIVATE STATICS
-
-local COLUMNS = 3
-
 -- STATICS
 
 function Inventory.formatItem(item_data)
@@ -23,9 +19,10 @@ end
 
 -- SUBCLASS
 
-function Inventory.Content:__construct()
+function Inventory.Content:__construct(columns)
   Window.__construct(self)
 
+  self.columns = columns
   self.grid = GridInterface(0,0)
   self.content:add(self.grid)
 
@@ -61,12 +58,12 @@ function Inventory.Content:updateContent()
     -- sort by name
     table.sort(self.display_items, function(a,b) return a[2].name < b[2].name end)
 
-    local rows = math.ceil(#self.display_items/COLUMNS)
-    self.grid:init(COLUMNS, rows)
+    local rows = math.ceil(#self.display_items/self.columns)
+    self.grid:init(self.columns, rows)
 
     for i, item in ipairs(self.display_items) do
       local data = item[2]
-      local cx, cy = (i-1)%COLUMNS, math.floor((i-1)/COLUMNS)
+      local cx, cy = (i-1)%self.columns, math.floor((i-1)/self.columns)
       self.grid:set(cx, cy, Text(Inventory.formatItem(data)), true)
     end
 
@@ -76,7 +73,7 @@ end
 
 -- return selected item as {id, data} or nil
 function Inventory.Content:getSelection()
-  return self.display_items[COLUMNS*self.grid.cy+self.grid.cx+1]
+  return self.display_items[self.columns*self.grid.cy+self.grid.cx+1]
 end
 
 -- METHODS
@@ -85,7 +82,7 @@ function Inventory:__construct()
   Widget.__construct(self)
 
   -- inventory content
-  self.content = Inventory.Content()
+  self.content = Inventory.Content(3)
   self:add(self.content)
 
   -- info/menu

@@ -86,6 +86,8 @@ function GridInterface:set(x, y, widget, selectable)
 end
 
 function GridInterface:moveSelect(dx, dy)
+  self:trigger("move-select", dx, dy)
+
   -- X
   local sdx = dx/math.abs(dx) -- sign
   local its, limit = 0, self.wc*math.abs(dx)
