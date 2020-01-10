@@ -211,6 +211,15 @@ commands.chest = {function(self, client, args)
   end
 end, "", "open chest"}
 
+-- testing command
+commands.shop = {function(self, client, args)
+  if client then
+    async(function()
+      client:openShop("Test.", {1,2,3,4})
+    end)
+  end
+end, "", "open shop"}
+
 -- CONSOLE THREAD
 local function console_main(flags, channel)
   while flags.running do
