@@ -115,10 +115,6 @@ function Chest:__construct()
   end)
 end
 
--- called when closed
-function Chest:onClose()
-end
-
 -- override
 function Chest:updateLayout(w,h)
   self:setSize(w,h)

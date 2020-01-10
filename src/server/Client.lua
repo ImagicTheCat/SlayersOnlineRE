@@ -232,6 +232,12 @@ function Client:onPacket(protocol, data)
         self.chest_task = nil
         r()
       end
+    elseif protocol == net.SHOP_CLOSE then
+      local r = self.shop_task
+      if r then
+        self.shop_task = nil
+        r()
+      end
     end
   end
 end
@@ -285,6 +291,31 @@ function Client:openChest(title)
   end
   self:send(Client.makePacket(net.CHEST_OPEN, {title, items}))
   self.chest_task:wait()
+end
+
+-- (async) open shop GUI
+-- items: list of item ids to sell
+function Client:openShop(title, items)
+  self.shop_task = async()
+
+  local objects = self.server.project.objects
+  local sell_items = {}
+  local objects = self.server.project.objects
+  for _, id in ipairs(items) do
+    local object = objects[id]
+    if object then
+      table.insert(sell_items, {
+        id = id,
+        name = object.name,
+        description = object.description,
+        price = object.price
+      })
+    end
+  end
+
+  self:send(Client.makePacket(net.SHOP_OPEN, {title, sell_items}))
+
+  self.shop_task:wait()
 end
 
 function Client:kick(reason)

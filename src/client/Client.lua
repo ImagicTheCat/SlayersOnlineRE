@@ -15,6 +15,7 @@ local Text = require("gui.Text")
 local GridInterface = require("gui.GridInterface")
 local Inventory = require("gui.Inventory")
 local Chest = require("gui.Chest")
+local Shop = require("gui.Shop")
 local TextureAtlas = require("TextureAtlas")
 local Phial = require("gui.Phial")
 local XPBar = require("gui.XPBar")
@@ -226,6 +227,13 @@ function Client:__construct(cfg)
   end)
   self.gui:add(self.chest)
 
+  self.shop = Shop()
+  self.shop:setVisible(false)
+  self.shop:listen("close", function(shop)
+    self:sendPacket(net.SHOP_CLOSE)
+  end)
+  self.gui:add(self.shop)
+
   self:onResize(love.graphics.getDimensions())
 end
 
@@ -397,6 +405,10 @@ function Client:onPacket(protocol, data)
   elseif protocol == net.CHEST_UPDATE_ITEMS then
     self.chest.content_r:updateItems(data)
     self.chest.content_r:updateContent()
+  elseif protocol == net.SHOP_OPEN then
+    self.shop:setVisible(true)
+    self.shop:open(data[1], data[2])
+    self.gui:setFocus(self.shop.menu)
   end
 end
 
@@ -490,6 +502,9 @@ function Client:onResize(w, h)
 
   self.chest:setPosition(2,2)
   self.chest:setSize(w-4,h-4)
+
+  self.shop:setPosition(2,2)
+  self.shop:setSize(w-4,h-4)
 end
 
 function Client:onSetFont()
