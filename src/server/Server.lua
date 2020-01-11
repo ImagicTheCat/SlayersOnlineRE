@@ -337,7 +337,7 @@ end
 
 function Server:close()
   -- guard
-  if self.task_close then self.task_close:wait() return end
+  if self.task_close then return self.task_close:wait() end
   self.task_close = async()
 
   self.console_flags.running = false
