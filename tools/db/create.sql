@@ -2,8 +2,23 @@ CREATE TABLE users(
   id INTEGER UNSIGNED AUTO_INCREMENT,
   pseudo VARCHAR(50) UNIQUE,
   password BINARY(64),
-  config BLOB,
-  state BLOB,
+  config BLOB, -- player config (msgpack)
+  state BLOB, -- player state (msgpack)
+  class TINYINT UNSIGNED, -- class index (start at 1)
+  level TINYINT UNSIGNED,
+  alignment TINYINT UNSIGNED,
+  reputation INTEGER UNSIGNED,
+  gold BIGINT UNSIGNED,
+  xp BIGINT UNSIGNED,
+  strength_pts INTEGER UNSIGNED,
+  dexterity_pts INTEGER UNSIGNED,
+  constitution_pts INTEGER UNSIGNED,
+  magic_pts INTEGER UNSIGNED,
+  remaining_pts INTEGER UNSIGNED,
+  weapon_slot INTEGER UNSIGNED, -- object index (start at 1, 0 is empty)
+  shield_slot INTEGER UNSIGNED,
+  helmet_slot INTEGER UNSIGNED,
+  armor_slot INTEGER UNSIGNED,
   CONSTRAINT pk_users PRIMARY KEY(id)
 );
 
