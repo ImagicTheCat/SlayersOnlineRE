@@ -211,26 +211,17 @@ function Client:onPacket(protocol, data)
 
             map:addEntity(self)
 
-            -- init stats
-            local class_data = self.server.project.classes[self.class]
+            -- compute characteristics, send/init stats
+            self:updateCharacteristics()
 
+            local class_data = self.server.project.classes[self.class]
             self:send(Client.makePacket(net.STATS_UPDATE, {
-              health = self.health,
-              max_health = self.max_health,
-              mana = self.mana,
-              max_mana = self.max_mana,
               gold = self.gold,
               alignment = self.alignment,
               name = self.pseudo,
               class = class_data.name,
               level = self.level,
-              strength = self.strength_pts,
-              dexterity = self.dexterity_pts,
-              constitution = self.constitution_pts,
-              magic = self.magic_pts,
               points = self.remaining_pts,
-              attack = 100,
-              defense = 100,
               reputation = self.reputation,
               xp = self.xp,
               max_xp = self.xp*2
@@ -446,6 +437,52 @@ function Client:applyConfig(config, no_save)
     self.player_config_changed = true
   end
   self:send(Client.makePacket(net.PLAYER_CONFIG, config))
+end
+
+-- update characteristics based on gears/effects/etc
+function Client:updateCharacteristics()
+  local class_data = self.server.project.classes[self.class]
+
+  self.strength = self.strength_pts+class_data.strength
+  self.dexterity = self.dexterity_pts+class_data.dexterity
+  self.constitution = self.constitution_pts+class_data.constitution
+  self.magic = self.magic_pts+class_data.magic
+  self.max_health = 100
+  self.max_mana = 100
+  self.ch_attack = 100
+  self.ch_defense = 100
+
+  -- gears
+  local gears = {self.weapon_slot, self.shield_slot, self.helmet_slot, self.armor_slot}
+  for _, slot in ipairs(gears) do
+    local object = self.server.project.objects[slot]
+    if object then
+      self.strength = self.strength+object.mod_strength
+      self.dexterity = self.dexterity+object.mod_dexterity
+      self.constitution = self.constitution+object.mod_constitution
+      self.magic = self.magic+object.mod_magic
+      self.max_health = self.max_health+object.mod_hp
+      self.max_mana = self.max_mana+object.mod_mp
+      self.ch_defense = self.ch_defense+object.mod_defense
+    end
+  end
+
+  -- clamp
+  self.health = math.min(self.health, self.max_health)
+  self.mana = math.min(self.mana, self.max_mana)
+
+  self:send(Client.makePacket(net.STATS_UPDATE, {
+    health = self.health,
+    max_health = self.max_health,
+    mana = self.mana,
+    max_mana = self.max_mana,
+    strength = self.strength,
+    dexterity = self.dexterity,
+    constitution = self.constitution,
+    magic = self.magic,
+    attack = self.ch_attack,
+    defense = self.ch_defense
+  }))
 end
 
 function Client:save()
