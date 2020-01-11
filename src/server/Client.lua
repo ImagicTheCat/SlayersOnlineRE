@@ -180,6 +180,29 @@ function Client:onPacket(protocol, data)
 
             map:addEntity(self)
 
+            -- stats (TODO, placeholder)
+            self:send(Client.makePacket(net.STATS_UPDATE, {
+              health = self.health,
+              max_health = self.max_health,
+              mana = self.mana,
+              max_mana = self.max_mana,
+              gold = 1000,
+              alignment = 100,
+              name = self.pseudo,
+              class = "Warrior",
+              level = 1,
+              strength = 10,
+              dexterity = 10,
+              constitution = 10,
+              magic = 0,
+              points = 0,
+              attack = 100,
+              defense = 100,
+              reputation = 0,
+              xp = 500,
+              max_xp = 1000
+            }))
+
             self:sendChatMessage("Logged in.")
           else -- login failed
             self:sendChatMessage("Login failed.")

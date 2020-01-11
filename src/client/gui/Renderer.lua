@@ -60,7 +60,9 @@ local widgets = {}
 
 widgets[XPBar] = function(self, widget)
   local w, h = self.xp_tex:getDimensions()
-  love.graphics.draw(self.xp_tex, 0, 0, 0, widget.w/w, widget.h/h)
+  local sx, sy = widget.w/w, widget.h/h
+  love.graphics.rectangle("fill", 10*sx, 5*sy, (w-20)*sx*widget.factor, 6*sy)
+  love.graphics.draw(self.xp_tex, 0, 0, 0, sx, sy)
 end
 
 widgets[Phial] = function(self, widget)

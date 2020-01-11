@@ -49,6 +49,9 @@ function LivingEntity:__construct()
   self.attack_duration = 1 -- seconds
   self.attacking = false
 
+  self.health, self.max_health = 100, 100
+  self.mana, self.max_mana = 100, 100
+
   -- self.charaset {.path, .x, .y, .w, .h, .is_skin}
   -- self.attack_sound
   -- self.hurt_sound

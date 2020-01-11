@@ -89,18 +89,12 @@ function Client:__construct(cfg)
   self.phials_scale = 3
   self.xp_scale = 3
 
-  self.health_max = 100
-  self.health = 100
-
-  self.mana_max = 100
-  self.mana = 100
+  self.stats = {}
 
   self.health_phial = Phial("health")
-  self.health_phial.factor = self.health/self.health_max
   self.gui:add(self.health_phial)
 
   self.mana_phial = Phial("mana")
-  self.mana_phial.factor = self.mana/self.mana_max
   self.gui:add(self.mana_phial)
 
   self.xp_bar = XPBar()
@@ -202,6 +196,9 @@ function Client:__construct(cfg)
       self.inventory.content:updateContent()
       self.inventory:setVisible(true)
       self.gui:setFocus(self.inventory.content.grid)
+    elseif cy == 2 then
+      self.w_stats:setVisible(true)
+      self.gui:setFocus(self.g_stats)
     elseif cy == 4 then
       love.event.quit()
     end
@@ -234,6 +231,19 @@ function Client:__construct(cfg)
   end)
   self.gui:add(self.shop)
 
+  self.w_stats = Window()
+  self.w_stats:setVisible(false)
+  self.g_stats = GridInterface(2,10)
+  self.w_stats.content:add(self.g_stats)
+  self.g_stats:listen("control-press", function(grid, id)
+    if id == "menu" then
+      self.w_stats:setVisible(false)
+      self.gui:setFocus(self.menu_grid)
+    end
+  end)
+  self.gui:add(self.w_stats)
+
+  -- trigger resize
   self:onResize(love.graphics.getDimensions())
 end
 
@@ -409,6 +419,39 @@ function Client:onPacket(protocol, data)
     self.shop:setVisible(true)
     self.shop:open(data[1], data[2])
     self.gui:setFocus(self.shop.menu)
+  elseif protocol == net.STATS_UPDATE then
+    local stats = data
+    utils.mergeInto(stats, self.stats)
+
+    -- updates
+    if stats.name then self.g_stats:set(0,0, Text("Name: "..stats.name)) end
+    if stats.class then self.g_stats:set(0,1, Text("Class: "..stats.class)) end
+    if stats.level then self.g_stats:set(0,2, Text("Level: "..stats.level)) end
+    if stats.gold then self.g_stats:set(0,3, Text("Gold: "..stats.gold)) end
+
+    if stats.alignment then self.g_stats:set(1,0, Text("Alignment: "..stats.alignment)) end
+    if stats.health or stats.max_health then
+      self.health_phial.factor = stats.health/stats.max_health
+      self.g_stats:set(1,1, Text("Health: "..stats.health.."/"..stats.max_health))
+    end
+    if stats.mana or stats.max_mana then
+      self.mana_phial.factor = stats.mana/stats.max_mana
+      self.g_stats:set(1,2, Text("Mana: "..stats.mana.."/"..stats.max_mana))
+    end
+
+    if stats.strength then self.g_stats:set(0,5, Text("Strength: "..stats.strength), true) end
+    if stats.dexterity then self.g_stats:set(0,6, Text("Dexterity: "..stats.dexterity), true) end
+    if stats.constitution then self.g_stats:set(0,7, Text("Constitution: "..stats.constitution), true) end
+    if stats.magic then self.g_stats:set(0,8, Text("Magic: "..stats.magic), true) end
+    if stats.points then self.g_stats:set(0,9, Text("Remaining points: "..stats.points), true) end
+
+    if stats.attack then self.g_stats:set(1,5, Text("Attack: "..stats.attack)) end
+    if stats.defense then self.g_stats:set(1,6, Text("Defense: "..stats.defense)) end
+    if stats.reputation then self.g_stats:set(1,7, Text("Reputation: "..stats.reputation)) end
+    if stats.xp or stats.max_xp then
+      self.xp_bar.factor = stats.xp/stats.max_xp
+      self.g_stats:set(1,8, Text("XP: "..stats.xp.."/"..stats.max_xp))
+    end
   end
 end
 
@@ -499,6 +542,9 @@ function Client:onResize(w, h)
 
   self.inventory:setPosition(self.menu.w+2, 2)
   self.inventory:setSize(w-4-self.menu.w, h-4)
+
+  self.w_stats:setPosition(self.menu.w+2, 2)
+  self.w_stats:setSize(w-4-self.menu.w, h-4)
 
   self.chest:setPosition(2,2)
   self.chest:setSize(w-4,h-4)
