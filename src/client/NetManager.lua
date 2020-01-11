@@ -19,7 +19,7 @@ function NetManager:__construct(client)
   self.local_manifest = {} -- map of path => hash
   self.remote_manifest = {} -- map of path => hash
 
-  self.resource_requests = {} -- map of path => list of callback
+  self.resource_tasks = {} -- map of path => async task
 
   -- create dirs
   love.filesystem.createDirectory("resources_repository/textures/sets")
@@ -91,59 +91,52 @@ end
 -- path: relative to the repository
 -- return true on success, false if the resource is unavailable
 function NetManager:requestResource(path)
-  local request = self.resource_requests[path]
+  -- guard
+  local task = self.resource_tasks[path]
+  if task then task:wait() end
 
-  if not request then -- create request
-    local ret = false
+  -- create request
+  task = async()
+  self.resource_tasks[path] = task
 
-    request = {}
-    self.resource_requests[path] = request
+  local ret = false
+  local lhash = self.local_manifest[path]
+  local rhash = self.remote_manifest[path]
 
-    local lhash = self.local_manifest[path]
-    local rhash = self.remote_manifest[path]
-
-    if rhash then
-      if not lhash then -- verify/re-hash
-        print("try to re-hash resource "..path)
-        local data = love.filesystem.read("resources_repository/"..path)
-        -- re-add manifest entry
-        if data then
-          lhash = sha2.md5(data)
-          self.local_manifest[path] = lhash
-        end
-      end
-
-      if not lhash or lhash ~= rhash then -- download/update
-        print("download resource "..path)
-        local data = self:request(self.client.cfg.resource_repository..path)
-        if data then
-          -- write file
-          local ok, err = love.filesystem.write("resources_repository/"..path, data)
-          if ok then -- add manifest entry
-            self.local_manifest[path] = sha2.md5(data)
-          else
-            print(err)
-          end
-
-          ret = ok
-        end
-      else -- already same as remote
-        ret = true
+  if rhash then
+    if not lhash then -- verify/re-hash
+      print("try to re-hash resource "..path)
+      local data = love.filesystem.read("resources_repository/"..path)
+      -- re-add manifest entry
+      if data then
+        lhash = sha2.md5(data)
+        self.local_manifest[path] = lhash
       end
     end
 
-    self.resource_requests[path] = nil
+    if not lhash or lhash ~= rhash then -- download/update
+      print("download resource "..path)
+      local data = self:request(self.client.cfg.resource_repository..path)
+      if data then
+        -- write file
+        local ok, err = love.filesystem.write("resources_repository/"..path, data)
+        if ok then -- add manifest entry
+          self.local_manifest[path] = sha2.md5(data)
+        else
+          print(err)
+        end
 
-    -- return
-    for _, callback in ipairs(request) do
-      callback(ret)
+        ret = ok
+      end
+    else -- already same as remote
+      ret = true
     end
-    return ret
-  else -- wait for request completion
-    local r = async()
-    table.insert(request, r)
-    return r:wait()
   end
+
+  -- end guard
+  self.resource_tasks[path] = nil
+  task(ret)
+  return ret
 end
 
 function NetManager:saveLocalManifest()

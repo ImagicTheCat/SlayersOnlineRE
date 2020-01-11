@@ -36,13 +36,18 @@ function LivingEntity:__construct(data)
 
   self.attacking = false
 
-  -- default skin
-  self:setCharaset({
+  -- default charaset
+  self.charaset = {
     path = "charaset.png",
     x = 0, y = 0,
     w = 24, h = 32,
     is_skin = false
-  })
+  }
+
+  self.texture = client:loadTexture("resources/textures/sets/"..self.charaset.path)
+  self.atlas = LivingEntity.getTextureAtlas(self.charaset.x, self.charaset.y,
+    self.texture:getWidth(), self.texture:getHeight(),
+    self.charaset.w, self.charaset.h)
 
   self.attack_sound = data.attack_sound
   self.hurt_sound = data.hurt_sound
