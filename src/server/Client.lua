@@ -13,13 +13,29 @@ local Client = class("Client", Player)
 
 -- PRIVATE STATICS
 
-local q_login = "SELECT id, pseudo, config, state FROM users WHERE pseudo = {1} AND password = UNHEX({2})"
+local q_login = "SELECT * FROM users WHERE pseudo = {1} AND password = UNHEX({2})"
 local q_get_vars = "SELECT id,value FROM users_vars WHERE user_id = {1}"
 local q_get_bool_vars = "SELECT id,value FROM users_bool_vars WHERE user_id = {1}"
 local q_set_var = "INSERT INTO users_vars(user_id, id, value) VALUES({1},{2},{3}) ON DUPLICATE KEY UPDATE value = {3}"
 local q_set_bool_var = "INSERT INTO users_bool_vars(user_id, id, value) VALUES({1},{2},{3}) ON DUPLICATE KEY UPDATE value = {3}"
 local q_set_config = "UPDATE users SET config = UNHEX({2}) WHERE id = {1}"
 local q_set_state = "UPDATE users SET state = UNHEX({2}) WHERE id = {1}"
+local q_set_data = [[UPDATE users SET
+level = {level},
+alignment = {alignment},
+reputation = {reputation},
+gold = {gold},
+xp = {xp},
+strength_pts = {strength_pts},
+dexterity_pts = {dexterity_pts},
+constitution_pts = {constitution_pts},
+magic_pts = {magic_pts},
+remaining_pts = {remaining_pts},
+weapon_slot = {weapon_slot},
+shield_slot = {shield_slot},
+helmet_slot = {helmet_slot},
+armor_slot = {armor_slot}
+WHERE id = {user_id}]]
 
 -- STATICS
 
@@ -78,6 +94,21 @@ function Client:onPacket(protocol, data)
 
             -- load user data
             self.pseudo = user_row.pseudo
+            self.class = tonumber(user_row.class)
+            self.level = tonumber(user_row.level)
+            self.alignment = tonumber(user_row.alignment)
+            self.reputation = tonumber(user_row.reputation)
+            self.gold = tonumber(user_row.gold)
+            self.xp = tonumber(user_row.xp)
+            self.strength_pts = tonumber(user_row.strength_pts)
+            self.dexterity_pts = tonumber(user_row.dexterity_pts)
+            self.constitution_pts = tonumber(user_row.constitution_pts)
+            self.magic_pts = tonumber(user_row.magic_pts)
+            self.remaining_pts = tonumber(user_row.remaining_pts)
+            self.weapon_slot = tonumber(user_row.weapon_slot)
+            self.shield_slot = tonumber(user_row.shield_slot)
+            self.helmet_slot = tonumber(user_row.helmet_slot)
+            self.armor_slot = tonumber(user_row.armor_slot)
 
             --- config
             self:applyConfig(user_row.config and msgpack.unpack(user_row.config) or {}, true)
@@ -180,27 +211,29 @@ function Client:onPacket(protocol, data)
 
             map:addEntity(self)
 
-            -- stats (TODO, placeholder)
+            -- init stats
+            local class_data = self.server.project.classes[self.class]
+
             self:send(Client.makePacket(net.STATS_UPDATE, {
               health = self.health,
               max_health = self.max_health,
               mana = self.mana,
               max_mana = self.max_mana,
-              gold = 1000,
-              alignment = 100,
+              gold = self.gold,
+              alignment = self.alignment,
               name = self.pseudo,
-              class = "Warrior",
-              level = 1,
-              strength = 10,
-              dexterity = 10,
-              constitution = 10,
-              magic = 0,
-              points = 0,
+              class = class_data.name,
+              level = self.level,
+              strength = self.strength_pts,
+              dexterity = self.dexterity_pts,
+              constitution = self.constitution_pts,
+              magic = self.magic_pts,
+              points = self.remaining_pts,
               attack = 100,
               defense = 100,
-              reputation = 0,
-              xp = 500,
-              max_xp = 1000
+              reputation = self.reputation,
+              xp = self.xp,
+              max_xp = self.xp*2
             }))
 
             self:sendChatMessage("Logged in.")
@@ -417,6 +450,26 @@ end
 
 function Client:save()
   if self.user_id then
+    -- base data
+    self.server.db:_query(q_set_data, {
+      user_id = self.user_id,
+
+      level = self.level,
+      alignment = self.alignment,
+      reputation = self.reputation,
+      gold = self.gold,
+      xp = self.xp,
+      strength_pts = self.strength_pts,
+      dexterity_pts = self.dexterity_pts,
+      constitution_pts = self.constitution_pts,
+      magic_pts = self.magic_pts,
+      remaining_pts = self.remaining_pts,
+      weapon_slot = self.weapon_slot,
+      shield_slot = self.shield_slot,
+      helmet_slot = self.helmet_slot,
+      armor_slot = self.armor_slot
+    })
+
     -- vars
     for var in pairs(self.changed_vars) do
       self.server.db:_query(q_set_var, {self.user_id, var, self.vars[var]})
