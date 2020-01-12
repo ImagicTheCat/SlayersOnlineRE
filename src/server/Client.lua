@@ -110,6 +110,9 @@ function Client:onPacket(protocol, data)
             self.helmet_slot = tonumber(user_row.helmet_slot)
             self.armor_slot = tonumber(user_row.armor_slot)
 
+            local class_data = self.server.project.classes[self.class]
+            self:setSounds(string.sub(class_data.attack_sound, 7), string.sub(class_data.hurt_sound, 7))
+
             --- config
             self:applyConfig(user_row.config and msgpack.unpack(user_row.config) or {}, true)
 
@@ -203,6 +206,9 @@ function Client:onPacket(protocol, data)
               self:setOrientation(state.orientation)
             end
 
+            ---- misc
+            self.res_point = state.res_point
+
             -- testing spawn
             if not map then
               map = self.server:getMap(next(self.server.project.maps))
@@ -214,7 +220,6 @@ function Client:onPacket(protocol, data)
             -- compute characteristics, send/init stats
             self:updateCharacteristics()
 
-            local class_data = self.server.project.classes[self.class]
             self:send(Client.makePacket(net.STATS_UPDATE, {
               gold = self.gold,
               alignment = self.alignment,
@@ -429,6 +434,18 @@ function Client:interact()
   end
 end
 
+function Client:playMusic(path)
+  self:send(Client.makePacket(net.PLAY_MUSIC, path))
+end
+
+function Client:stopMusic()
+  self:send(Client.makePacket(net.STOP_MUSIC))
+end
+
+function Client:playSound(path)
+  self:send(Client.makePacket(net.PLAY_SOUND, path))
+end
+
 -- modify player config
 -- no_save: if passed/true, will not trigger a DB save
 function Client:applyConfig(config, no_save)
@@ -542,6 +559,8 @@ function Client:save()
     end
 
     state.charaset = self.charaset
+    state.res_point = self.res_point
+
     self.server.db:_query(q_set_state, {self.user_id, utils.hex(msgpack.pack(state))})
   end
 end

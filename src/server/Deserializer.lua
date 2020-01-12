@@ -210,6 +210,7 @@ function Deserializer.loadProject(name)
 
     -- read object entries
     prj.objects = {}
+    prj.objects_by_name = {} -- map of name => id
     prj.object_count = file_obj:seek("end")/148 -- 148 bytes per entry
 
     file_obj:seek("set")
@@ -217,12 +218,14 @@ function Deserializer.loadProject(name)
     for i=1,prj.object_count do
       local object = Deserializer.readProjectObjectEntry(file_obj)
       table.insert(prj.objects, object)
+      prj.objects_by_name[object.name] = i -- index by name
     end
 
     file_obj:close()
 
     -- read mob entries
     prj.mobs = {}
+    prj.mobs_by_name = {} -- map of name => id
     prj.mob_count = file_mon:seek("end")/544 -- 544 bytes per entry
 
     file_mon:seek("set")
@@ -230,6 +233,7 @@ function Deserializer.loadProject(name)
     for i=1,prj.mob_count do
       local mob = Deserializer.readProjectMobEntry(file_mon)
       table.insert(prj.mobs, mob)
+      prj.mobs_by_name[mob.name] = i -- index by name
     end
 
     file_mon:close()

@@ -38,8 +38,8 @@ function Mob:__construct(data)
   self.speed = data.speed
   self.obstacle = data.obstacle
 
-  self.attack_sound = string.sub(data.attack_sound, 7) -- remove Sound\ part
-  self.hurt_sound = string.sub(data.hurt_sound, 7) -- remove Sound\ part
+  -- remove Sound\ parts
+  self:setSounds(string.sub(data.attack_sound, 7), string.sub(data.hurt_sound, 7))
 
   -- self.target -- player aggro
 end

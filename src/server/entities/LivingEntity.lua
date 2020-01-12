@@ -69,6 +69,13 @@ function LivingEntity:serializeNet()
   return data
 end
 
+function LivingEntity:setSounds(attack_sound, hurt_sound)
+  self.attack_sound = attack_sound
+  self.hurt_sound = hurt_sound
+
+  self:broadcastPacket("ch_sounds", {self.attack_sound, self.hurt_sound})
+end
+
 function LivingEntity:setOrientation(orientation)
   if self.orientation ~= orientation and orientation >= 0 and orientation < 4 then
     self.orientation = orientation
