@@ -77,11 +77,12 @@ function LivingEntity:onPacket(action, data)
 
     if self.attack_sound then
       async(function()
-        client.net_manager:requestResource("audio/"..self.attack_sound)
-        local source = client:playSound("resources/audio/"..self.attack_sound)
-        source:setPosition(self.x, self.y, 0)
-        source:setVolume(0.75)
-        source:setAttenuationDistances(16, 16*15)
+        if client.net_manager:requestResource("audio/"..self.attack_sound) then
+          local source = client:playSound("resources/audio/"..self.attack_sound)
+          source:setPosition(self.x, self.y, 0)
+          source:setVolume(0.75)
+          source:setAttenuationDistances(16, 16*15)
+        end
       end)
     end
   elseif action == "damage" then
@@ -90,11 +91,12 @@ function LivingEntity:onPacket(action, data)
     -- sound
     if amount and self.hurt_sound then
       async(function()
-        client.net_manager:requestResource("audio/"..self.hurt_sound)
-        local source = client:playSound("resources/audio/"..self.hurt_sound)
-        source:setPosition(self.x, self.y, 0)
-        source:setVolume(0.75)
-        source:setAttenuationDistances(16, 16*15)
+        if client.net_manager:requestResource("audio/"..self.hurt_sound) then
+          local source = client:playSound("resources/audio/"..self.hurt_sound)
+          source:setPosition(self.x, self.y, 0)
+          source:setVolume(0.75)
+          source:setAttenuationDistances(16, 16*15)
+        end
       end)
     end
 
@@ -106,6 +108,8 @@ function LivingEntity:onPacket(action, data)
     end
   elseif action == "ch_charaset" then
     self:setCharaset(data)
+  elseif action == "ch_sounds" then
+    self.attack_sound, self.hurt_sound = data[1], data[2]
   elseif action == "move_to_cell" then
     data.x = self.x
     data.y = self.y

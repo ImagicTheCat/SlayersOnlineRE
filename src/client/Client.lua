@@ -452,6 +452,20 @@ function Client:onPacket(protocol, data)
       self.xp_bar.factor = stats.xp/stats.max_xp
       self.g_stats:set(1,8, Text("XP: "..stats.xp.."/"..stats.max_xp))
     end
+  elseif protocol == net.PLAY_MUSIC then
+    async(function()
+      if data and client.net_manager:requestResource("audio/"..data) then
+        client:playMusic("resources/audio/"..data)
+      end
+    end)
+  elseif protocol == net.STOP_MUSIC then
+    self.music_source:stop()
+  elseif protocol == net.PLAY_SOUND then
+    async(function()
+      if data and client.net_manager:requestResource("audio/"..data) then
+        client:playSound("resources/audio/"..data)
+      end
+    end)
   end
 end
 

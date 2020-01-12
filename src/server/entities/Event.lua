@@ -1,5 +1,6 @@
 local utils = require("lib.utils")
 local Entity = require("Entity")
+local Mob = require("entities.Mob")
 local LivingEntity = require("entities.LivingEntity")
 -- deferred
 local Client
@@ -186,6 +187,7 @@ end
 -- function(event, value): should return a number or a string on get mode
 --- value: passed string expression (after substitution) on set mode (nil on get mode)
 
+-- form: "%<var>%"
 local client_special_vars = {}
 
 function client_special_vars:Name(value)
@@ -206,7 +208,7 @@ function client_special_vars:EvCaseY(value)
   end
 end
 
-
+-- form: "%<Ev>.<var>%"
 local event_special_vars = {}
 
 function event_special_vars:Name(value)
@@ -374,6 +376,22 @@ end
 --- args...: function arguments as string expressions (after substitution)
 local command_functions = {}
 
+function command_functions:AddObject(state, name, amount)
+  amount = Event.computeExpression(amount) or 0
+  local object_id = self.client.server.project.objects_by_name[name]
+  if object_id and amount > 0 then
+    for i=1,amount do self.client.inventory:put(object_id) end
+  end
+end
+
+function command_functions:DelObject(state, name, amount)
+  amount = Event.computeExpression(amount) or 0
+  local object_id = self.client.server.project.objects_by_name[name]
+  if object_id and amount > 0 then
+    for i=1,amount do self.client.inventory:take(object_id) end
+  end
+end
+
 function command_functions:Teleport(state, map_name, cx, cy)
   local cx = Event.computeExpression(cx)
   local cy = Event.computeExpression(cy)
@@ -385,6 +403,28 @@ function command_functions:Teleport(state, map_name, cx, cy)
       map:addEntity(self.client)
     end
   end
+end
+
+function command_functions:ChangeResPoint(state, map_name, cx, cy)
+  local cx = Event.computeExpression(cx)
+  local cy = Event.computeExpression(cy)
+
+  if map_name and cx and cy then
+    self.client.res_point = {
+      map = map_name,
+      x = cx,
+      y = cy
+    }
+  end
+end
+
+function command_functions:ChangeSkin(state, path)
+  self.client:setCharaset({
+    path = string.sub(path, 9), -- remove "Chipset/" part
+    x = 0, y = 0,
+    w = 24, h = 32,
+    is_skin = false
+  })
 end
 
 function command_functions:Message(state, msg)
@@ -473,6 +513,73 @@ function command_functions:OnResultQuery(state)
   else -- skip all
     state.cursor = i-1
   end
+end
+
+function command_functions:Magasin(state, title, ...)
+  local items, items_id = {...}, {}
+  local objects_by_name = self.client.server.project.objects_by_name
+  for _, item in ipairs(items) do
+    local id = objects_by_name[item]
+    if id then table.insert(items_id, id) end
+  end
+
+  self.client:openShop(title, items_id)
+end
+
+function command_functions:Chest(state, title)
+  self.client:openChest(title)
+end
+
+function command_functions:GenereMonstre(state, name, x, y, amount)
+  x,y,amount = Event.computeExpression(x), Event.computeExpression(y), Event.computeExpression(amount) or 0
+  if name and x and y and amount > 0 then
+    local mob_data = self.client.server.project.mobs[self.client.server.project.mobs_by_name[name]]
+    if mob_data then
+      for i=1,amount do
+        local mob = Mob(mob_data)
+        mob:teleport(x*16, y*16)
+        self.map:addEntity(mob)
+      end
+    end
+  end
+end
+
+function command_functions:TueMonstre(state)
+  -- TODO
+end
+
+function command_functions:ChAttaqueSound(state, path)
+  -- remove Sound/ part
+  self.client:setSounds(string.sub(path, 7), self.client.hurt_sound)
+end
+
+function command_functions:ChBlesseSound(state, path)
+  -- remove Sound/ part
+  self.client:setSounds(self.client.attack_sound, string.sub(path, 7))
+end
+
+function command_functions:Attente(state, amount)
+  amount = Event.computeExpression(amount) or 0
+  if amount > 0 then
+    local r = async()
+    task(amount/100, function() r() end)
+    r:wait()
+  end
+end
+
+function command_functions:PlayMusic(state, path)
+  local sub_path = string.match(path, "^Sound\\(.+)%.mid$")
+  path = sub_path and subpath..".ogg"
+
+  if path then self.client:playMusic(path) end
+end
+
+function command_functions:StopMusic(state)
+  self.client:stopMusic()
+end
+
+function command_functions:PlaySound(state, path)
+  self.client:playSound(string.sub(path, 7)) -- remove Sound\ part
 end
 
 -- METHODS
@@ -745,6 +852,9 @@ function Event:trigger(condition)
         op, expr = args[5], args[6]
       elseif args[2] == Event.Variable.CLIENT_SPECIAL then
         op, expr = args[4], args[5]
+
+        -- concat compatibility support
+        expr = string.gsub(expr, "Concat%('(.*)'%)", "%%"..args[3].."%%%1")
       elseif args[2] == Event.Variable.EVENT_SPECIAL then
         op, expr = args[5], args[6]
       end
