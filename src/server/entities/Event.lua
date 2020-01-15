@@ -914,7 +914,7 @@ function Event:trigger(condition)
   end
 end
 
--- trigger change event
+-- trigger special variable (client/event) change event
 function Event:triggerSpecialVariable(id)
   -- call listeners
   local listeners = self.special_var_listeners[id]
@@ -925,6 +925,8 @@ function Event:triggerSpecialVariable(id)
   end
 end
 
+-- listen special variable (client/event)
+-- client/event name collisions are not really a problem (trigger a full page check anyway)
 function Event:listenSpecialVariable(id, callback)
   local listeners = self.special_var_listeners[id]
   if not listeners then
@@ -935,7 +937,7 @@ function Event:listenSpecialVariable(id, callback)
   listeners[callback] = true
 end
 
-function Event:unlistenSpecialVariable(vtype, id, callback)
+function Event:unlistenSpecialVariable(id, callback)
   local listeners = self.special_var_listeners[id]
   if listeners then
     listeners[callback] = nil
