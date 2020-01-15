@@ -216,23 +216,17 @@ end
 function LivingEntity:drawOver()
   -- draw hints
   if next(self.hints) then
-    local scale = client.gui_scale
-    local world_gui_scale = scale/client.world_scale -- world to GUI scale
-
-    love.graphics.push()
-    love.graphics.scale(world_gui_scale)
+    local scale = 1/client.world_scale -- world to GUI scale
 
     for _, hint in ipairs(self.hints) do
       local text, time = hint[1], hint[2]
 
-      local w, h = text:getWidth()/scale, text:getHeight()/scale
-      local x, y = (self.x+8)/world_gui_scale-w/2, (self.y-16*(1-time/2))/world_gui_scale-h
+      local w, h = text:getWidth()*scale, text:getHeight()*scale
+      local x, y = self.x+8-w/2, self.y-16*(1-time/2)-h
       love.graphics.setColor(1,1,1,math.min(1,time))
-      love.graphics.draw(text, x, y, 0, 1/scale)
+      love.graphics.draw(text, x, y, 0, scale)
       love.graphics.setColor(1,1,1,1)
     end
-
-    love.graphics.pop()
   end
 end
 
