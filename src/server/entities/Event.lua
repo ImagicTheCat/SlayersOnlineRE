@@ -363,7 +363,7 @@ function event_special_vars:NumAnim(value)
   end
 end
 
-function event_special_vars:Speed(value)
+function event_special_vars:Vitesse(value)
   if value then
     self.speed = (Event.computeExpression(value) or 0)
   else
