@@ -97,6 +97,7 @@ function LivingEntity:setMoveForward(move_forward)
         local dt = clock()-self.move_time
 
         local speed = LivingEntity.pixelSpeed(self.speed)
+        if self.attacking then speed = speed/2 end -- slow movement when attacking
 
         -- move following the orientation
         local dx, dy = LivingEntity.orientationVector(self.orientation)
