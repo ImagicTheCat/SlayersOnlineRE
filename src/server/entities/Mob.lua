@@ -59,7 +59,7 @@ function Mob:moveAI()
             local dx, dy = LivingEntity.orientationVector(orientation)
             local ncx, ncy = self.cx+dx, self.cy+dy
 
-            if self.map:isCellPassable(self, ncx, ncy) then
+            if self:isCellPassable(ncx, ncy) then
               self:moveToCell(ncx, ncy)
             end
           else -- try attack
@@ -78,7 +78,7 @@ function Mob:moveAI()
             local dx, dy = LivingEntity.orientationVector(orientation)
             ncx, ncy = self.cx+dx, self.cy+dy
 
-            ok = self.map:isCellPassable(self, ncx, ncy)
+            ok = self:isCellPassable(ncx, ncy)
 
             i = i+1
           end
@@ -93,6 +93,20 @@ function Mob:moveAI()
         self:moveAI()
       end
     end)
+  end
+end
+
+function Mob:isCellPassable(cx,cy)
+  if self.map and self.map:isCellPassable(self, cx, cy) then
+    -- prevent mob stacking
+    local cell = self.map:getCell(cx,cy)
+    for entity in pairs(cell or {}) do
+      if class.is(entity, Mob) then return false end
+    end
+
+    return true
+  else
+    return false
   end
 end
 
