@@ -126,6 +126,13 @@ function GridInterface:moveSelect(dx, dy)
   self:updateScroll()
 end
 
+-- return selected widget or nil
+function GridInterface:getSelected()
+  local idx = self:getIndex(self.cx, self.cy)
+  local cell = self.cells[idx]
+  return cell and cell[2] and cell[1] -- valid selectable cell
+end
+
 function GridInterface:updateScroll()
   local idx = self:getIndex(self.cx, self.cy)
   local cell = self.cells[idx]

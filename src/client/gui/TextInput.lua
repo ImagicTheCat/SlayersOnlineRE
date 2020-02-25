@@ -48,14 +48,18 @@ function TextInput:__construct()
   end
 end
 
+-- data: text
 function TextInput:input(data)
   self.text = self.text..data
   self.display_text:set(self.text)
+  self:trigger("change")
 end
 
 function TextInput:set(text)
+  local changed = (self.text ~= text)
   self.text = text
   self.display_text:set(self.text)
+  if changed then self:trigger("change") end
 end
 
 -- override
@@ -70,6 +74,7 @@ function TextInput:erase(offset)
   if offset then
     self.text = string.sub(self.text, 1, offset-1)
     self.display_text:set(self.text)
+    self:trigger("change")
   end
 end
 

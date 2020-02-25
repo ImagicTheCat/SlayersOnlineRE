@@ -427,7 +427,13 @@ function Client:onPacket(protocol, data)
     if stats.name then self.g_stats:set(0,0, Text("Name: "..stats.name)) end
     if stats.class then self.g_stats:set(0,1, Text("Class: "..stats.class)) end
     if stats.level then self.g_stats:set(0,2, Text("Level: "..stats.level)) end
-    if stats.gold then self.g_stats:set(0,3, Text("Gold: "..stats.gold)) end
+    if stats.gold then
+      self.g_stats:set(0,3, Text("Gold: "..stats.gold))
+      self.chest.gold_l_display:set(stats.gold)
+    end
+    if stats.chest_gold then
+      self.chest.gold_r_display:set(stats.chest_gold)
+    end
 
     if stats.alignment then self.g_stats:set(1,0, Text("Alignment: "..stats.alignment)) end
     if stats.health or stats.max_health then

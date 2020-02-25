@@ -9,6 +9,7 @@ CREATE TABLE users(
   alignment TINYINT UNSIGNED,
   reputation INTEGER UNSIGNED,
   gold BIGINT UNSIGNED,
+  chest_gold BIGINT UNSIGNED,
   xp BIGINT UNSIGNED,
   strength_pts INTEGER UNSIGNED,
   dexterity_pts INTEGER UNSIGNED,
