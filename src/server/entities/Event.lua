@@ -948,7 +948,7 @@ function Event:unlistenSpecialVariable(id, callback)
   end
 end
 
--- overload
+-- override
 function Event:serializeNet()
   local data = LivingEntity.serializeNet(self)
 
@@ -1009,7 +1009,7 @@ function Event:moveAI()
   end
 end
 
--- overload
+-- override
 function Event:onAttack(attacker)
   if class.is(attacker, Client) and self.trigger_attack then -- event
     async(function()
@@ -1020,7 +1020,7 @@ function Event:onAttack(attacker)
   end
 end
 
--- overload
+-- override
 function Event:onMapChange()
   if self.map then -- added to map
     self:moveAI()

@@ -42,7 +42,7 @@ function Event:__construct(data)
   end
 end
 
--- overload
+-- override
 function Event:onPacket(action, data)
   LivingEntity.onPacket(self, action, data)
 
@@ -60,7 +60,7 @@ function Event:onPacket(action, data)
   end
 end
 
--- overload
+-- override
 function Event:tick(dt)
   LivingEntity.tick(self, dt)
 

@@ -59,7 +59,7 @@ function LivingEntity:__construct(data)
   self.hints = {} -- list of {text, time}
 end
 
--- overload
+-- override
 function LivingEntity:onPacket(action, data)
   Entity.onPacket(self, action, data)
 
@@ -158,7 +158,7 @@ function LivingEntity:emitHint(colored_text)
   table.insert(self.hints, {text, 2})
 end
 
--- overload
+-- override
 function LivingEntity:tick(dt)
   if self.move_to_cell then
     local mtc = self.move_to_cell
@@ -212,7 +212,7 @@ function LivingEntity:tick(dt)
   end
 end
 
--- overload
+-- override
 function LivingEntity:drawOver()
   -- draw hints
   if next(self.hints) then
@@ -230,7 +230,7 @@ function LivingEntity:drawOver()
   end
 end
 
--- overload
+-- override
 function LivingEntity:draw()
   if self.texture then
     local quad = self.atlas:getQuad(self.anim_x, self.anim_y)

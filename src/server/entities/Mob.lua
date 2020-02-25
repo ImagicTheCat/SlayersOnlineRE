@@ -110,7 +110,7 @@ function Mob:isCellPassable(cx,cy)
   end
 end
 
--- overload
+-- override
 function Mob:onAttack(attacker)
   if class.is(attacker, Player) then
     self.target = attacker
@@ -119,7 +119,7 @@ function Mob:onAttack(attacker)
   end
 end
 
--- overload
+-- override
 function Mob:onMapChange()
   LivingEntity.onMapChange(self)
 

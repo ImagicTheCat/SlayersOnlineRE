@@ -57,7 +57,7 @@ function LivingEntity:__construct()
   -- self.hurt_sound
 end
 
--- overload
+-- override
 function LivingEntity:serializeNet()
   local data = Entity.serializeNet(self)
 
@@ -265,7 +265,7 @@ function LivingEntity:updatePosition(x, y)
   end
 end
 
--- overload
+-- override
 function LivingEntity:onMapChange()
   self:setMoveForward(false)
 end

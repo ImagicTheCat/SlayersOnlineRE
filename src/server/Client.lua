@@ -383,7 +383,7 @@ function Client:onDisconnect()
   self.user_id = nil
 end
 
--- overload
+-- override
 function Client:onMapChange()
   Player.onMapChange(self)
 
@@ -398,7 +398,7 @@ function Client:onMapChange()
   end
 end
 
--- overload
+-- override
 function Client:onCellChange()
   if self.map then
     local cell = self.map:getCell(self.cx, self.cy)
