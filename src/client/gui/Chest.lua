@@ -4,6 +4,7 @@ local GridInterface = require("gui.GridInterface")
 local Text = require("gui.Text")
 local TextInput = require("gui.TextInput")
 local Inventory = require("gui.Inventory")
+local utils = require("lib.utils")
 
 local Chest = class("Chest", Widget)
 
@@ -23,8 +24,11 @@ function Chest:__construct()
   self.gold_l = GridInterface(2,2,"vertical")
   self.gold_l:set(0,0,Text("Gold:"))
   self.gold_l:set(0,1,Text("Trade:"))
-  self.gold_l:set(1,0,Text("0"))
-  self.gold_l:set(1,1,TextInput(), true)
+  self.gold_l_display = Text("0")
+  self.gold_l:set(1,0, self.gold_l_display)
+  self.gold_l_input = TextInput()
+  self.gold_l_input:set("0")
+  self.gold_l:set(1,1, self.gold_l_input, true)
   self.gold_l.cx, self.gold_l.cy = 1,1
   self.w_gold_l.content:add(self.gold_l)
   self:add(self.w_gold_l)
@@ -34,8 +38,11 @@ function Chest:__construct()
   self.gold_r = GridInterface(2,2,"vertical")
   self.gold_r:set(0,0,Text("Gold:"))
   self.gold_r:set(0,1,Text("Trade:"))
-  self.gold_r:set(1,0,Text("0"))
-  self.gold_r:set(1,1,TextInput(), true)
+  self.gold_r_display = Text("0")
+  self.gold_r:set(1,0, self.gold_r_display)
+  self.gold_r_input = TextInput()
+  self.gold_r_input:set("0")
+  self.gold_r:set(1,1, self.gold_r_input, true)
   self.gold_r.cx, self.gold_r.cy = 1,1
   self.w_gold_r.content:add(self.gold_r)
   self:add(self.w_gold_r)
@@ -63,8 +70,8 @@ function Chest:__construct()
   self.content_l:listen("selection-update", selection_update)
   self.content_r:listen("selection-update", selection_update)
 
-  -- escape chest GUI
   local function control_press(widget, id)
+    -- escape chest GUI
     if id == "menu" then
       self:setVisible(false)
       self.gui:setFocus()
@@ -112,6 +119,47 @@ function Chest:__construct()
       grid.cy = grid.cy-dy
       self.gui:setFocus(self.gold_r)
     end
+  end)
+
+  -- gold input handlers
+  local function gold_focus_change(self, state)
+    love.keyboard.setTextInput(state)
+  end
+
+  local function gold_text_input(self, text)
+    local widget = self:getSelected()
+    widget:trigger("text-input", text)
+  end
+
+  local function gold_key_press(self, keycode, scancode, isrepeat)
+    local widget = self:getSelected()
+    if class.is(widget, TextInput) then widget:trigger("key-press", keycode, scancode, isrepeat) end
+  end
+
+  local function gold_control_press(self, id)
+    local widget = self:getSelected()
+    if class.is(widget, TextInput) then widget:trigger("control-press", id) end
+  end
+
+  self.gold_l:listen("focus-change", gold_focus_change)
+  self.gold_l:listen("text-input", gold_text_input)
+  self.gold_l:listen("key-press", gold_key_press)
+  self.gold_l:listen("control-press", gold_control_press)
+
+  self.gold_r:listen("focus-change", gold_focus_change)
+  self.gold_r:listen("text-input", gold_text_input)
+  self.gold_r:listen("key-press", gold_key_press)
+  self.gold_r:listen("control-press", gold_control_press)
+
+  -- sanitize gold inputs
+  self.gold_l_input:listen("change", function(input)
+    local n = utils.clamp(tonumber(input.text) or 0, 0, client.stats.gold)
+    input:set(n)
+  end)
+
+  self.gold_r_input:listen("change", function(input)
+    local n = utils.clamp(tonumber(input.text) or 0, 0, client.stats.chest_gold)
+    input:set(n)
   end)
 end
 

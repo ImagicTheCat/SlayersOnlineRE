@@ -25,6 +25,7 @@ level = {level},
 alignment = {alignment},
 reputation = {reputation},
 gold = {gold},
+chest_gold = {chest_gold},
 xp = {xp},
 strength_pts = {strength_pts},
 dexterity_pts = {dexterity_pts},
@@ -99,6 +100,7 @@ function Client:onPacket(protocol, data)
             self.alignment = tonumber(user_row.alignment)
             self.reputation = tonumber(user_row.reputation)
             self.gold = tonumber(user_row.gold)
+            self.chest_gold = tonumber(user_row.chest_gold)
             self.xp = tonumber(user_row.xp)
             self.strength_pts = tonumber(user_row.strength_pts)
             self.dexterity_pts = tonumber(user_row.dexterity_pts)
@@ -342,6 +344,8 @@ function Client:openChest(title)
     end
   end
   self:send(Client.makePacket(net.CHEST_OPEN, {title, items}))
+  self:send(Client.makePacket(net.STATS_UPDATE, {chest_gold = self.chest_gold}))
+
   self.chest_task:wait()
 end
 
@@ -512,6 +516,7 @@ function Client:save()
       alignment = self.alignment,
       reputation = self.reputation,
       gold = self.gold,
+      chest_gold = self.chest_gold,
       xp = self.xp,
       strength_pts = self.strength_pts,
       dexterity_pts = self.dexterity_pts,
