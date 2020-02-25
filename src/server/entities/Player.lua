@@ -16,7 +16,7 @@ function Player:__construct()
   self.hurt_sound = "Kill1.wav"
 end
 
--- overload
+-- override
 function Player:onAttack(attacker)
   if class.is(attacker, Mob) then
     self:damage(10)
@@ -24,7 +24,7 @@ function Player:onAttack(attacker)
   end
 end
 
--- overload
+-- override
 function Player:serializeNet()
   local data = LivingEntity.serializeNet(self)
   data.pseudo = self.pseudo
