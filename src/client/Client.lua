@@ -867,6 +867,12 @@ function Client:loadTexture(path)
   return image
 end
 
+-- inventory interactions
+
+function Client:trashItem(id)
+  self:sendPacket(net.ITEM_TRASH, id)
+end
+
 -- (async) load remote skin
 -- return skin texture or nil on failure
 function Client:loadSkin(file)
