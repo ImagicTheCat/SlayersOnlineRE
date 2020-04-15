@@ -417,7 +417,7 @@ function Client:onPacket(protocol, data)
     self.chest.content_r:updateContent()
   elseif protocol == net.SHOP_OPEN then
     self.shop:setVisible(true)
-    self.shop:open(data[1], data[2])
+    self.shop:open(unpack(data))
     self.gui:setFocus(self.shop.menu)
   elseif protocol == net.STATS_UPDATE then
     local stats = data
@@ -430,6 +430,7 @@ function Client:onPacket(protocol, data)
     if stats.gold then
       self.g_stats:set(0,3, Text("Gold: "..stats.gold))
       self.chest.gold_l_display:set(stats.gold)
+      self.shop.content:moveSelect(0,0) -- actualize
     end
     if stats.chest_gold then
       self.chest.gold_r_display:set(stats.chest_gold)
@@ -827,6 +828,8 @@ function Client:releaseOrientation(orientation)
   end
 end
 
+-- chest interactions
+
 function Client:storeGold(amount)
   self:sendPacket(net.GOLD_STORE, amount)
 end
@@ -841,6 +844,16 @@ end
 
 function Client:withdrawItem(id)
   self:sendPacket(net.ITEM_WITHDRAW, id)
+end
+
+-- shop interactions
+
+function Client:buyItem(id, amount)
+  self:sendPacket(net.ITEM_BUY, {id, amount})
+end
+
+function Client:sellItem(id, amount)
+  self:sendPacket(net.ITEM_SELL, id)
 end
 
 function Client:loadTexture(path)

@@ -316,6 +316,30 @@ function Client:onPacket(protocol, data)
       if self.chest_task and self.chest_inventory:take(id, true) and self.inventory:put(id) then
         self.chest_inventory:take(id)
       end
+    elseif protocol == net.ITEM_BUY then
+      if self.shop_task and type(data) == "table" then
+        local id, amount = tonumber(data[1]) or 0, tonumber(data[2]) or 0
+        local item = self.server.project.objects[id]
+        if item and amount > 0 then
+          if item.price*amount <= self.gold then
+            for i=1,amount do -- buy one by one
+              if self.inventory:put(id) then
+                self.gold = self.gold-item.price
+              else break end
+            end
+            self:send(Client.makePacket(net.STATS_UPDATE, {gold = self.gold}))
+          end
+        end
+      end
+    elseif protocol == net.ITEM_SELL then
+      local id = tonumber(data) or 0
+      local item = self.server.project.objects[id]
+      if self.shop_task and item then
+        if self.inventory:take(id) then
+          self.gold = self.gold+math.ceil(item.price*0.1)
+          self:send(Client.makePacket(net.STATS_UPDATE, {gold = self.gold}))
+        end
+      end
     end
   end
 end
@@ -374,17 +398,17 @@ function Client:openChest(title)
 end
 
 -- (async) open shop GUI
--- items: list of item ids to sell
+-- items: list of item ids to buy from the shop
 function Client:openShop(title, items)
   self.shop_task = async()
 
   local objects = self.server.project.objects
-  local sell_items = {}
-  local objects = self.server.project.objects
+
+  local buy_items = {}
   for _, id in ipairs(items) do
     local object = objects[id]
     if object then
-      table.insert(sell_items, {
+      table.insert(buy_items, {
         id = id,
         name = object.name,
         description = object.description,
@@ -393,7 +417,21 @@ function Client:openShop(title, items)
     end
   end
 
-  self:send(Client.makePacket(net.SHOP_OPEN, {title, sell_items}))
+  local sell_items = {}
+  for id, amount in pairs(self.inventory.items) do
+    local object = objects[id]
+    if object then
+      table.insert(sell_items, {
+        id = id,
+        name = object.name,
+        amount = amount,
+        description = object.description,
+        price = object.price
+      })
+    end
+  end
+
+  self:send(Client.makePacket(net.SHOP_OPEN, {title, buy_items, sell_items}))
 
   self.shop_task:wait()
 end
