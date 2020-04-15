@@ -63,20 +63,22 @@ function Inventory:set(id, amount)
 end
 
 -- take one item
+-- dry: (optional) if truthy, no effects
 -- return true on success
-function Inventory:take(id)
+function Inventory:take(id, dry)
   local amount = self.items[id]
   if amount and amount > 0 then
-    self:set(id, amount-1)
+    if not dry then self:set(id, amount-1) end
     return true
   end
 end
 
 -- put one item
+-- dry: (optional) if truthy, no effects
 -- return true on success
-function Inventory:put(id)
+function Inventory:put(id, dry)
   if self:getAmount() < self.max then
-    self:set(id, (self.items[id] or 0)+1)
+    if not dry then self:set(id, (self.items[id] or 0)+1) end
     return true
   end
 end
