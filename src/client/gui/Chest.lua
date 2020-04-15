@@ -103,20 +103,16 @@ function Chest:__construct()
 
   self.content_l.grid:listen("move-select", function(grid, dx, dy)
     if dx == 1 and grid.cx == grid.wc-1 then
-      grid.cx = grid.cx-dx
       self.gui:setFocus(self.content_r.grid)
     elseif dy == -1 and grid.cy == 0 then
-      grid.cy = grid.cy-dy
       self.gui:setFocus(self.gold_l)
     end
   end)
 
   self.content_r.grid:listen("move-select", function(grid, dx, dy)
     if dx == -1 and grid.cx == 0 then
-      grid.cx = grid.cx-dx
       self.gui:setFocus(self.content_l.grid)
     elseif dy == -1 and grid.cy == 0 then
-      grid.cy = grid.cy-dy
       self.gui:setFocus(self.gold_r)
     end
   end)
