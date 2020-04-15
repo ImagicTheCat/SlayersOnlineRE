@@ -8,12 +8,28 @@ local Shop = class("Shop", Widget)
 
 -- STATICS
 
-function Shop.formatItem(item)
+function Shop.formatBuyItem(item)
   return "+/- "..(item.amount or 0).." "..item.name
 end
 
-function Shop.formatItemInfo(item)
+function Shop.formatBuyItemInfo(item)
   return item.description.."\nPrice: "..item.price.."\nTotal: "..(item.price*(item.amount or 0))
+end
+
+function Shop.formatSellItem(item)
+  if item.amount > 0 then
+    return "("..item.amount..") "..item.name
+  else
+    return "--"
+  end
+end
+
+function Shop.formatSellItemInfo(item)
+  if item.amount > 0 then
+    return item.description.."\nSell price: "..math.ceil(item.price*0.1)
+  else
+    return ""
+  end
 end
 
 -- METHODS
@@ -44,30 +60,32 @@ function Shop:__construct()
   self.w_info.content:add(self.info)
   self:add(self.w_info)
 
-  -- escape chest GUI
+  -- escape shop GUI
   local function control_press(widget, id)
     if id == "menu" then
-      self:setVisible(false)
-      self.gui:setFocus()
-      self:trigger("close")
+      self:close()
     end
   end
 
   self.menu:listen("control-press", control_press)
   self.content:listen("control-press", control_press)
 
-  -- menu select
+  -- mode menu select
   self.menu:listen("cell-select", function(grid, cx, cy)
-    if cy == 1 then
+    if cy == 1 then -- init buy
       self.mode = "buy"
-      -- build sell items
+      self.content:init(1, #self.buy_items)
+      for i, item in ipairs(self.buy_items) do
+        self.content:set(0,i-1, Text(Shop.formatBuyItem(item)), true)
+      end
+      self.content:moveSelect(0,0) -- actualize
+    elseif cy == 2 then -- init sell
+      self.mode = "sell"
       self.content:init(1, #self.sell_items)
       for i, item in ipairs(self.sell_items) do
-        self.content:set(0,i-1, Text(Shop.formatItem(item, 0)), true)
+        self.content:set(0,i-1, Text(Shop.formatSellItem(item)), true)
       end
-    elseif cy == 2 then
-      self.mode = "sell"
-      -- TODO: sell items
+      self.content:moveSelect(0,0) -- actualize
     end
 
     self.w_menu:setVisible(false)
@@ -77,15 +95,34 @@ function Shop:__construct()
   -- info updates
   self.content:listen("cell-focus", function(grid, cx, cy)
     if self.mode == "buy" then
+      local item = self.buy_items[cy+1]
+      self.info:set(Shop.formatBuyItemInfo(item).."\nGold: "..client.stats.gold)
+    else -- sell
       local item = self.sell_items[cy+1]
-      self.info:set(Shop.formatItemInfo(item))
+      self.info:set(Shop.formatSellItemInfo(item).."\nGold: "..client.stats.gold)
     end
+  end)
+
+  self.content:listen("cell-select", function(grid, cx, cy)
+    if self.mode == "buy" then
+      local item = self.buy_items[cy+1]
+      client:buyItem(item.id, item.amount)
+    else -- sell
+      local item = self.sell_items[cy+1]
+      if item.amount > 0 then
+        client:sellItem(item.id)
+        item.amount = item.amount-1
+        self.content:set(0, cy, Text(Shop.formatSellItem(item)), true)
+      end
+    end
+
+    -- note: info field will be actualized by gold update
   end)
 
   -- buy amount modulation
   self.content:listen("control-press", function(grid, id)
     if self.mode == "buy" then
-      local item = self.sell_items[grid.cy+1]
+      local item = self.buy_items[grid.cy+1]
 
       if id == "left" then
         item.amount = math.max(0, (item.amount or 0)-1)
@@ -94,15 +131,17 @@ function Shop:__construct()
       end
 
       if id == "left" or id == "right" then
-        self.content:set(0,grid.cy, Text(Shop.formatItem(item, 0)), true)
-        self.info:set(Shop.formatItemInfo(item))
+        self.content:set(0,grid.cy, Text(Shop.formatBuyItem(item)), true)
+        self.info:set(Shop.formatBuyItemInfo(item).."\nGold: "..client.stats.gold)
       end
     end
   end)
 end
 
 -- open shop (init)
-function Shop:open(title, sell_items)
+-- buy_items, sell_items: list of {.id, .name, .description, .price}
+function Shop:open(title, buy_items, sell_items)
+  self.buy_items = buy_items
   self.sell_items = sell_items
   self.menu_title:set(title)
   self.w_menu:setVisible(true)
@@ -110,6 +149,12 @@ function Shop:open(title, sell_items)
   self.gui:setFocus(self.menu)
   self.info:set("")
   self.content:init(0,0)
+end
+
+function Shop:close()
+  self:setVisible(false)
+  self.gui:setFocus()
+  self:trigger("close")
 end
 
 -- override
