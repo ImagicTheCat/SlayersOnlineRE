@@ -157,6 +157,30 @@ function Chest:__construct()
     local n = utils.clamp(tonumber(input.text) or 0, 0, client.stats.chest_gold)
     input:set(n)
   end)
+
+  -- gold transactions
+  self.gold_l:listen("control-press", function(grid, id)
+    if id == "interact" then
+      client:storeGold(tonumber(self.gold_l_input.text) or 0)
+    end
+  end)
+
+  self.gold_r:listen("control-press", function(grid, id)
+    if id == "interact" then
+      client:withdrawGold(tonumber(self.gold_r_input.text) or 0)
+    end
+  end)
+
+  -- item transactions
+  self.content_l.grid:listen("cell-select", function()
+    local item = self.content_l:getSelection()
+    if item then client:storeItem(item[1]) end
+  end)
+
+  self.content_r.grid:listen("cell-select", function()
+    local item = self.content_r:getSelection()
+    if item then client:withdrawItem(item[1]) end
+  end)
 end
 
 -- override

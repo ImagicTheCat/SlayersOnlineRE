@@ -292,6 +292,30 @@ function Client:onPacket(protocol, data)
         self.shop_task = nil
         r()
       end
+    elseif protocol == net.GOLD_STORE then
+      local amount = tonumber(data) or 0
+      if self.chest_task and amount <= self.gold then
+        self.chest_gold = self.chest_gold+amount
+        self.gold = self.gold-amount
+        self:send(Client.makePacket(net.STATS_UPDATE, {gold = self.gold, chest_gold = self.chest_gold}))
+      end
+    elseif protocol == net.GOLD_WITHDRAW then
+      local amount = tonumber(data) or 0
+      if self.chest_task and amount <= self.chest_gold then
+        self.chest_gold = self.chest_gold-amount
+        self.gold = self.gold+amount
+        self:send(Client.makePacket(net.STATS_UPDATE, {gold = self.gold, chest_gold = self.chest_gold}))
+      end
+    elseif protocol == net.ITEM_STORE then
+      local id = tonumber(data) or 0
+      if self.chest_task and self.inventory:take(id, true) and self.chest_inventory:put(id) then
+        self.inventory:take(id)
+      end
+    elseif protocol == net.ITEM_WITHDRAW then
+      local id = tonumber(data) or 0
+      if self.chest_task and self.chest_inventory:take(id, true) and self.inventory:put(id) then
+        self.chest_inventory:take(id)
+      end
     end
   end
 end

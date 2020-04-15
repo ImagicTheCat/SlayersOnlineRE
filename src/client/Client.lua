@@ -403,7 +403,7 @@ function Client:onPacket(protocol, data)
 
     self.chest.content_l:updateItems(data)
     if self.chest.visible then
-      self.chest.content:updateContent()
+      self.chest.content_l:updateContent()
     end
   elseif protocol == net.CHEST_OPEN then
     self.chest.title:set(data[1])
@@ -825,6 +825,22 @@ function Client:releaseOrientation(orientation)
   if last > 0 then
     self:setOrientation(self.orientation_stack[last])
   end
+end
+
+function Client:storeGold(amount)
+  self:sendPacket(net.GOLD_STORE, amount)
+end
+
+function Client:withdrawGold(amount)
+  self:sendPacket(net.GOLD_WITHDRAW, amount)
+end
+
+function Client:storeItem(id)
+  self:sendPacket(net.ITEM_STORE, id)
+end
+
+function Client:withdrawItem(id)
+  self:sendPacket(net.ITEM_WITHDRAW, id)
 end
 
 function Client:loadTexture(path)
