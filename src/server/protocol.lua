@@ -38,5 +38,6 @@ return {
   ITEM_STORE = 35,
   ITEM_WITHDRAW = 36,
   ITEM_BUY = 37,
-  ITEM_SELL = 38
+  ITEM_SELL = 38,
+  ITEM_TRASH = 39
 }

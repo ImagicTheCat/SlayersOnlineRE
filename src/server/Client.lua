@@ -340,6 +340,9 @@ function Client:onPacket(protocol, data)
           self:send(Client.makePacket(net.STATS_UPDATE, {gold = self.gold}))
         end
       end
+    elseif protocol == net.ITEM_TRASH then
+      local id = tonumber(data) or 0
+      self.inventory:take(id)
     end
   end
 end

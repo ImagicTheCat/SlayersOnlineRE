@@ -116,6 +116,14 @@ function Inventory:__construct()
       self.w_menu.content:remove(self.menu)
     end
   end)
+
+  -- actions
+  self.menu:listen("cell-select", function(grid, cx, cy)
+    if cx == 2 then -- trash
+      local item = self.content:getSelection()
+      if item then client:trashItem(item[1]) end
+    end
+  end)
 end
 
 -- override
