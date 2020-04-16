@@ -13,5 +13,10 @@ return {
   },
   motd = "Welcome to SlayersOnlineRE.",
   server_vars_init = { -- map of key => value
+  },
+  spawn_location = { -- default (re)spawn location
+    map = "BZ zone combat",
+    cx = 15,
+    cy = 15
   }
 }

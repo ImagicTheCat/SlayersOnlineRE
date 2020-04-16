@@ -220,6 +220,11 @@ commands.shop = {function(self, client, args)
   end
 end, "", "open shop"}
 
+-- testing command
+commands.kill = {function(self, client, args)
+  if client then client:setHealth(0) end
+end, "", "suicide"}
+
 -- CONSOLE THREAD
 local function console_main(flags, channel)
   while flags.running do

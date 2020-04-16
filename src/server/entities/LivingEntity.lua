@@ -196,7 +196,10 @@ end
 
 function LivingEntity:setHealth(health)
   self.health = utils.clamp(health, 0, self.max_health)
-  -- TODO: death
+  if self.health == 0 then self:onDeath() end
+end
+
+function LivingEntity:onDeath()
 end
 
 -- amount: nil for miss event

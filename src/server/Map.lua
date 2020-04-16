@@ -273,7 +273,7 @@ function Map:mobAreaSpawnTask(index)
     if area.mob_count < def.max_mobs then -- try to spawn
       local mob_data = self.server.project.mobs[def.type+1]
       if mob_data then
-        local mob = Mob(mob_data)
+        local mob = Mob(mob_data, area)
 
         -- find position
         local i = 0

@@ -19,7 +19,9 @@ Mob.Type = {
 
 -- METHODS
 
-function Mob:__construct(data)
+-- data: mob data
+-- area: (optional) bound mob area
+function Mob:__construct(data, area)
   LivingEntity.__construct(self)
 
   self.nettype = "Mob"
@@ -43,6 +45,8 @@ function Mob:__construct(data)
   self.ch_defense = data.defense
   self.min_damage = data.damage
   self.max_damage = data.damage
+
+  self.area = area
 
   -- remove Sound\ parts
   self:setSounds(string.sub(data.attack_sound, 7), string.sub(data.hurt_sound, 7))
@@ -123,6 +127,12 @@ function Mob:onAttack(attacker)
     self:damage(attacker:computeAttack(self)) -- test
     return true
   end
+end
+
+-- override
+function Mob:onDeath()
+  self.map:removeEntity(self)
+  if self.area then self.area.mob_count = self.area.mob_count-1 end
 end
 
 -- override
