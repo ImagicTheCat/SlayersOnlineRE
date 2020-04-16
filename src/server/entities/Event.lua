@@ -526,7 +526,7 @@ function command_functions:Magasin(state, title, ...)
   self.client:openShop(title, items_id)
 end
 
-function command_functions:Chest(state, title)
+function command_functions:Coffre(state, title)
   self.client:openChest(title)
 end
 
