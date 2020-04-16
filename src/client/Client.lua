@@ -233,7 +233,7 @@ function Client:__construct(cfg)
 
   self.w_stats = Window()
   self.w_stats:setVisible(false)
-  self.g_stats = GridInterface(2,10)
+  self.g_stats = GridInterface(2,15)
   self.w_stats.content:add(self.g_stats)
   self.g_stats:listen("control-press", function(grid, id)
     if id == "menu" then
@@ -242,10 +242,16 @@ function Client:__construct(cfg)
     end
   end)
   self.g_stats:listen("cell-select", function(grid, cx, cy)
-    -- spend characteristic points
+    -- interactions
+    --- spend characteristic points
     if cy == 5 then self:spendCharacteristicPoint("strength")
     elseif cy == 6 then self:spendCharacteristicPoint("dexterity")
     elseif cy == 7 then self:spendCharacteristicPoint("constitution")
+    --- unequip slots
+    elseif cy == 11 then self:unequipSlot("helmet")
+    elseif cy == 12 then self:unequipSlot("armor")
+    elseif cy == 13 then self:unequipSlot("weapon")
+    elseif cy == 14 then self:unequipSlot("shield")
     end
   end)
   self.gui:add(self.w_stats)
@@ -458,6 +464,11 @@ function Client:onPacket(protocol, data)
     if stats.constitution then self.g_stats:set(0,7, Text("Constitution: "..stats.constitution), true) end
     if stats.magic then self.g_stats:set(0,8, Text("Magic: "..stats.magic)) end
     if stats.points then self.g_stats:set(0,9, Text("Remaining points: "..stats.points)) end
+
+    if stats.helmet_slot then self.g_stats:set(0,11, Text("Helmet: "..stats.helmet_slot.name), true) end
+    if stats.armor_slot then self.g_stats:set(0,12, Text("Armor: "..stats.armor_slot.name), true) end
+    if stats.weapon_slot then self.g_stats:set(0,13, Text("Weapon: "..stats.weapon_slot.name), true) end
+    if stats.shield_slot then self.g_stats:set(0,14, Text("Shield: "..stats.shield_slot.name), true) end
 
     if stats.attack then self.g_stats:set(1,5, Text("Attack: "..stats.attack)) end
     if stats.defense then self.g_stats:set(1,6, Text("Defense: "..stats.defense)) end
@@ -888,6 +899,19 @@ end
 --- "constitution"
 function Client:spendCharacteristicPoint(id)
   self:sendPacket(net.SPEND_CHARACTERISTIC_POINT, id)
+end
+
+function Client:equipItem(id)
+  self:sendPacket(net.ITEM_EQUIP, id)
+end
+
+-- id: string
+--- "helmet"
+--- "armor"
+--- "weapon"
+--- "shield"
+function Client:unequipSlot(id)
+  self:sendPacket(net.SLOT_UNEQUIP, id)
 end
 
 -- (async) load remote skin
