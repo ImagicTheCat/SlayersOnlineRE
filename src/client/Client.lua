@@ -241,6 +241,13 @@ function Client:__construct(cfg)
       self.gui:setFocus(self.menu_grid)
     end
   end)
+  self.g_stats:listen("cell-select", function(grid, cx, cy)
+    -- spend characteristic points
+    if cy == 5 then self:spendCharacteristicPoint("strength")
+    elseif cy == 6 then self:spendCharacteristicPoint("dexterity")
+    elseif cy == 7 then self:spendCharacteristicPoint("constitution")
+    end
+  end)
   self.gui:add(self.w_stats)
 
   -- trigger resize
@@ -449,8 +456,8 @@ function Client:onPacket(protocol, data)
     if stats.strength then self.g_stats:set(0,5, Text("Strength: "..stats.strength), true) end
     if stats.dexterity then self.g_stats:set(0,6, Text("Dexterity: "..stats.dexterity), true) end
     if stats.constitution then self.g_stats:set(0,7, Text("Constitution: "..stats.constitution), true) end
-    if stats.magic then self.g_stats:set(0,8, Text("Magic: "..stats.magic), true) end
-    if stats.points then self.g_stats:set(0,9, Text("Remaining points: "..stats.points), true) end
+    if stats.magic then self.g_stats:set(0,8, Text("Magic: "..stats.magic)) end
+    if stats.points then self.g_stats:set(0,9, Text("Remaining points: "..stats.points)) end
 
     if stats.attack then self.g_stats:set(1,5, Text("Attack: "..stats.attack)) end
     if stats.defense then self.g_stats:set(1,6, Text("Defense: "..stats.defense)) end
@@ -871,6 +878,16 @@ end
 
 function Client:trashItem(id)
   self:sendPacket(net.ITEM_TRASH, id)
+end
+
+-- stat interactions
+
+-- id: string
+--- "strength"
+--- "dexterity"
+--- "constitution"
+function Client:spendCharacteristicPoint(id)
+  self:sendPacket(net.SPEND_CHARACTERISTIC_POINT, id)
 end
 
 -- (async) load remote skin
