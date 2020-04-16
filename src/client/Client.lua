@@ -451,12 +451,12 @@ function Client:onPacket(protocol, data)
 
     if stats.alignment then self.g_stats:set(1,0, Text("Alignment: "..stats.alignment)) end
     if stats.health or stats.max_health then
-      self.health_phial.factor = stats.health/stats.max_health
-      self.g_stats:set(1,1, Text("Health: "..stats.health.."/"..stats.max_health))
+      self.health_phial.factor = self.stats.health/self.stats.max_health
+      self.g_stats:set(1,1, Text("Health: "..self.stats.health.."/"..self.stats.max_health))
     end
     if stats.mana or stats.max_mana then
-      self.mana_phial.factor = stats.mana/stats.max_mana
-      self.g_stats:set(1,2, Text("Mana: "..stats.mana.."/"..stats.max_mana))
+      self.mana_phial.factor = self.stats.mana/self.stats.max_mana
+      self.g_stats:set(1,2, Text("Mana: "..self.stats.mana.."/"..self.stats.max_mana))
     end
 
     if stats.strength then self.g_stats:set(0,5, Text("Strength: "..stats.strength), true) end

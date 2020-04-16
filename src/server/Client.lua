@@ -222,6 +222,9 @@ function Client:onPacket(protocol, data)
             -- compute characteristics, send/init stats
             self:updateCharacteristics()
 
+            self:setHealth(state.health or self.max_health)
+            self.mana = state.mana or self.max_mana
+
             self:send(Client.makePacket(net.STATS_UPDATE, {
               gold = self.gold,
               alignment = self.alignment,
@@ -231,7 +234,8 @@ function Client:onPacket(protocol, data)
               points = self.remaining_pts,
               reputation = self.reputation,
               xp = self.xp,
-              max_xp = self.xp*2
+              max_xp = self.xp*2,
+              mana = self.mana
             }))
 
             self:sendChatMessage("Logged in.")
@@ -605,10 +609,10 @@ function Client:updateCharacteristics()
   self.dexterity = self.dexterity_pts+class_data.dexterity
   self.constitution = self.constitution_pts+class_data.constitution
   self.magic = self.magic_pts+class_data.magic
-  self.max_health = 100
-  self.max_mana = 100
-  self.ch_attack = 100
-  self.ch_defense = 100
+
+  self.max_health = 0
+  self.ch_defense = 0
+  self.ch_attack = 0
 
   -- gears
   local helmet = self.server.project.objects[self.helmet_slot]
@@ -618,14 +622,22 @@ function Client:updateCharacteristics()
 
   local gears = {weapon, shield, helmet, armor}
   for _, item in pairs(gears) do
-    self.strength = self.strength+item.mod_strength
-    self.dexterity = self.dexterity+item.mod_dexterity
-    self.constitution = self.constitution+item.mod_constitution
-    self.magic = self.magic+item.mod_magic
-    self.max_health = self.max_health+item.mod_hp
-    self.max_mana = self.max_mana+item.mod_mp
-    self.ch_defense = self.ch_defense+item.mod_defense
+    if item then
+      self.strength = self.strength+item.mod_strength
+      self.dexterity = self.dexterity+item.mod_dexterity
+      self.constitution = self.constitution+item.mod_constitution
+      self.magic = self.magic+item.mod_magic
+      self.max_health = self.max_health+item.mod_hp
+      self.max_mana = self.max_mana+item.mod_mp
+      self.ch_defense = self.ch_defense+item.mod_defense
+    end
   end
+
+  self.ch_attack = math.floor((self.level*10+self.strength*2.48+self.dexterity*5)*class_data.off_index/10)
+  self.ch_defense = self.ch_defense+math.floor((self.level*10+self.dexterity*2+self.constitution*5)*class_data.def_index/10)
+  self.max_health = self.max_health+math.floor((self.level*20+self.strength*5+self.constitution*30)*class_data.health_index/10)
+  self.min_damage = (weapon and weapon.mod_attack_a or 0)
+  self.max_damage = (weapon and weapon.mod_attack_b or 0)+math.floor((self.level*20+self.strength*2+self.dexterity*1.5)*class_data.pow_index/10)
 
   -- clamp
   self.health = math.min(self.health, self.max_health)
@@ -717,9 +729,17 @@ function Client:save()
 
     state.charaset = self.charaset
     state.res_point = self.res_point
+    state.health = self.health
+    state.mana = self.mana
 
     self.server.db:_query(q_set_state, {self.user_id, utils.hex(msgpack.pack(state))})
   end
+end
+
+-- override
+function Client:setHealth(health)
+  Player.setHealth(self, health)
+  self:send(Client.makePacket(net.STATS_UPDATE, {health = self.health}))
 end
 
 -- variables
