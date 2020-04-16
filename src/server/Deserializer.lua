@@ -48,6 +48,17 @@ function Deserializer.readProjectClassEntry(file)
   return cls
 end
 
+-- return object {}
+--- type: int
+---- 0: usable
+---- 1: one-handed weapon
+---- 2: two-handed weapon
+---- 3: helmet
+---- 4: armor
+---- 5: shield
+---- 6: quest item
+---- 7: magic book
+--- usable_class: index (1-based)
 function Deserializer.readProjectObjectEntry(file)
   local obj = {}
 

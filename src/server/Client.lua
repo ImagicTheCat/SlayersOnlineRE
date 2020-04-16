@@ -360,6 +360,61 @@ function Client:onPacket(protocol, data)
           self:updateCharacteristics()
         end
       end
+    elseif protocol == net.ITEM_EQUIP then
+      local id = tonumber(data) or 0
+      local item = self.server.project.objects[id]
+      if item and self:checkItemRequirements(item) and self.inventory:take(id,true) then
+        local done = true
+        if item.type == 1 then -- one-handed weapon
+          if self.weapon_slot > 0 then self.inventory:put(self.weapon_slot) end
+          self.weapon_slot = id
+        elseif item.type == 2 then -- two-handed weapon
+          if self.weapon_slot > 0 then self.inventory:put(self.weapon_slot) end
+          if self.shield_slot > 0 then self.inventory:put(self.shield_slot) end
+          self.weapon_slot = id
+        elseif item.type == 3 then -- helmet
+          if self.helmet_slot > 0 then self.inventory:put(self.helmet_slot) end
+          self.helmet_slot = id
+        elseif item.type == 4 then -- armor
+          if self.armor_slot > 0 then self.inventory:put(self.armor_slot) end
+          self.armor_slot = id
+        elseif item.type == 5 then -- shield
+          if self.shield_slot > 0 then self.inventory:put(self.shield_slot) end
+          self.shield_slot = id
+          -- check for two-handed weapon
+          local weapon = self.server.project.objects[self.weapon_slot]
+          if weapon and weapon.type == 2 then
+            self.inventory:put(self.weapon_slot)
+            self.weapon_slot = 0
+          end
+        else done = false end
+
+        if done then
+          self.inventory:take(id)
+          self:updateCharacteristics()
+        end
+      end
+    elseif protocol == net.SLOT_UNEQUIP then
+      local done = true
+      if data == "helmet" then
+        if self.helmet_slot > 0 and self.inventory:put(self.helmet_slot) then
+          self.helmet_slot = 0
+        end
+      elseif data == "armor" then
+        if self.armor_slot > 0 and self.inventory:put(self.armor_slot) then
+          self.armor_slot = 0
+        end
+      elseif data == "weapon" then
+        if self.weapon_slot > 0 and self.inventory:put(self.weapon_slot) then
+          self.weapon_slot = 0
+        end
+      elseif data == "shield" then
+        if self.shield_slot > 0 and self.inventory:put(self.shield_slot) then
+          self.shield_slot = 0
+        end
+      else done = false end
+
+      if done then self:updateCharacteristics() end
     end
   end
 end
@@ -542,7 +597,7 @@ function Client:applyConfig(config, no_save)
   self:send(Client.makePacket(net.PLAYER_CONFIG, config))
 end
 
--- update characteristics based on gears/effects/etc
+-- update characteristics/gears based on gears/effects/etc
 function Client:updateCharacteristics()
   local class_data = self.server.project.classes[self.class]
 
@@ -556,18 +611,20 @@ function Client:updateCharacteristics()
   self.ch_defense = 100
 
   -- gears
-  local gears = {self.weapon_slot, self.shield_slot, self.helmet_slot, self.armor_slot}
-  for _, slot in ipairs(gears) do
-    local object = self.server.project.objects[slot]
-    if object then
-      self.strength = self.strength+object.mod_strength
-      self.dexterity = self.dexterity+object.mod_dexterity
-      self.constitution = self.constitution+object.mod_constitution
-      self.magic = self.magic+object.mod_magic
-      self.max_health = self.max_health+object.mod_hp
-      self.max_mana = self.max_mana+object.mod_mp
-      self.ch_defense = self.ch_defense+object.mod_defense
-    end
+  local helmet = self.server.project.objects[self.helmet_slot]
+  local armor = self.server.project.objects[self.armor_slot]
+  local weapon = self.server.project.objects[self.weapon_slot]
+  local shield = self.server.project.objects[self.shield_slot]
+
+  local gears = {weapon, shield, helmet, armor}
+  for _, item in pairs(gears) do
+    self.strength = self.strength+item.mod_strength
+    self.dexterity = self.dexterity+item.mod_dexterity
+    self.constitution = self.constitution+item.mod_constitution
+    self.magic = self.magic+item.mod_magic
+    self.max_health = self.max_health+item.mod_hp
+    self.max_mana = self.max_mana+item.mod_mp
+    self.ch_defense = self.ch_defense+item.mod_defense
   end
 
   -- clamp
@@ -584,8 +641,21 @@ function Client:updateCharacteristics()
     constitution = self.constitution,
     magic = self.magic,
     attack = self.ch_attack,
-    defense = self.ch_defense
+    defense = self.ch_defense,
+    helmet_slot = {name = helmet and helmet.name or ""},
+    armor_slot = {name = armor and armor.name or ""},
+    weapon_slot = {name = weapon and weapon.name or ""},
+    shield_slot = {name = shield and shield.name or ""}
   }))
+end
+
+function Client:checkItemRequirements(item)
+  return (item.usable_class == 0 or self.class == item.usable_class)
+    and item.req_level <= self.level
+    and item.req_strength <= self.strength
+    and item.req_dexterity <= self.dexterity
+    and item.req_constitution <= self.constitution
+    and item.req_magic <= self.magic
 end
 
 function Client:save()
