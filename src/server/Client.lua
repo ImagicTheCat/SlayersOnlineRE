@@ -343,6 +343,23 @@ function Client:onPacket(protocol, data)
     elseif protocol == net.ITEM_TRASH then
       local id = tonumber(data) or 0
       self.inventory:take(id)
+    elseif protocol == net.SPEND_CHARACTERISTIC_POINT then
+      if self.remaining_pts > 0 then
+        local done = true
+        if data == "strength" then
+          self.strength_pts = self.strength_pts+1
+        elseif data == "dexterity" then
+          self.dexterity_pts = self.dexterity_pts+1
+        elseif data == "constitution" then
+          self.constitution_pts = self.constitution_pts+1
+        else done = false end
+
+        if done then
+          self.remaining_pts = self.remaining_pts-1
+          self:send(Client.makePacket(net.STATS_UPDATE, {points = self.remaining_pts}))
+          self:updateCharacteristics()
+        end
+      end
     end
   end
 end
