@@ -51,6 +51,8 @@ function LivingEntity:__construct()
 
   self.health, self.max_health = 100, 100
   self.mana, self.max_mana = 100, 100
+  self.ch_attack, self.ch_defense = 0, 0 -- attack/defense characteristics
+  self.min_damage, self.max_damage = 0, 0
 
   -- self.charaset {.path, .x, .y, .w, .h, .is_skin}
   -- self.attack_sound
@@ -192,14 +194,32 @@ function LivingEntity:attack()
   end
 end
 
+function LivingEntity:setHealth(health)
+  self.health = utils.clamp(health, 0, self.max_health)
+  -- TODO: death
+end
+
 -- amount: nil for miss event
 function LivingEntity:damage(amount)
+  if amount then
+    self:setHealth(self.health-amount)
+  end
+
   self:broadcastPacket("damage", amount)
 end
 
 -- attacker: living entity attacking
 -- should return true on hit
 function LivingEntity:onAttack(attacker)
+end
+
+-- compute attack damages against another living entity
+-- target: LivingEntity
+-- return damages on hit or nil if missed
+function LivingEntity:computeAttack(target)
+  if math.random(self.ch_attack) > math.random(target.ch_defense) then
+    return math.random(self.min_damage, self.max_damage)
+  end
 end
 
 -- get all entities in sight (nearest first)

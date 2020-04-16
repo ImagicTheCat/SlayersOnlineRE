@@ -37,6 +37,12 @@ function Mob:__construct(data)
 
   self.speed = data.speed
   self.obstacle = data.obstacle
+  self.max_health = data.health
+  self.health = self.max_health
+  self.ch_attack = data.attack
+  self.ch_defense = data.defense
+  self.min_damage = data.damage
+  self.max_damage = data.damage
 
   -- remove Sound\ parts
   self:setSounds(string.sub(data.attack_sound, 7), string.sub(data.hurt_sound, 7))
@@ -114,7 +120,7 @@ end
 function Mob:onAttack(attacker)
   if class.is(attacker, Player) then
     self.target = attacker
-    self:damage(10) -- test
+    self:damage(attacker:computeAttack(self)) -- test
     return true
   end
 end

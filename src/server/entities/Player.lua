@@ -19,7 +19,7 @@ end
 -- override
 function Player:onAttack(attacker)
   if class.is(attacker, Mob) then
-    self:damage(10)
+    self:damage(attacker:computeAttack(self))
     return true
   end
 end
