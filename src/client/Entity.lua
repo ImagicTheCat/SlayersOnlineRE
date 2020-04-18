@@ -28,4 +28,8 @@ end
 function Entity:drawOver()
 end
 
+-- draw afterimage when removed
+function Entity:drawAfterimage()
+end
+
 return Entity

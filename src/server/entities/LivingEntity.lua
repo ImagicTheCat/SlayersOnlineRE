@@ -212,11 +212,10 @@ end
 
 -- amount: nil for miss event
 function LivingEntity:damage(amount)
+  self:broadcastPacket("damage", amount)
   if amount then
     self:setHealth(self.health-amount)
   end
-
-  self:broadcastPacket("damage", amount)
 end
 
 -- attacker: living entity attacking

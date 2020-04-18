@@ -252,4 +252,18 @@ function LivingEntity:draw()
   end
 end
 
+-- override
+function LivingEntity:drawAfterimage()
+  if self.texture then
+    local quad = self.atlas:getQuad(self.anim_x, self.anim_y)
+    if quad then
+      love.graphics.draw(
+        self.texture,
+        quad,
+        self.x-math.floor((self.atlas.cell_w-16)/2),
+        self.y+16-self.atlas.cell_h)
+    end
+  end
+end
+
 return LivingEntity
