@@ -45,6 +45,7 @@ function LivingEntity:__construct()
   self.move_forward = false
   self.speed = 1 -- game speed
   self.move_time = 0
+  self.ghost = false
 
   self.attack_duration = 1 -- seconds
   self.attacking = false
@@ -67,8 +68,14 @@ function LivingEntity:serializeNet()
   data.charaset = self.charaset
   data.attack_sound = self.attack_sound
   data.hurt_sound = self.hurt_sound
+  data.ghost = self.ghost
 
   return data
+end
+
+function LivingEntity:setGhost(flag)
+  self.ghost = flag
+  self:broadcastPacket("ch_ghost", flag)
 end
 
 function LivingEntity:setSounds(attack_sound, hurt_sound)
@@ -195,8 +202,9 @@ function LivingEntity:attack()
 end
 
 function LivingEntity:setHealth(health)
+  local old_health = self.health
   self.health = utils.clamp(health, 0, self.max_health)
-  if self.health == 0 then self:onDeath() end
+  if old_health > 0 and self.health == 0 then self:onDeath() end
 end
 
 function LivingEntity:onDeath()

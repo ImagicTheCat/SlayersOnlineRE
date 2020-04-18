@@ -253,9 +253,9 @@ function Client:onPacket(protocol, data)
     elseif protocol == net.INPUT_MOVE_FORWARD then
       self:setMoveForward(not not data)
     elseif protocol == net.INPUT_ATTACK then
-      self:attack()
+      if not self.ghost then self:attack() end
     elseif protocol == net.INPUT_INTERACT then
-      self:interact()
+      if not self.ghost then self:interact() end
     elseif protocol == net.INPUT_CHAT then
       if type(data) == "string" and string.len(data) > 0 and string.len(data) < 1000 then
         if string.sub(data, 1, 1) == "/" then -- parse command
@@ -263,7 +263,7 @@ function Client:onPacket(protocol, data)
           if #args > 0 then
             self.server:processCommand(self, args)
           end
-        else -- message
+        elseif not self.ghost then -- message
           self:mapChat(data)
         end
       end
@@ -550,11 +550,13 @@ function Client:onCellChange()
     local cell = self.map:getCell(self.cx, self.cy)
     if cell then
       -- event contact check
-      for entity in pairs(cell) do
-        if class.is(entity, Event) and entity.client == self and entity.trigger_contact then
-          async(function()
-            entity:trigger(Event.Condition.CONTACT)
-          end)
+      if not self.ghost then
+        for entity in pairs(cell) do
+          if class.is(entity, Event) and entity.client == self and entity.trigger_contact then
+            async(function()
+              entity:trigger(Event.Condition.CONTACT)
+            end)
+          end
         end
       end
     end
@@ -745,24 +747,36 @@ end
 
 -- override
 function Client:onDeath()
-  self:setHealth(self.max_health)
+  -- set ghost
+  self:setGhost(true)
 
-  local respawned = false
-  if self.res_point then -- res point respawn
-    local map = self.server:getMap(self.res_point.map)
-    if map then
-      map:addEntity(self)
-      self:teleport(self.res_point.cx*16, self.res_point.cy*16)
-      respawned = true
+  -- respawn after a while
+  task(5, function() self:respawn() end)
+end
+
+function Client:respawn()
+  if self.map then -- check if still on the world
+    self:setGhost(false)
+    self:setHealth(self.max_health) -- reset health
+
+    -- respawn
+    local respawned = false
+    if self.res_point then -- res point respawn
+      local map = self.server:getMap(self.res_point.map)
+      if map then
+        map:addEntity(self)
+        self:teleport(self.res_point.cx*16, self.res_point.cy*16)
+        respawned = true
+      end
     end
-  end
 
-  if not respawned then -- default respawn
-    local spawn_location = self.server.cfg.spawn_location
-    local map = self.server:getMap(spawn_location.map)
-    if map then
-      map:addEntity(self)
-      self:teleport(spawn_location.cx*16, spawn_location.cy*16)
+    if not respawned then -- default respawn
+      local spawn_location = self.server.cfg.spawn_location
+      local map = self.server:getMap(spawn_location.map)
+      if map then
+        map:addEntity(self)
+        self:teleport(spawn_location.cx*16, spawn_location.cy*16)
+      end
     end
   end
 end

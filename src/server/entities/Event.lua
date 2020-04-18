@@ -371,6 +371,14 @@ function event_special_vars:Vitesse(value)
   end
 end
 
+function event_special_vars:Transparent(value)
+  if value then
+    self:setGhost((Event.computeExpression(value) or 0) > 0)
+  else
+    return self.ghost
+  end
+end
+
 -- command function definitions, map of id => function
 -- function(event, state, args...)
 --- args...: function arguments as string expressions (after substitution)
@@ -634,6 +642,7 @@ function Event:__construct(client, data, page_index, x, y)
   self.animation_type = self.page.animation_type
   self.animation_number = self.page.animation_number
   self.speed = self.page.speed
+  self:setGhost(self.page.transparent)
 
   if self.animation_type <= 2 then
     self.orientation = self.page.animation_mod
