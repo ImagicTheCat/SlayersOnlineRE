@@ -88,6 +88,11 @@ end
 function GridInterface:moveSelect(dx, dy)
   self:trigger("move-select", dx, dy)
 
+  -- sound effect
+  if dx ~= 0 or dy ~= 0 then
+    self.gui:playSound("resources/audio/Cursor1.wav")
+  end
+
   -- X
   local sdx = dx/math.abs(dx) -- sign
   local its, limit = 0, self.wc*math.abs(dx)
@@ -113,9 +118,6 @@ function GridInterface:moveSelect(dx, dy)
     if cell and cell[2] then dy = dy-sdy end
     its = its+1
   end
-
-  -- sound effect
-  self.gui:playSound("resources/audio/Cursor1.wav")
 
   local idx = self:getIndex(self.cx, self.cy)
   local cell = self.cells[idx]
