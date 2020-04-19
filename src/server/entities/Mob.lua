@@ -125,6 +125,7 @@ end
 function Mob:onAttack(attacker)
   if class.is(attacker, Player) then
     self.target = attacker
+    self.last_attacker = attacker
     self:damage(attacker:computeAttack(self)) -- test
     return true
   end
@@ -132,6 +133,23 @@ end
 
 -- override
 function Mob:onDeath()
+  -- loot
+  local looter = self.last_attacker
+  if looter then
+    -- XP
+    looter:setXP(looter.xp+math.random(self.data.xp_min, self.data.xp_max))
+
+    -- gold
+    looter:setGold(looter.gold+math.random(self.data.gold_min, self.data.gold_max))
+
+    -- object
+    local item = looter.server.project.objects[self.data.loot_object]
+    if item and math.random(100) <= self.data.loot_chance then
+      looter.inventory:put(self.data.loot_object)
+    end
+  end
+
+  -- remove
   self.map:removeEntity(self)
   if self.area then self.area.mob_count = self.area.mob_count-1 end
 end
