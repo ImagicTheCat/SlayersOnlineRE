@@ -301,6 +301,19 @@ function Client:tick(dt)
     if player then
       love.audio.setPosition(player.x, player.y, 0)
     end
+
+    -- scrolling
+    if self.scroll then
+      if self.scroll.time < self.scroll.duration then
+        self.scroll.time = self.scroll.time+dt
+        local t = math.min(self.scroll.time/self.scroll.duration, 1)
+        self.scroll.x = math.floor(utils.lerp(self.scroll.ox, self.scroll.tx, t))
+        self.scroll.y = math.floor(utils.lerp(self.scroll.oy, self.scroll.ty, t))
+      elseif not self.scroll.done then
+        self.scroll.done = true
+        self:sendPacket(net.SCROLL_END)
+      end
+    end
   end
 
   -- remove stopped sources
@@ -491,6 +504,26 @@ function Client:onPacket(protocol, data)
         client:playSound("resources/audio/"..data)
       end
     end)
+  elseif protocol == net.SCROLL_TO then
+    local tx, ty = data[1], data[2]
+    local ox, oy = 0, 0
+
+    if self.scroll then -- continue scroll
+      ox, oy = self.scroll.tx, self.scroll.ty
+    else -- scroll from player
+      local player = self.map.entities[self.id]
+      if player then ox, oy = player.x, player.y end
+    end
+
+    local dx, dy = tx-ox, ty-oy
+    self.scroll = {
+      tx = tx, ty = ty,
+      ox = ox, oy = oy,
+      duration = math.sqrt(dx*dx+dy*dy)/64, -- 4 cells/s
+      time = 0
+    }
+  elseif protocol == net.SCROLL_RESET then
+    self.scroll = nil
   end
 end
 
@@ -767,10 +800,13 @@ function Client:draw()
 
     love.graphics.scale(self.world_scale) -- pixel scale
 
-    -- center on player
-    local player = self.map.entities[self.id]
-    if player then
-      love.graphics.translate(-player.x-8, -player.y-8)
+    if self.scroll then -- scrolling
+      love.graphics.translate(-self.scroll.x-8, -self.scroll.y-8)
+    else -- center on player
+      local player = self.map.entities[self.id]
+      if player then
+        love.graphics.translate(-player.x-8, -player.y-8)
+      end
     end
 
     self.map:draw()
