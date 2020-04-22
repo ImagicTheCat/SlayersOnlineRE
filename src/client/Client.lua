@@ -42,6 +42,7 @@ function Client:__construct(cfg)
 
   self.move_forward = false
   self.orientation = 0
+  self.view_shift = {0,0}
 
   self.orientation_stack = {}
   self.controls = {} -- map of control id (string) when pressed
@@ -525,6 +526,8 @@ function Client:onPacket(protocol, data)
     }
   elseif protocol == net.SCROLL_RESET then
     self.scroll = nil
+  elseif protocol == net.VIEW_SHIFT_UPDATE then
+    self.view_shift = data
   end
 end
 
@@ -807,7 +810,7 @@ function Client:draw()
     else -- center on player
       local player = self.map.entities[self.id]
       if player then
-        love.graphics.translate(-player.x-8, -player.y-8)
+        love.graphics.translate(-player.x-8-self.view_shift[1], -player.y-8-self.view_shift[2])
       end
     end
 

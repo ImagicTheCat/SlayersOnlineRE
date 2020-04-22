@@ -293,6 +293,12 @@ function Server:__construct(cfg)
     end)
   end)
 
+  self.timer_task = itask(0.030, function()
+    for peer, client in pairs(self.clients) do
+      client:timerTick()
+    end
+  end)
+
   -- DB
   local cfg_db = self.cfg.db
   self.db = DBManager(cfg_db.name, cfg_db.user, cfg_db.password, cfg_db.host, cfg_db.port)
@@ -345,6 +351,7 @@ function Server:close()
   if self.task_close then return self.task_close:wait() end
   self.task_close = async()
 
+  self.timer_task:remove()
   self.console_flags.running = false
   self.save_task:remove()
   self:save()

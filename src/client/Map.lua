@@ -218,4 +218,38 @@ function Map:removeEntity(id)
   end
 end
 
+function Map:updateEntityDrawOrder(entity, draw_order)
+  if self.entities[entity.id] == entity then
+    -- remove from draw list
+    local draw_list
+    if entity.draw_order < 0 then
+      draw_list = self.back_draw_list
+    elseif entity.draw_order > 0 then
+      draw_list = self.front_draw_list
+    else
+      draw_list = self.dynamic_draw_list
+    end
+
+    for i, f_entity in ipairs(draw_list) do
+      if entity == f_entity then
+        table.remove(draw_list, i)
+        break
+      end
+    end
+
+    entity.draw_order = draw_order
+
+    -- add to draw list
+    local draw_list
+    if entity.draw_order < 0 then
+      draw_list = self.back_draw_list
+    elseif entity.draw_order > 0 then
+      draw_list = self.front_draw_list
+    else
+      draw_list = self.dynamic_draw_list
+    end
+    table.insert(draw_list, entity)
+  end
+end
+
 return Map

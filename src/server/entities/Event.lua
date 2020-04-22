@@ -2,6 +2,8 @@ local utils = require("lib.utils")
 local Entity = require("Entity")
 local Mob = require("entities.Mob")
 local LivingEntity = require("entities.LivingEntity")
+local XPtable = require("XPtable")
+local net = require("protocol")
 -- deferred
 local Client
 task(0.01, function()
@@ -196,6 +198,364 @@ function client_special_vars:Name(value)
   end
 end
 
+function client_special_vars:UpperName(value)
+  if not value then
+    return string.gsub(string.upper(self.client.pseudo), "%U", "")
+  end
+end
+
+function client_special_vars:Classe(value)
+  if not value then
+    local class_data = self.server.project.classes[self.client.class]
+    return class_data.name
+  end
+end
+
+function client_special_vars:Skin(value)
+  if not value then
+    return "Chipset\\"..self.client.charaset.path
+  end
+end
+
+function client_special_vars:Force(value)
+  if value then
+    self.client.strength_pts = Event.computeExpression(value) or 0
+    self.client:updateCharacteristics()
+  else
+    return self.client.strength_pts
+  end
+end
+
+function client_special_vars:Dext(value)
+  if value then
+    self.client.dexterity_pts = Event.computeExpression(value) or 0
+    self.client:updateCharacteristics()
+  else
+    return self.client.dexterity_pts
+  end
+end
+
+function client_special_vars:Consti(value)
+  if value then
+    self.client.constitution_pts = Event.computeExpression(value) or 0
+    self.client:updateCharacteristics()
+  else
+    return self.client.constitution_pts
+  end
+end
+
+function client_special_vars:Magie(value)
+  if value then
+    self.client.magic_pts = Event.computeExpression(value) or 0
+    self.client:updateCharacteristics()
+  else
+    return self.client.magic_pts
+  end
+end
+
+function client_special_vars:Attaque(value)
+  if value then
+    self.client.ch_attack = Event.computeExpression(value) or 0
+    self.client:send(Client.makePacket(net.STATS_UPDATE, {
+      attack = self.client.ch_attack,
+    }))
+  else
+    return self.client.ch_attack
+  end
+end
+
+function client_special_vars:Defense(value)
+  if value then
+    self.client.ch_defense = Event.computeExpression(value) or 0
+    self.client:send(Client.makePacket(net.STATS_UPDATE, {
+      defense = self.client.ch_defense,
+    }))
+  else
+    return self.client.ch_defense
+  end
+end
+
+function client_special_vars:Vie(value)
+  if value then
+    self.client:setHealth(Event.computeExpression(value) or 0)
+  else
+    return self.client.health
+  end
+end
+
+function client_special_vars:VieMax(value)
+  if not value then
+    return self.client.max_health
+  end
+end
+
+function client_special_vars:CurrentMag(value)
+  if value then
+    self.client:setMana(Event.computeExpression(value) or 0)
+  else
+    return self.client.mana
+  end
+end
+
+function client_special_vars:MagMax(value)
+  if not value then
+    return self.client.max_mana
+  end
+end
+
+function client_special_vars:Alignement(value)
+  if value then
+    self.client:setAlignment(Event.computeExpression(value) or 0)
+  else
+    return self.client.alignment
+  end
+end
+
+function client_special_vars:Reputation(value)
+  if value then
+    self.client:setReputation(Event.computeExpression(value) or 0)
+  else
+    return self.client.reputation
+  end
+end
+
+function client_special_vars:Gold(value)
+  if value then
+    self.client:setGold(Event.computeExpression(value) or 0)
+  else
+    return self.client.gold
+  end
+end
+
+function client_special_vars:Lvl(value)
+  if value then
+    local xp = XPtable[Event.computeExpression(value) or 0]
+    if xp then self.client:setXP(xp) end
+  else
+    return self.client.level
+  end
+end
+
+function client_special_vars:LvlPoint(value)
+  if value then
+    self.client:setRemainingPoints(Event.computeExpression(value) or 0)
+  else
+    return self.client.remaining_pts
+  end
+end
+
+function client_special_vars:CurrentXP(value)
+  if value then
+    self.client:setXP(Event.computeExpression(value) or 0)
+  else
+    return self.client.xp
+  end
+end
+
+function client_special_vars:NextXP(value)
+  if not value then
+    return XPtable[self.client.level+1] or self.client.xp
+  end
+end
+
+function client_special_vars:Timer(value)
+  if value then
+    self.client.timers[1] = (Event.computeExpression(value) or 0)
+  else
+    return self.client.timers[1]
+  end
+end
+
+function client_special_vars:Timer2(value)
+  if value then
+    self.client.timers[2] = (Event.computeExpression(value) or 0)
+  else
+    return self.client.timers[2]
+  end
+end
+
+function client_special_vars:Timer3(value)
+  if value then
+    self.client.timers[3] = (Event.computeExpression(value) or 0)
+  else
+    return self.client.timers[3]
+  end
+end
+
+function client_special_vars:KillPlayer(value)
+  if value then
+    self.client.kill_player = (Event.computeExpression(value) or 0)
+  else
+    return self.client.kill_player
+  end
+end
+
+function client_special_vars:Visible(value)
+  if value then
+    self.client.visible = (Event.computeExpression(value) or 0) > 0
+    self.client:broadcastPacket("ch_visible", visible)
+  else
+    return self.client.visible and 1 or 0
+  end
+end
+
+function client_special_vars:Bloque(value)
+  if value then
+    self.client.blocked = (Event.computeExpression(value) or 0) > 0
+  else
+    return self.client.blocked and 1 or 0
+  end
+end
+
+function client_special_vars:CaseX(value)
+  if value then
+    self.client:moveToCell(Event.computeExpression(value) or self.client.cx, self.client.cy, true)
+  else
+    return self.client.cx
+  end
+end
+
+function client_special_vars:CaseY(value)
+  if value then
+    self:moveToCell(self.client.cx, Event.computeExpression(value) or self.client.cy, true)
+  else
+    return self.client.cy
+  end
+end
+
+function client_special_vars:Position(value)
+  if value then
+    self.client.draw_order = Event.computeExpression(value) or 0
+    self.client:broadcastPacket("ch_draw_order", self.client.draw_order)
+  else
+    return self.client.draw_order
+  end
+end
+
+function client_special_vars:CentreX(value)
+  if value then
+    self.client.view_shift[1] = Event.computeExpression(value) or 0
+    self.client:send(Client.makePacket(net.VIEW_SHIFT_UPDATE, self.client.view_shift))
+  else
+    return self.client.view_shift[1]
+  end
+end
+
+function client_special_vars:CentreY(value)
+  if value then
+    self.client.view_shift[2] = Event.computeExpression(value) or 0
+    self.client:send(Client.makePacket(net.VIEW_SHIFT_UPDATE, self.client.view_shift))
+  else
+    return self.client.view_shift[2]
+  end
+end
+
+function client_special_vars:BloqueChangeSkin(value)
+  if value then
+    self.client.blocked_skin = (Event.computeExpression(value) or 0) > 0
+  else
+    return self.client.blocked_skin and 1 or 0
+  end
+end
+
+function client_special_vars:BloqueAttaque(value)
+  if value then
+    self.client.blocked_attack = (Event.computeExpression(value) or 0) > 0
+  else
+    return self.client.blocked_attack and 1 or 0
+  end
+end
+
+function client_special_vars:BloqueDefense(value)
+  if value then
+    self.client.blocked_defend = (Event.computeExpression(value) or 0) > 0
+  else
+    return self.client.blocked_defend and 1 or 0
+  end
+end
+
+function client_special_vars:BloqueMagie(value)
+  if value then
+    self.client.blocked_cast = (Event.computeExpression(value) or 0) > 0
+  else
+    return self.client.blocked_cast and 1 or 0
+  end
+end
+
+function client_special_vars:BloqueDialogue(value)
+  if value then
+    self.client.blocked_chat = (Event.computeExpression(value) or 0) > 0
+  else
+    return self.client.blocked_chat and 1 or 0
+  end
+end
+
+function client_special_vars:NbObjectInventaire(value)
+  if not value then
+    return self.client.inventory:getAmount()
+  end
+end
+
+function client_special_vars:Arme(value)
+  if not value then
+    local item = self.client.server.project.objects[self.client.weapon_slot]
+    return item and item.name or ""
+  end
+end
+
+function client_special_vars:Bouclier(value)
+  if not value then
+    local item = self.client.server.project.objects[self.client.shield_slot]
+    return item and item.name or ""
+  end
+end
+
+function client_special_vars:Casque(value)
+  if not value then
+    local item = self.client.server.project.objects[self.client.helmet_slot]
+    return item and item.name or ""
+  end
+end
+
+function client_special_vars:Armure(value)
+  if not value then
+    local item = self.client.server.project.objects[self.client.armor_slot]
+    return item and item.name or ""
+  end
+end
+
+function client_special_vars:Direction(value)
+  if value then
+    self.client:setOrientation(Event.computeExpression(value) or 0)
+  else
+    return self.client.orientation
+  end
+end
+
+function client_special_vars:String1(value)
+  if value then
+    self.client.strings[1] = value
+  else
+    return self.client.strings[1]
+  end
+end
+
+function client_special_vars:String2(value)
+  if value then
+    self.client.strings[2] = value
+  else
+    return self.client.strings[2]
+  end
+end
+
+function client_special_vars:String3(value)
+  if value then
+    self.client.strings[3] = value
+  else
+    return self.client.strings[3]
+  end
+end
+
 function client_special_vars:EvCaseX(value)
   if not value then
     return self.cx
@@ -207,6 +567,11 @@ function client_special_vars:EvCaseY(value)
     return self.cy
   end
 end
+
+-- aliases
+client_special_vars.BloqueAttaqueLocal = client_special_vars.BloqueAttaque
+client_special_vars.BloqueDefenseLocal = client_special_vars.BloqueDefense
+client_special_vars.BloqueMagieLocal = client_special_vars.BloqueMagie
 
 -- form: "%<Ev>.<var>%"
 local event_special_vars = {}
@@ -375,7 +740,7 @@ function event_special_vars:Transparent(value)
   if value then
     self:setGhost((Event.computeExpression(value) or 0) > 0)
   else
-    return self.ghost
+    return self.ghost and 1 or 0
   end
 end
 
@@ -916,7 +1281,7 @@ function Event:trigger(condition)
           if f then
             f(self, expr)
             self.client:triggerSpecialVariable(args[3])
-          end
+          else print("event: client special variable \""..args[3].."\" not implemented") end
         elseif args[2] == Event.Variable.EVENT_SPECIAL then
           local event = self.client.events_by_name[args[3]]
           if event then
@@ -924,7 +1289,7 @@ function Event:trigger(condition)
             if f then
               f(event, expr)
               event:triggerSpecialVariable(args[4])
-            end
+            else print("event: event special variable \""..args[4].."\" not implemented") end
           end
         end
       end
@@ -939,7 +1304,7 @@ function Event:trigger(condition)
 
       if f then
         f(self, state, unpack(fargs))
-      end
+      else print("event: command function \""..args[2].."\" not implemented") end
     end
 
     state.cursor = state.cursor+1

@@ -66,6 +66,18 @@ function Client:__construct(server, peer)
   self.bool_var_listeners = {} -- map of id (number) => map of callback
   self.changed_bool_vars = {} -- map of bool vars id
   self.special_var_listeners = {} -- map of id (string) => map of callback
+  self.timers = {0,0,0} -- %TimerX% vars (3), incremented every 30ms
+  self.kill_player = 0
+  self.visible = true
+  self.draw_order = 0
+  self.view_shift = {0,0}
+  self.blocked = false
+  self.blocked_skin = false
+  self.blocked_attack = false
+  self.blocked_defend = false
+  self.blocked_cast = false
+  self.blocked_chat = false
+  self.strings = {"","",""} -- %StringX% vars (3)
 
   self.player_config = {} -- stored player config
   self.player_config_changed = false
@@ -248,6 +260,7 @@ function Client:onPacket(protocol, data)
       end
     end
   else -- logged
+    -- TODO: restrictions (blocked, event, etc.)
     if protocol == net.INPUT_ORIENTATION then
       self:setOrientation(tonumber(data) or 0)
     elseif protocol == net.INPUT_MOVE_FORWARD then
@@ -362,8 +375,7 @@ function Client:onPacket(protocol, data)
         else done = false end
 
         if done then
-          self.remaining_pts = self.remaining_pts-1
-          self:send(Client.makePacket(net.STATS_UPDATE, {points = self.remaining_pts}))
+          self:setRemainingPoints(self.remaining_pts-1)
           self:updateCharacteristics()
         end
       end
@@ -439,6 +451,15 @@ end
 
 function Client:sendChatMessage(msg)
   self:send(Client.makePacket(net.CHAT_MESSAGE_SERVER, msg))
+end
+
+function Client:timerTick()
+  if self.user_id then
+    -- increment timers
+    for i,time in ipairs(self.timers) do
+      self.timers[i] = time+1
+    end
+  end
 end
 
 -- (async) trigger event message box
@@ -798,8 +819,32 @@ function Client:setXP(xp)
   self:updateCharacteristics()
 end
 
+function Client:setAlignment(alignment)
+  self.alignment = utils.clamp(alignment, 0, 100)
+  self:send(Client.makePacket(net.STATS_UPDATE, {alignment = self.alignment}))
+end
+
+function Client:setReputation(reputation)
+  self.reputation = reputation
+  self:send(Client.makePacket(net.STATS_UPDATE, {reputation = self.reputation}))
+end
+
+function Client:setRemainingPoints(remaining_pts)
+  self.remaining_pts = math.max(0, remaining_pts)
+  self:send(Client.makePacket(net.STATS_UPDATE, {points = self.remaining_pts}))
+end
+
+function Client:onPlayerKill()
+  self.kill_player = 1
+  self:triggerSpecialVariable("KillPlayer")
+end
+
 -- override
 function Client:onDeath()
+  if self.last_attacker then -- killed by player
+    self.last_attacker:onPlayerKill()
+  end
+
   -- set ghost
   self:setGhost(true)
 
@@ -908,7 +953,7 @@ function Client:listenSpecialVariable(id, callback)
   listeners[callback] = true
 end
 
-function Client:unlistenSpecialVariable(vtype, id, callback)
+function Client:unlistenSpecialVariable(id, callback)
   local listeners = self.special_var_listeners[id]
   if listeners then
     listeners[callback] = nil
