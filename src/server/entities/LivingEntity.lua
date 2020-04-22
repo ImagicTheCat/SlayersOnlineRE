@@ -47,8 +47,7 @@ function LivingEntity:__construct()
   self.move_time = 0
   self.ghost = false
 
-  self.attack_duration = 1 -- seconds
-  self.attacking = false
+  self.acting = false
 
   self.health, self.max_health = 100, 100
   self.mana, self.max_mana = 100, 100
@@ -106,7 +105,7 @@ function LivingEntity:setMoveForward(move_forward)
         local dt = clock()-self.move_time
 
         local speed = LivingEntity.pixelSpeed(self.speed)
-        if self.attacking then speed = speed/2 end -- slow movement when attacking
+        if self.acting then speed = speed/2 end -- slow movement when acting
 
         -- move following the orientation
         local dx, dy = LivingEntity.orientationVector(self.orientation)
@@ -179,25 +178,30 @@ function LivingEntity:moveToCell(cx, cy, blocking)
   if blocking then r:wait() end
 end
 
-function LivingEntity:attack()
-  if not self.attacking then
-    self.attacking = true
+-- action: string
+--- "attack"
+--- "defend"
+--- "cast"
+function LivingEntity:act(action, duration)
+  if not self.acting then
+    self.acting = action
 
-    -- attack check
-    local client = (class.is(self, Client) and self or self.client)
-    local entities = self:raycastEntities(1)
-    for _, entity in ipairs(entities) do
-      if class.is(entity, LivingEntity) and (not entity.client or entity.client == client) then
-        if entity:onAttack(self) then break end
+    if action == "attack" then
+      -- attack check
+      local client = (class.is(self, Client) and self or self.client)
+      local entities = self:raycastEntities(1)
+      for _, entity in ipairs(entities) do
+        if class.is(entity, LivingEntity) and (not entity.client or entity.client == client) then
+          if entity:onAttack(self) then break end
+        end
       end
     end
 
-    -- do attack animation
-    self:broadcastPacket("attack", self.attack_duration)
+    -- TODO: defend and cast effects
 
-    task(self.attack_duration, function()
-      self.attacking = false
-    end)
+    -- do animation
+    self:broadcastPacket("act", {self.acting, duration})
+    task(duration, function() self.acting = false end)
   end
 end
 
