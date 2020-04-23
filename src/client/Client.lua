@@ -43,6 +43,7 @@ function Client:__construct(cfg)
   self.move_forward = false
   self.orientation = 0
   self.view_shift = {0,0}
+  self.camera = {0,0} -- view/camera position
 
   self.orientation_stack = {}
   self.controls = {} -- map of control id (string) when pressed
@@ -298,11 +299,17 @@ function Client:tick(dt)
   end
 
   if self.map then
-    -- set listener on player
-    local player = self.map.entities[self.id]
-    if player then
-      love.audio.setPosition(player.x, player.y, 0)
+    -- compute camera position
+    if self.scroll then -- scrolling
+      self.camera = {self.scroll.x+8, self.scroll.y+8}
+    else -- center on player
+      local player = self.map.entities[self.id]
+      if player then
+        self.camera = {player.x+8+self.view_shift[1], player.y+8+self.view_shift[2]}
+      end
     end
+
+    love.audio.setPosition(self.camera[1], self.camera[2], 32)
 
     -- scrolling
     if self.scroll then
@@ -804,15 +811,7 @@ function Client:draw()
     love.graphics.translate(math.floor(w/2), math.floor(h/2))
 
     love.graphics.scale(self.world_scale) -- pixel scale
-
-    if self.scroll then -- scrolling
-      love.graphics.translate(-self.scroll.x-8, -self.scroll.y-8)
-    else -- center on player
-      local player = self.map.entities[self.id]
-      if player then
-        love.graphics.translate(-player.x-8-self.view_shift[1], -player.y-8-self.view_shift[2])
-      end
-    end
+    love.graphics.translate(-self.camera[1], -self.camera[2])
 
     self.map:draw()
 
