@@ -534,9 +534,31 @@ function client_special_vars:Direction(value)
   end
 end
 
+function client_special_vars:Groupe(value)
+  -- TODO
+  if not value then
+    return ""
+  end
+end
+
 function client_special_vars:Guilde(value)
+  -- TODO
   if not value then
     return "Admin"
+  end
+end
+
+function client_special_vars:Rang(value)
+  -- TODO
+  if not value then
+    return "Default"
+  end
+end
+
+function client_special_vars:Grade(value)
+  -- TODO
+  if not value then
+    return 0
   end
 end
 
@@ -920,6 +942,10 @@ function command_functions:OnResultQuery(state)
   end
 end
 
+function command_functions:QueryEnd(state)
+  -- void, prevent not implemented warning
+end
+
 function command_functions:Magasin(state, title, ...)
   local items, items_id = {...}, {}
   local objects_by_name = self.client.server.project.objects_by_name
@@ -1156,15 +1182,16 @@ function Event:checkCondition(instruction)
     end
 
     if not lhs then return false end
+    local rhs = self:instructionSubstitution(expr)
 
-    expr = self:instructionSubstitution(expr)
-
-    local rhs = Event.computeExpression(expr)
-    if not rhs then -- string comparison
-      lhs = tostring(lhs)
-      rhs = expr
-    else -- number comparison
-      lhs = tonumber(lhs) or 0
+    local rhs_n = Event.computeExpression(rhs)
+    local lhs_n = Event.computeExpression(lhs)
+    if rhs_n and lhs_n then -- number comparison
+      lhs = lhs_n
+      rhs = rhs_n
+    else -- string comparison
+      lhs = lhs_n and tostring(lhs_n) or lhs
+      rhs = rhs_n and tostring(rhs_n) or rhs
     end
 
     if op == "=" then return (lhs == rhs)
@@ -1177,15 +1204,17 @@ function Event:checkCondition(instruction)
   elseif args[1] == Event.Condition.EXPRESSION then -- expression comparison
     local lhs_expr, op, rhs_expr = args[2], args[3], args[4]
 
-    lhs_expr = self:instructionSubstitution(lhs_expr)
-    rhs_expr = self:instructionSubstitution(rhs_expr)
+    local lhs = self:instructionSubstitution(lhs_expr)
+    local rhs = self:instructionSubstitution(rhs_expr)
 
-    local rhs = Event.computeExpression(rhs_expr)
-    if not rhs then -- string comparison
-      lhs = rhs_expr
-      rhs = rhs_expr
-    else -- number comparison
-      lhs = Event.computeExpression(lhs_expr) or 0
+    local rhs_n = Event.computeExpression(rhs)
+    local lhs_n = Event.computeExpression(lhs)
+    if rhs_n and lhs_n then -- number comparison
+      lhs = lhs_n
+      rhs = rhs_n
+    else -- string comparison
+      lhs = lhs_n and tostring(lhs_n) or lhs
+      rhs = rhs_n and tostring(rhs_n) or rhs
     end
 
     if op == "=" then return (lhs == rhs)
@@ -1224,14 +1253,14 @@ end
 
 -- condition: Event.Condition type triggered
 function Event:trigger(condition)
-  --print("TRIGGER", condition, self.cx, self.cy, self.page_index)
+--  print("TRIGGER", condition, self.cx, self.cy, self.page_index)
   self.client.triggered_events[self] = condition
 end
 
 -- (async) execute event script commands
 -- condition: Event.Condition type triggered
 function Event:execute(condition)
-  --print("EXECUTE", condition, self.map.id, self.cx, self.cy, self.page_index)
+  print("EXECUTE", condition, self.map.id, self.cx, self.cy, self.page_index)
 
   if condition == Event.Condition.INTERACT then
     local atype = self.animation_type
@@ -1253,7 +1282,7 @@ function Event:execute(condition)
 
   while state.cursor <= size do
     local instruction = self.page.commands[state.cursor]
-    --print("INS", instruction)
+    print("INS", instruction)
     local args = {Event.parseCommand(instruction)}
 
     if args[1] == Event.Command.VARIABLE then -- variable assignment
