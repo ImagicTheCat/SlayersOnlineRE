@@ -14,7 +14,7 @@ local Event = class("Event", LivingEntity)
 
 -- STATICS
 
-Event.TRIGGER_RADIUS = 15*1000 -- visibility/trigger radius in cells
+Event.TRIGGER_RADIUS = 15 -- visibility/trigger radius in cells
 
 Event.Position = {
   DYNAMIC = 0,
