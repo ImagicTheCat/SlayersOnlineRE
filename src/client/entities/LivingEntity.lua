@@ -81,8 +81,7 @@ function LivingEntity:onPacket(action, data)
         async(function()
           if client.net_manager:requestResource("audio/"..self.attack_sound) then
             local source = client:playSound("resources/audio/"..self.attack_sound)
-            source:setPosition(self.x, self.y, 0)
-            source:setVolume(0.75)
+            source:setPosition(self.x+8, self.y+8, 0)
             source:setAttenuationDistances(16, 16*15)
           end
         end)
@@ -96,8 +95,7 @@ function LivingEntity:onPacket(action, data)
       async(function()
         if client.net_manager:requestResource("audio/"..self.hurt_sound) then
           local source = client:playSound("resources/audio/"..self.hurt_sound)
-          source:setPosition(self.x, self.y, 0)
-          source:setVolume(0.75)
+          source:setPosition(self.x+8, self.y+8, 0)
           source:setAttenuationDistances(16, 16*15)
         end
       end)
