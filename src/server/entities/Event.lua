@@ -412,8 +412,8 @@ function command_functions:ChangeResPoint(state, map_name, cx, cy)
   if map_name and cx and cy then
     self.client.res_point = {
       map = map_name,
-      x = cx,
-      y = cy
+      cx = cx,
+      cy = cy
     }
   end
 end

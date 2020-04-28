@@ -211,10 +211,11 @@ function Client:onPacket(protocol, data)
             ---- misc
             self.res_point = state.res_point
 
-            -- testing spawn
+            -- default spawn
             if not map then
-              map = self.server:getMap(next(self.server.project.maps))
-              self:teleport(0,10*16)
+              local spawn_location = self.server.cfg.spawn_location
+              map = self.server:getMap(spawn_location.map)
+              self:teleport(spawn_location.cx*16, spawn_location.cy*16)
             end
 
             map:addEntity(self)
@@ -740,6 +741,30 @@ end
 function Client:setHealth(health)
   Player.setHealth(self, health)
   self:send(Client.makePacket(net.STATS_UPDATE, {health = self.health}))
+end
+
+-- override
+function Client:onDeath()
+  self:setHealth(self.max_health)
+
+  local respawned = false
+  if self.res_point then -- res point respawn
+    local map = self.server:getMap(self.res_point.map)
+    if map then
+      map:addEntity(self)
+      self:teleport(self.res_point.cx*16, self.res_point.cy*16)
+      respawned = true
+    end
+  end
+
+  if not respawned then -- default respawn
+    local spawn_location = self.server.cfg.spawn_location
+    local map = self.server:getMap(spawn_location.map)
+    if map then
+      map:addEntity(self)
+      self:teleport(spawn_location.cx*16, spawn_location.cy*16)
+    end
+  end
 end
 
 -- variables
