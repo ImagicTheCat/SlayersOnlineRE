@@ -253,7 +253,9 @@ function Client:onPacket(protocol, data)
     elseif protocol == net.INPUT_MOVE_FORWARD then
       self:setMoveForward(not not data)
     elseif protocol == net.INPUT_ATTACK then
-      if not self.ghost then self:attack() end
+      if not self.ghost then self:act("attack", 1) end
+    elseif protocol == net.INPUT_DEFEND then
+      if not self.ghost then self:act("defend", 1) end
     elseif protocol == net.INPUT_INTERACT then
       if not self.ghost then self:interact() end
     elseif protocol == net.INPUT_CHAT then

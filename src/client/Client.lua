@@ -53,6 +53,7 @@ function Client:__construct(cfg)
       s = "down",
       a = "left",
       space = "attack",
+      lalt = "defend",
       e = "interact",
       ["return"] = "return",
       escape = "menu"
@@ -733,6 +734,7 @@ function Client:pressControl(id)
       elseif id == "down" then self:pressOrientation(2)
       elseif id == "left" then self:pressOrientation(3)
       elseif id == "attack" then self:inputAttack()
+      elseif id == "defend" then self:inputDefend()
       elseif id == "interact" then self:inputInteract()
       end
     end
@@ -858,6 +860,10 @@ end
 
 function Client:inputAttack()
   self:sendPacket(net.INPUT_ATTACK)
+end
+
+function Client:inputDefend()
+  self:sendPacket(net.INPUT_DEFEND)
 end
 
 function Client:inputInteract()

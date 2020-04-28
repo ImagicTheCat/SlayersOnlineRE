@@ -34,7 +34,7 @@ function LivingEntity:__construct(data)
   self.anim_x = 1
   self.anim_y = data.orientation
 
-  self.attacking = false
+  self.acting = false
   self.ghost = data.ghost
 
   -- default charaset
@@ -71,20 +71,22 @@ function LivingEntity:onPacket(action, data)
     self.anim_x = 1
   elseif action == "ch_orientation" then
     self.anim_y = data
-  elseif action == "attack" then
-    self.attacking = true
-    self.attack_duration = data
-    self.attack_time = 0
+  elseif action == "act" then
+    self.acting = data[1]
+    self.acting_duration = data[2]
+    self.acting_time = 0
 
-    if self.attack_sound then
-      async(function()
-        if client.net_manager:requestResource("audio/"..self.attack_sound) then
-          local source = client:playSound("resources/audio/"..self.attack_sound)
-          source:setPosition(self.x, self.y, 0)
-          source:setVolume(0.75)
-          source:setAttenuationDistances(16, 16*15)
-        end
-      end)
+    if self.acting == "attack" then
+      if self.attack_sound then
+        async(function()
+          if client.net_manager:requestResource("audio/"..self.attack_sound) then
+            local source = client:playSound("resources/audio/"..self.attack_sound)
+            source:setPosition(self.x, self.y, 0)
+            source:setVolume(0.75)
+            source:setAttenuationDistances(16, 16*15)
+          end
+        end)
+      end
     end
   elseif action == "damage" then
     local amount = data
@@ -164,7 +166,7 @@ end
 
 -- override
 function LivingEntity:tick(dt)
-  if self.move_to_cell then
+  if self.move_to_cell then -- targeted movement
     local mtc = self.move_to_cell
     mtc.time = mtc.time+dt
 
@@ -196,12 +198,17 @@ function LivingEntity:tick(dt)
     self.y = y
   end
 
-  if self.attacking then
-    -- compute attack animation
-    self.attack_time = self.attack_time+dt
-    self.anim_x = 3+math.floor(self.attack_time/self.attack_duration*3)%3
-    if self.attack_time >= self.attack_duration then -- stop
-      self.attacking = false
+  if self.acting then
+    -- compute acting animation
+    self.acting_time = self.acting_time+dt
+    local offset = 0
+    if self.acting == "attack" then offset = 3
+    elseif self.acting == "cast" then offset = 6
+    end
+
+    self.anim_x = offset+math.floor(self.acting_time/self.acting_duration*3)%3
+    if self.acting_time >= self.acting_duration then -- stop
+      self.acting = false
       self.anim_x = 1
     end
   end

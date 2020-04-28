@@ -379,6 +379,21 @@ function event_special_vars:Transparent(value)
   end
 end
 
+function event_special_vars:AnimAttaque(value)
+  if value then self:act("attack", 1)
+  else return 0 end
+end
+
+function event_special_vars:AnimDefense(value)
+  if value then self:act("defend", 1)
+  else return 0 end
+end
+
+function event_special_vars:AnimMagie(value)
+  if value then self:act("cast", 1)
+  else return 0 end
+end
+
 -- command function definitions, map of id => function
 -- function(event, state, args...)
 --- args...: function arguments as string expressions (after substitution)

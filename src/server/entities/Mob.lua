@@ -75,7 +75,7 @@ function Mob:moveAI()
             end
           else -- try attack
             self:setOrientation(LivingEntity.vectorOrientation(self.target.x-self.x, self.target.y-self.y))
-            self:attack()
+            self:act("attack", 1)
           end
         else -- random movement
           local ok
