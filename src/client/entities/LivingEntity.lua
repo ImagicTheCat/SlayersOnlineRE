@@ -102,10 +102,11 @@ function LivingEntity:onPacket(action, data)
     end
 
     -- hint
+    local color = (client.id == self.id and {1,0.5,0} or {1,1,1})
     if not amount then
-      self:emitHint({{1,0.5,0}, "Miss"})
+      self:emitHint({color, "Miss"})
     else
-      self:emitHint({{1,1,1}, amount..""})
+      self:emitHint({color, amount..""})
     end
   elseif action == "ch_charaset" then
     self:setCharaset(data)
