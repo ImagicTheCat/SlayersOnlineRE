@@ -206,7 +206,7 @@ end
 
 function client_special_vars:Classe(value)
   if not value then
-    local class_data = self.server.project.classes[self.client.class]
+    local class_data = self.client.server.project.classes[self.client.class]
     return class_data.name
   end
 end
@@ -434,19 +434,19 @@ end
 
 function client_special_vars:CentreX(value)
   if value then
-    self.client.view_shift[1] = Event.computeExpression(value) or 0
+    self.client.view_shift[1] = (Event.computeExpression(value) or 0)*(-16)
     self.client:send(Client.makePacket(net.VIEW_SHIFT_UPDATE, self.client.view_shift))
   else
-    return self.client.view_shift[1]
+    return self.client.view_shift[1]/-16
   end
 end
 
 function client_special_vars:CentreY(value)
   if value then
-    self.client.view_shift[2] = Event.computeExpression(value) or 0
+    self.client.view_shift[2] = (Event.computeExpression(value) or 0)*(-16)
     self.client:send(Client.makePacket(net.VIEW_SHIFT_UPDATE, self.client.view_shift))
   else
-    return self.client.view_shift[2]
+    return self.client.view_shift[2]/-16
   end
 end
 
@@ -529,6 +529,12 @@ function client_special_vars:Direction(value)
     self.client:setOrientation(Event.computeExpression(value) or 0)
   else
     return self.client.orientation
+  end
+end
+
+function client_special_vars:Guilde(value)
+  if not value then
+    return "Admin"
   end
 end
 
@@ -836,9 +842,9 @@ function command_functions:Condition(state, condition)
 
     local ctype = Event.parseCondition(condition)
 
-    if ctype == Event.Condition.VARIABLE then -- condition check
+    if ctype == Event.Condition.VARIABLE or ctype == Event.Condition.EXPRESSION then -- condition check
       ok = self:checkCondition(condition)
-    else -- trigger check
+    else -- trigger condition check
       ok = (ctype == state.condition)
     end
 
@@ -1209,9 +1215,9 @@ function Event:selectPage()
     if self:checkConditions(page) then
       return i
     end
-
-    return #self.data.pages
   end
+
+  return #self.data.pages
 end
 
 -- (async) execute event script commands (will wait on instructions and for previous events to complete)
@@ -1219,6 +1225,7 @@ end
 function Event:trigger(condition)
   local r = async()
 
+  --print("QUEUE TRIGGER", condition, self.cx, self.cy, self.page_index)
   table.insert(self.client.event_queue, r)
   if #self.client.event_queue > 1 then -- wait for previous event next call
     r:wait()
@@ -1233,6 +1240,8 @@ function Event:trigger(condition)
     end
   end
 
+  --print("TRIGGER", condition, self.cx, self.cy, self.page_index)
+
   -- execution context state
   local state = {
     cursor = 1, -- instruction cursor
@@ -1244,6 +1253,7 @@ function Event:trigger(condition)
 
   while state.cursor <= size do
     local instruction = self.page.commands[state.cursor]
+    --print("INS", instruction)
     local args = {Event.parseCommand(instruction)}
 
     if args[1] == Event.Command.VARIABLE then -- variable assignment
@@ -1436,6 +1446,7 @@ function Event:onMapChange()
     self.client.events_by_name[self.name] = self
 
     -- listen to conditions of all previous and current page
+    --- callback on conditions change (select a new page)
     self.vars_callback = function()
       local page_index = self:selectPage()
       if page_index ~= self.page_index then -- reload event
@@ -1446,7 +1457,7 @@ function Event:onMapChange()
           map:removeEntity(self)
 
           -- re-create
-          map:addEntity(Event(self.client, self.data, self.page_index, self.x, self.y))
+          map:addEntity(Event(self.client, self.data, page_index, self.x, self.y))
         end
       end
     end
@@ -1461,7 +1472,7 @@ function Event:onMapChange()
             self.server_vars_listened[key] = true
             self.client.server:listenVariable(key, self.vars_callback)
           elseif args[2] == Event.Variable.CLIENT then
-            self.client:listenVariable(args[3], args[4], self.vars_callback)
+            self.client:listenVariable(args[3], args[4][1], self.vars_callback)
           elseif args[2] == Event.Variable.CLIENT_SPECIAL then
             self.client:listenSpecialVariable(args[3], self.vars_callback)
           elseif args[2] == Event.Variable.EVENT_SPECIAL then
