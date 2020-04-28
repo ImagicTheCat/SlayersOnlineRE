@@ -485,9 +485,14 @@ function Client:eventTick()
 
     -- execute next visible/top-left event
     local events = {}
-    for event in pairs(self.triggered_events) do
-      local dx, dy = event.cx-self.cx, event.cy-self.cy
-      if math.floor(math.sqrt(dx*dx+dy*dy)) <= Event.TRIGGER_RADIUS then
+    for event, condition in pairs(self.triggered_events) do
+      if condition == Event.Condition.AUTO or condition == Event.Condition.AUTO_ONCE then
+        local dx = event.cx*16-(self.cx*16+self.view_shift[1])
+        local dy = event.cy*16-(self.cy*16+self.view_shift[2])
+        if math.sqrt(dx*dx+dy*dy) <= Event.TRIGGER_RADIUS*16 then
+          table.insert(events, event)
+        end
+      else
         table.insert(events, event)
       end
     end
