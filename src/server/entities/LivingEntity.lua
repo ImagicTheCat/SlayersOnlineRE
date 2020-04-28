@@ -207,6 +207,10 @@ function LivingEntity:setHealth(health)
   if old_health > 0 and self.health == 0 then self:onDeath() end
 end
 
+function LivingEntity:setMana(mana)
+  self.mana = utils.clamp(mana, 0, self.max_mana)
+end
+
 function LivingEntity:onDeath()
 end
 

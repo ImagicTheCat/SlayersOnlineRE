@@ -7,6 +7,7 @@ local utils = require("lib.utils")
 local sha2 = require("sha2")
 local client_version = require("client_version")
 local Inventory = require("Inventory")
+local XPtable = require("XPtable")
 
 -- server-side client
 local Client = class("Client", Player)
@@ -224,7 +225,8 @@ function Client:onPacket(protocol, data)
             self:updateCharacteristics()
 
             self:setHealth(state.health or self.max_health)
-            self.mana = state.mana or self.max_mana
+            self:setMana(state.mana or self.max_mana)
+            self:setXP(self.xp) -- update level/XP
 
             self:send(Client.makePacket(net.STATS_UPDATE, {
               gold = self.gold,
@@ -234,8 +236,6 @@ function Client:onPacket(protocol, data)
               level = self.level,
               points = self.remaining_pts,
               reputation = self.reputation,
-              xp = self.xp,
-              max_xp = self.xp*2,
               mana = self.mana
             }))
 
@@ -743,6 +743,40 @@ end
 function Client:setHealth(health)
   Player.setHealth(self, health)
   self:send(Client.makePacket(net.STATS_UPDATE, {health = self.health}))
+end
+
+-- override
+function Client:setMana(mana)
+  Player.setMana(self, mana)
+  self:send(Client.makePacket(net.STATS_UPDATE, {mana = self.mana}))
+end
+
+function Client:setGold(gold)
+  self.gold = math.max(0,gold)
+  self:send(Client.makePacket(net.STATS_UPDATE, {gold = self.gold}))
+end
+
+function Client:setXP(xp)
+  self.xp = xp
+  local current = XPtable[self.level]
+  if self.xp < current then self.xp = current -- reset to current level XP
+  else -- level ups
+    local next_xp = XPtable[self.level+1]
+    while next_xp and self.xp >= next_xp do
+      self.level = self.level+1 -- level up
+      self.remaining_pts = self.remaining_pts+5
+      next_xp = XPtable[self.level+1]
+    end
+  end
+
+  self:send(Client.makePacket(net.STATS_UPDATE, {
+    xp = self.xp,
+    next_xp = XPtable[self.level+1] or self.xp,
+    level = self.level,
+    points = self.remaining_pts
+  }))
+
+  self:updateCharacteristics()
 end
 
 -- override
