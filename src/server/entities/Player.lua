@@ -18,8 +18,14 @@ end
 
 -- override
 function Player:onAttack(attacker)
-  if not self.ghost and class.is(attacker, Mob) then
+  if self.ghost or attacker == self then return end
+
+  if class.is(attacker, Mob) then
     self:damage(attacker:computeAttack(self))
+    return true
+  elseif class.is(attacker, Player) then
+    self:damage(attacker:computeAttack(self))
+    self.last_attacker = attacker
     return true
   end
 end

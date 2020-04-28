@@ -23,30 +23,53 @@ function Player:__construct(data)
   self.pseudo = data.pseudo
   self.pseudo_text = love.graphics.newText(client.font)
   self.pseudo_text:set(self.pseudo)
+  self.visible = true
+end
+
+-- override
+function Player:onPacket(action, data)
+  LivingEntity.onPacket(self, action, data)
+
+  if action == "ch_visible" then
+    self.visible = data
+  elseif action == "ch_draw_order" then
+    client.map:updateEntityDrawOrder(self, data)
+  end
 end
 
 -- override
 function Player:drawUnder()
-  -- draw pseudo
-  local inv_scale = 1/client.world_scale
-  local x = (self.x+8)-self.pseudo_text:getWidth()/2*inv_scale
-  local y = self.y+16
-  love.graphics.draw(self.pseudo_text, x, y, 0, inv_scale)
+  if self.visible then
+    -- draw pseudo
+    local inv_scale = 1/client.world_scale
+    local x = (self.x+8)-self.pseudo_text:getWidth()/2*inv_scale
+    local y = self.y+16
+    love.graphics.draw(self.pseudo_text, x, y, 0, inv_scale)
+  end
+end
+
+-- override
+function Player:draw()
+  if self.visible then
+    LivingEntity.draw(self)
+  end
 end
 
 -- override
 function Player:drawOver()
-  LivingEntity.drawOver(self)
+  if self.visible then
+    LivingEntity.drawOver(self)
 
-  -- draw chat GUI
-  if self.chat_timer then
-    self.chat_gui:update()
-    local inv_scale = 1/client.world_scale
-    love.graphics.push()
-    love.graphics.translate(self.x+8-self.chat_gui.w/2*inv_scale, self.y-self.chat_gui.h*inv_scale-12)
-    love.graphics.scale(inv_scale)
-    client.gui_renderer:render(self.chat_gui) -- render
-    love.graphics.pop()
+    -- draw chat GUI
+    if self.chat_timer then
+      self.chat_gui:update()
+      local inv_scale = 1/client.world_scale
+      love.graphics.push()
+      love.graphics.translate(self.x+8-self.chat_gui.w/2*inv_scale, self.y-self.chat_gui.h*inv_scale-12)
+      love.graphics.scale(inv_scale)
+      client.gui_renderer:render(self.chat_gui) -- render
+      love.graphics.pop()
+    end
   end
 end
 
