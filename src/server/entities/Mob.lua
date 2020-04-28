@@ -58,8 +58,9 @@ end
 -- (starts a unique loop, will call itself again)
 function Mob:moveAI()
   if not self.move_ai_task then
-    local aggro = (self.target and self.target.map == self.map)
+    if self.target and self.target.ghost then self.target = nil end -- lose target if ghost
 
+    local aggro = (self.target and self.target.map == self.map)
     self.move_ai_task = task(utils.randf(0.75, (aggro and 1.5 or 7)), function()
       if self.map then
         if aggro then -- aggro

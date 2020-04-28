@@ -35,6 +35,7 @@ function LivingEntity:__construct(data)
   self.anim_y = data.orientation
 
   self.attacking = false
+  self.ghost = data.ghost
 
   -- default charaset
   self.charaset = {
@@ -120,6 +121,8 @@ function LivingEntity:onPacket(action, data)
     data.time = 0
 
     self.move_to_cell = data
+  elseif action == "ch_ghost" then
+    self.ghost = data
   end
 end
 
@@ -236,11 +239,15 @@ function LivingEntity:draw()
     local quad = self.atlas:getQuad(self.anim_x, self.anim_y)
 
     if quad then
+      if self.ghost then love.graphics.setColor(1,1,1,0.60) end
+
       love.graphics.draw(
         self.texture,
         quad,
         self.x-math.floor((self.atlas.cell_w-16)/2),
         self.y+16-self.atlas.cell_h)
+
+      if self.ghost then love.graphics.setColor(1,1,1) end
     end
   end
 end
