@@ -103,10 +103,11 @@ function Client:onPacket(protocol, data)
           local pass_hash = sha2.sha512("<server_salt>"..data.pseudo..data.password)
 
           local rows = self.server.db:query(q_login, {data.pseudo, pass_hash})
-          if rows and rows[1] then
+          if rows and rows[1] and not self.server.clients_by_id[tonumber(rows[1].id)] then
             local user_row = rows[1]
 
             self.user_id = tonumber(user_row.id) -- mark as logged
+            self.server.clients_by_id[self.user_id] = self
 
             -- load user data
             self.pseudo = user_row.pseudo
@@ -620,7 +621,11 @@ function Client:onDisconnect()
   if self.map then
     self.map:removeEntity(self)
   end
-  self.user_id = nil
+
+  if self.user_id then
+    self.server.clients_by_id[self.user_id] = nil
+    self.user_id = nil
+  end
 end
 
 -- override
