@@ -452,11 +452,11 @@ function Client:onPacket(protocol, data)
     if stats.alignment then self.g_stats:set(1,0, Text("Alignment: "..stats.alignment)) end
     if stats.health or stats.max_health then
       self.health_phial.factor = self.stats.health/self.stats.max_health
-      self.g_stats:set(1,1, Text("Health: "..self.stats.health.."/"..self.stats.max_health))
+      self.g_stats:set(1,1, Text("Health: "..self.stats.health.." / "..self.stats.max_health))
     end
     if stats.mana or stats.max_mana then
       self.mana_phial.factor = self.stats.mana/self.stats.max_mana
-      self.g_stats:set(1,2, Text("Mana: "..self.stats.mana.."/"..self.stats.max_mana))
+      self.g_stats:set(1,2, Text("Mana: "..self.stats.mana.." / "..self.stats.max_mana))
     end
 
     if stats.strength then self.g_stats:set(0,5, Text("Strength: "..stats.strength), true) end
@@ -475,7 +475,7 @@ function Client:onPacket(protocol, data)
     if stats.reputation then self.g_stats:set(1,7, Text("Reputation: "..stats.reputation)) end
     if stats.xp or stats.next_xp then
       self.xp_bar.factor = stats.xp/stats.next_xp
-      self.g_stats:set(1,8, Text("XP: "..stats.xp.."/"..stats.next_xp))
+      self.g_stats:set(1,8, Text("XP: "..stats.xp.." / "..stats.next_xp))
     end
   elseif protocol == net.PLAY_MUSIC then
     async(function()
