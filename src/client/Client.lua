@@ -526,6 +526,7 @@ function Client:onPacket(protocol, data)
 
     local dx, dy = tx-ox, ty-oy
     self.scroll = {
+      x = ox, y = oy,
       tx = tx, ty = ty,
       ox = ox, oy = oy,
       duration = math.sqrt(dx*dx+dy*dy)/64, -- 4 cells/s

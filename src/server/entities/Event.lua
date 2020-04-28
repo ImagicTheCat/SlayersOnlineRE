@@ -817,8 +817,8 @@ function command_functions:Teleport(state, map_name, cx, cy)
   if map_name and cx and cy then
     local map = self.client.server:getMap(map_name)
     if map then
-      self.client:teleport(cx*16, cy*16)
       map:addEntity(self.client)
+      self.client:teleport(cx*16, cy*16)
     end
   end
 end
@@ -968,8 +968,8 @@ function command_functions:GenereMonstre(state, name, x, y, amount)
     if mob_data then
       for i=1,amount do
         local mob = Mob(mob_data)
-        mob:teleport(x*16, y*16)
         self.map:addEntity(mob)
+        mob:teleport(x*16, y*16)
       end
     end
   end
