@@ -269,6 +269,7 @@ function Server:__construct(cfg)
   self.project.tilesets = {} -- map of id => tileset data
 
   self.clients = {} -- map of peer => client
+  self.clients_by_id = {} -- map of user id => logged client
   self.maps = {} -- map of id => map instances
   self.vars = {} -- server variables, map of id (str) => value (string or number)
   self.changed_vars = {} -- map of server var id
