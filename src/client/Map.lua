@@ -3,6 +3,9 @@ local TextureAtlas = require("TextureAtlas")
 
 local Map = class("Map")
 
+-- Afterimages are removed entities which are still drawed for a while (fade out).
+local AFTERIMAGE_DURATION = 2 -- seconds
+
 local function sort_entities(a, b)
   return a.y < b.y
 end
@@ -33,6 +36,7 @@ function Map:__construct(data)
   self.back_draw_list = {}
   self.dynamic_draw_list = {}
   self.front_draw_list = {}
+  self.afterimages = {} -- map of entity => time
 
   for _, edata in pairs(data.entities) do
     self:createEntity(edata)
@@ -80,6 +84,35 @@ function Map:tick(dt)
     entity:tick(dt)
   end
 
+  -- afterimages tick
+  for entity, time in pairs(self.afterimages) do
+    entity:tick(dt)
+
+    local ntime = time-dt
+    if ntime >= 0 then
+      self.afterimages[entity] = ntime
+    else -- remove
+      self.afterimages[entity] = nil
+
+      -- remove from draw list
+      local draw_list
+      if entity.draw_order < 0 then
+        draw_list = self.back_draw_list
+      elseif entity.draw_order > 0 then
+        draw_list = self.front_draw_list
+      else
+        draw_list = self.dynamic_draw_list
+      end
+
+      for i, f_entity in ipairs(draw_list) do
+        if entity == f_entity then
+          table.remove(draw_list, i)
+          break
+        end
+      end
+    end
+  end
+
   -- sort dynamic entities by Y (top-down sorting)
   table.sort(self.dynamic_draw_list, sort_entities)
 end
@@ -107,17 +140,32 @@ function Map:draw()
   -- base
   --- back entities
   for _, entity in ipairs(self.back_draw_list) do
-    entity:draw()
+    local ai_time = self.afterimages[entity]
+    if ai_time then -- draw afterimage
+      love.graphics.setColor(1,1,1,ai_time/AFTERIMAGE_DURATION)
+      entity:drawAfterimage()
+      love.graphics.setColor(1,1,1)
+    else entity:draw() end -- regular draw
   end
 
   --- dynamic entities
   for _, entity in ipairs(self.dynamic_draw_list) do
-    entity:draw()
+    local ai_time = self.afterimages[entity]
+    if ai_time then -- draw afterimage
+      love.graphics.setColor(1,1,1,ai_time/AFTERIMAGE_DURATION)
+      entity:drawAfterimage()
+      love.graphics.setColor(1,1,1)
+    else entity:draw() end -- regular draw
   end
 
   --- front entities
   for _, entity in ipairs(self.front_draw_list) do
-    entity:draw()
+    local ai_time = self.afterimages[entity]
+    if ai_time then -- draw afterimage
+      love.graphics.setColor(1,1,1,ai_time/AFTERIMAGE_DURATION)
+      entity:drawAfterimage()
+      love.graphics.setColor(1,1,1)
+    else entity:draw() end -- regular draw
   end
 
   -- over
@@ -164,25 +212,9 @@ end
 
 function Map:removeEntity(id)
   local entity = self.entities[id]
-  if entity then
+  if entity then -- remove entity / add to afterimages
     self.entities[id] = nil
-
-    -- remove from draw list
-    local draw_list
-    if entity.draw_order < 0 then
-      draw_list = self.back_draw_list
-    elseif entity.draw_order > 0 then
-      draw_list = self.front_draw_list
-    else
-      draw_list = self.dynamic_draw_list
-    end
-
-    for i, entity in ipairs(draw_list) do
-      if id == entity.id then
-        table.remove(draw_list, i)
-        break
-      end
-    end
+    self.afterimages[entity] = AFTERIMAGE_DURATION
   end
 end
 
