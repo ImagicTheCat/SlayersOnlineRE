@@ -386,17 +386,17 @@ local command_functions = {}
 
 function command_functions:AddObject(state, name, amount)
   amount = Event.computeExpression(amount) or 0
-  local object_id = self.client.server.project.objects_by_name[name]
-  if object_id and amount > 0 then
-    for i=1,amount do self.client.inventory:put(object_id) end
+  local id = self.client.server.project.objects_by_name[name]
+  if id and amount > 0 then
+    for i=1,amount do self.client.inventory:put(id) end
   end
 end
 
 function command_functions:DelObject(state, name, amount)
   amount = Event.computeExpression(amount) or 0
-  local object_id = self.client.server.project.objects_by_name[name]
-  if object_id and amount > 0 then
-    for i=1,amount do self.client.inventory:take(object_id) end
+  local id = self.client.server.project.objects_by_name[name]
+  if id and amount > 0 then
+    for i=1,amount do self.client.inventory:take(id) end
   end
 end
 
@@ -414,8 +414,8 @@ function command_functions:Teleport(state, map_name, cx, cy)
 end
 
 function command_functions:ChangeResPoint(state, map_name, cx, cy)
-  local cx = Event.computeExpression(cx)
-  local cy = Event.computeExpression(cy)
+  cx = Event.computeExpression(cx)
+  cy = Event.computeExpression(cy)
 
   if map_name and cx and cy then
     self.client.res_point = {
@@ -423,6 +423,15 @@ function command_functions:ChangeResPoint(state, map_name, cx, cy)
       cx = cx,
       cy = cy
     }
+  end
+end
+
+function command_functions:SScroll(state, cx, cy)
+  cx = Event.computeExpression(cx)
+  cy = Event.computeExpression(cy)
+
+  if cx and cy then
+    self.client:scrollTo(cx*16, cy*16)
   end
 end
 
@@ -553,6 +562,14 @@ function command_functions:GenereMonstre(state, name, x, y, amount)
 end
 
 function command_functions:TueMonstre(state)
+  -- TODO
+end
+
+function command_functions:AddMagie(state, name)
+  -- TODO
+end
+
+function command_functions:DelMagie(state, name)
   -- TODO
 end
 
@@ -914,6 +931,7 @@ function Event:trigger(condition)
   end
 
   -- end
+  self.client:resetScroll()
   table.remove(self.client.event_queue, 1)
 
   -- next event call

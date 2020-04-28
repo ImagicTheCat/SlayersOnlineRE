@@ -420,6 +420,12 @@ function Client:onPacket(protocol, data)
       else done = false end
 
       if done then self:updateCharacteristics() end
+    elseif protocol == net.SCROLL_END then
+      local r = self.scroll_task
+      if r then
+        self.scroll_task = nil
+        r()
+      end
     end
   end
 end
@@ -514,6 +520,17 @@ function Client:openShop(title, items)
   self:send(Client.makePacket(net.SHOP_OPEN, {title, buy_items, sell_items}))
 
   self.shop_task:wait()
+end
+
+-- (async) scroll client view to position
+function Client:scrollTo(x,y)
+  self.scroll_task = async()
+  self:send(Client.makePacket(net.SCROLL_TO, {x,y}))
+  self.scroll_task:wait()
+end
+
+function Client:resetScroll()
+  self:send(Client.makePacket(net.SCROLL_RESET))
 end
 
 function Client:kick(reason)
