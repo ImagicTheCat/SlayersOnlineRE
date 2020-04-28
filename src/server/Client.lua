@@ -57,7 +57,9 @@ function Client:__construct(server, peer)
 
   self.entities = {} -- bound map entities, map of entity
   self.events_by_name = {} -- map of name => event entity
-  self.event_queue = {} -- waiting event triggers, queue of callbacks
+  self.event_checks = {} -- map of event to check/update
+  self.triggered_events = {} -- map of event => trigger condition
+  -- self.running_event
 
   self.vars = {} -- map of id (number)  => value (number)
   self.var_listeners = {} -- map of id (number) => map of callback
@@ -462,6 +464,53 @@ function Client:timerTick()
   end
 end
 
+-- event handling
+function Client:eventTick()
+  if self.map and not self.running_event then
+    -- event checks (update event on page change)
+    local event_checks = self.event_checks
+    self.event_checks = {}
+    for event in pairs(event_checks) do
+      local page_index = event:selectPage()
+      if page_index ~= event.page_index then -- reload event
+        -- remove
+        local map = event.map
+        if map then
+          map:removeEntity(event)
+          -- re-create
+          map:addEntity(Event(self, event.data, page_index, event.x, event.y))
+        end
+      end
+    end
+
+    -- execute next visible/top-left event
+    local events = {}
+    for event in pairs(self.triggered_events) do
+      local dx, dy = event.cx-self.cx, event.cy-self.cy
+      if math.floor(math.sqrt(dx*dx+dy*dy)) <= Event.TRIGGER_RADIUS then
+        table.insert(events, event)
+      end
+    end
+
+    if #events > 0 then
+      -- sort ascending top-left
+      table.sort(events, function(a,b)
+        return a.cx < b.cx or a.cx == b.cx and a.cy < b.cy
+      end)
+
+      -- execute event
+      local event = events[1]
+      local condition = self.triggered_events[event]
+      self.triggered_events[event] = nil
+      self.running_event = event
+      async(function()
+        event:execute(condition)
+        self.running_event = nil
+      end)
+    end
+  end
+end
+
 -- (async) trigger event message box
 -- return when the message is skipped by the client
 function Client:requestMessage(msg)
@@ -593,18 +642,12 @@ function Client:onCellChange()
       if not self.ghost then
         for entity in pairs(cell) do
           if class.is(entity, Event) and entity.client == self and entity.trigger_contact then
-            async(function()
-              entity:trigger(Event.Condition.CONTACT)
-            end)
+            entity:trigger(Event.Condition.CONTACT)
           end
         end
       end
     end
   end
-end
-
-function Client:isRunningEvent()
-  return self.event_queue[1] ~= nil
 end
 
 function Client:interact()
@@ -613,10 +656,7 @@ function Client:interact()
 
   for _, entity in ipairs(entities) do
     if class.is(entity, Event) and entity.client == self and entity.trigger_interact then
-      async(function()
-        entity:trigger(Event.Condition.INTERACT)
-      end)
-
+      entity:trigger(Event.Condition.INTERACT)
       break
     end
   end

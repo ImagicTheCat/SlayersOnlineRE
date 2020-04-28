@@ -296,6 +296,7 @@ function Server:__construct(cfg)
   self.timer_task = itask(0.030, function()
     for peer, client in pairs(self.clients) do
       client:timerTick()
+      client:eventTick()
     end
   end)
 

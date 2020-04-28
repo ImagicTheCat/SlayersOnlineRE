@@ -14,6 +14,8 @@ local Event = class("Event", LivingEntity)
 
 -- STATICS
 
+Event.TRIGGER_RADIUS = 15*1000 -- visibility/trigger radius in cells
+
 Event.Position = {
   DYNAMIC = 0,
   FRONT = 1,
@@ -1220,16 +1222,16 @@ function Event:selectPage()
   return #self.data.pages
 end
 
--- (async) execute event script commands (will wait on instructions and for previous events to complete)
 -- condition: Event.Condition type triggered
 function Event:trigger(condition)
-  local r = async()
+  --print("TRIGGER", condition, self.cx, self.cy, self.page_index)
+  self.client.triggered_events[self] = condition
+end
 
-  --print("QUEUE TRIGGER", condition, self.cx, self.cy, self.page_index)
-  table.insert(self.client.event_queue, r)
-  if #self.client.event_queue > 1 then -- wait for previous event next call
-    r:wait()
-  end
+-- (async) execute event script commands
+-- condition: Event.Condition type triggered
+function Event:execute(condition)
+  --print("EXECUTE", condition, self.map.id, self.cx, self.cy, self.page_index)
 
   if condition == Event.Condition.INTERACT then
     local atype = self.animation_type
@@ -1239,8 +1241,6 @@ function Event:trigger(condition)
       self:setOrientation(orientation)
     end
   end
-
-  --print("TRIGGER", condition, self.cx, self.cy, self.page_index)
 
   -- execution context state
   local state = {
@@ -1322,13 +1322,6 @@ function Event:trigger(condition)
 
   -- end
   self.client:resetScroll()
-  table.remove(self.client.event_queue, 1)
-
-  -- next event call
-  local next_r = self.client.event_queue[1]
-  if next_r then
-    next_r()
-  end
 end
 
 -- trigger special variable (client/event) change event
@@ -1394,7 +1387,7 @@ function Event:moveAI()
       local ok
       local ncx, ncy
 
-      if not self.client:isRunningEvent() then -- prevent movement when an event is in execution
+      if not self.client.running_event then -- prevent movement when an event is in execution
         -- search for a passable cell
         local i = 1
         while not ok and i <= 10 do
@@ -1429,10 +1422,7 @@ end
 -- override
 function Event:onAttack(attacker)
   if class.is(attacker, Client) and self.trigger_attack then -- event
-    async(function()
-      self:trigger(Event.Condition.ATTACK)
-    end)
-
+    self:trigger(Event.Condition.ATTACK)
     return true
   end
 end
@@ -1447,20 +1437,7 @@ function Event:onMapChange()
 
     -- listen to conditions of all previous and current page
     --- callback on conditions change (select a new page)
-    self.vars_callback = function()
-      local page_index = self:selectPage()
-      if page_index ~= self.page_index then -- reload event
-        -- remove
-        local map = self.map
-        if map then
-          local x, y = self.x, self.y
-          map:removeEntity(self)
-
-          -- re-create
-          map:addEntity(Event(self.client, self.data, page_index, self.x, self.y))
-        end
-      end
-    end
+    self.vars_callback = function() self.client.event_checks[self] = true end
 
     for i=1,self.page_index do
       local page = self.data.pages[i]
@@ -1489,27 +1466,25 @@ function Event:onMapChange()
 
       -- task iteration
       local function iteration()
-        if self.trigger_task then
-          task(0.03, function()
-            async(function()
+        task(0.03, function()
+            if self.trigger_task then
               self:trigger(Event.Condition.AUTO)
               iteration()
-            end)
-          end)
-        end
+            end
+        end)
       end
 
       iteration()
     elseif self.trigger_auto_once then
-      task(0.03, function()
-        async(function()
-          self:trigger(Event.Condition.AUTO_ONCE)
-        end)
-      end)
+      self:trigger(Event.Condition.AUTO_ONCE)
     end
   else -- removed from map
     -- unreference event by name
     self.client.events_by_name[self.name] = nil
+
+    -- unreference trigger/check
+    self.client.event_checks[self] = nil
+    self.client.triggered_events[self] = nil
 
     -- unlisten to conditions of all previous and current page
     for i=1,self.page_index do
