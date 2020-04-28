@@ -1,7 +1,7 @@
 
 = Introduction
 
-This project is a rework of the client and server of Slayers Online, aiming to work with the already existing content and to be cross-platform.
+This project is a rewrite from scratch of the client and server of Slayers Online, aiming to work with the already existing content and to be cross-platform.
 
 .Infos
 code name:: Slayers Online RE
@@ -29,3 +29,9 @@ client:: LÖVE 11.x
 * https://github.com/ImagicTheCat/ELScheduler
 * https://fperrad.frama.io/lua-MessagePack/
 * https://github.com/Egor-Skriptunoff/pure_lua_SHA2
+
+.Copyright notice
+----
+Slayers Online RE - a rewrite from scratch of Slayers Online
+Copyright (c) 2019-2020 ImagicTheCat
+----

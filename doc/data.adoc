@@ -3,7 +3,9 @@
 
 This documentation is about understanding the data files used by Slayers Online.
 
+NOTE: Most of it has been reverse-engineered from the editor.
+
 .References
 * https://github.com/YannDub/SlayersOnline-Utils-Unity
 
-See the sources to understand how Slayers Online files are parsed (formatted).
+See link:../src/server/Deserializer.lua[Deserializer.lua] to understand how Slayers Online files are parsed (formatted).
