@@ -149,7 +149,7 @@ function Event.computeExpression(str)
   local ok, r = pcall(f)
   if ok then
     local n = tonumber(r)
-    if n then
+    if n and n == n and math.abs(n) ~= 1/0 then -- reject NaN/inf values
       return utils.round(n)
     end
   end
