@@ -495,8 +495,8 @@ function Client:onPacket(protocol, data)
     if stats.attack then self.g_stats:set(1,5, Text("Attack: "..stats.attack)) end
     if stats.defense then self.g_stats:set(1,6, Text("Defense: "..stats.defense)) end
     if stats.reputation then self.g_stats:set(1,7, Text("Reputation: "..stats.reputation)) end
-    if stats.xp or stats.next_xp then
-      self.xp_bar.factor = stats.xp/stats.next_xp
+    if stats.xp or stats.next_xp or stats.current_xp then
+      self.xp_bar.factor = (stats.xp-stats.current_xp)/(stats.next_xp-stats.current_xp)
       self.g_stats:set(1,8, Text("XP: "..stats.xp.." / "..stats.next_xp))
     end
   elseif protocol == net.PLAY_MUSIC then
