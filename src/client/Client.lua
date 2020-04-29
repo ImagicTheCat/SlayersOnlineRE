@@ -806,6 +806,13 @@ function Client:draw()
 
   -- map rendering
   if self.map then
+    -- background
+    if self.map.background then
+      love.graphics.draw(self.map.background, 0, 0, 0,
+        w/self.map.background:getWidth(), h/self.map.background:getHeight())
+    end
+
+    -- content
     love.graphics.push()
 
     -- center map render

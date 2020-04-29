@@ -22,6 +22,10 @@ function Map:__construct(data)
       self:build(data)
     end
 
+    if #data.background > 0 and client.net_manager:requestResource("textures/sets/"..data.background) then
+      self.background = client:loadTexture("resources/textures/sets/"..data.background)
+    end
+
     if data.music and client.net_manager:requestResource("audio/"..data.music) then
       client:playMusic("resources/audio/"..data.music)
     end

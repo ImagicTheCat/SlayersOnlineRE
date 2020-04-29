@@ -26,6 +26,7 @@ function Map:__construct(server, id, data)
   self.w = self.data.width
   self.h = self.data.height
   self.tileset = string.sub(self.data.tileset, 9) -- remove Chipset/ part
+  self.background = string.sub(self.data.background, 9) -- remove Chipset/ part
 
   local music_name = string.match(data.music, "^Sound\\(.+)%.mid$")
   self.music = music_name and music_name..".ogg"
@@ -218,6 +219,7 @@ function Map:serializeNet(client)
     w = self.w,
     h = self.h,
     tileset = self.tileset,
+    background = self.background,
     tiledata = self.tiledata,
     music = self.music
   }
