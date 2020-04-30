@@ -85,6 +85,7 @@ function Client:__construct(server, peer)
   self.blocked_cast = false
   self.blocked_chat = false
   self.strings = {"","",""} -- %StringX% vars (3)
+  self.move_forward_input = false
 
   self.player_config = {} -- stored player config
   self.player_config_changed = false
@@ -271,7 +272,9 @@ function Client:onPacket(protocol, data)
     if protocol == net.INPUT_ORIENTATION then
       if self:canMove() then self:setOrientation(tonumber(data) or 0) end
     elseif protocol == net.INPUT_MOVE_FORWARD then
-      if self:canMove() then self:setMoveForward(not not data) end
+      -- update input state (used to stop/resume movements correctly)
+      self.move_forward_input = not not data
+      if self:canMove() then self:setMoveForward(self.move_forward_input) end
     elseif protocol == net.INPUT_ATTACK then
       if self:canAttack() then self:act("attack", 1) end
     elseif protocol == net.INPUT_DEFEND then
@@ -530,6 +533,7 @@ function Client:eventTick()
       async(function()
         event:execute(condition)
         self.running_event = nil
+        self:setMoveForward(self.move_forward_input) -- resume movement
       end)
     end
   end
