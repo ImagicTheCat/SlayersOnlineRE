@@ -1,6 +1,11 @@
 local net = require("protocol")
 local LivingEntity = require("entities.LivingEntity")
 local Mob = require("entities.Mob")
+-- deferred require
+local Map
+task(0.01, function()
+  Map = require("Map")
+end)
 
 local Player = class("Player", LivingEntity)
 
@@ -24,7 +29,14 @@ function Player:onAttack(attacker)
     self:damage(attacker:computeAttack(self))
     return true
   elseif class.is(attacker, Player) then
-    self:damage(attacker:computeAttack(self))
+    if self.map and self.map.data.type == Map.Type.PVE then return false end
+
+    -- alignment loss
+    local amount = attacker:computeAttack(self)
+    if amount and self.map and self.map.data.type == Map.Type.PVE_PVP then
+      attacker:setAlignment(attacker.alignment-5)
+    end
+    self:damage(amount)
     self.last_attacker = attacker
     return true
   end
