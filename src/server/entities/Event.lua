@@ -1024,7 +1024,7 @@ end
 -- METHODS
 
 -- page_index, x, y: specific state or nil
-function Event:__construct(client, data, page_index, x, y)
+function Event:__construct(client, data, page_index)
   LivingEntity.__construct(self)
 
   self:setClient(client)
@@ -1057,9 +1057,6 @@ function Event:__construct(client, data, page_index, x, y)
       self.trigger_interact = true
     end
   end
-
-  -- init entity stuff
-  self:teleport(x or self.data.x*16, y or self.data.y*16)
 
   self:setCharaset({
     path = string.sub(self.page.set, 9), -- remove Chipset/ part
@@ -1251,6 +1248,7 @@ function Event:selectPage()
   return #self.data.pages
 end
 
+-- trigger the event (marked for execution, doesn't execute the event)
 -- condition: Event.Condition type triggered
 function Event:trigger(condition)
 --  print("TRIGGER", condition, self.cx, self.cy, self.page_index)
