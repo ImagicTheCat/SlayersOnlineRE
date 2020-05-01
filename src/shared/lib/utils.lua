@@ -120,4 +120,21 @@ function utils.gsub(str, pattern, callback)
   return table.concat(parts)
 end
 
+-- dump value (deep)
+-- v: value
+-- level: (optional) current level (default: 0)
+-- return string
+function utils.dump(v, level)
+  if not level then level = 0 end
+  if type(v) == "table" then
+    local lines = {}
+    for sk,sv in pairs(v) do
+      table.insert(lines, string.rep(" ", level*2)..sk.." = "..(type(sv) == "table" and "\n" or "")..utils.dump(sv, level+1))
+    end
+    return table.concat(lines, "\n")
+  else
+    return tostring(v)
+  end
+end
+
 return utils

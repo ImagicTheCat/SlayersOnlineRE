@@ -26,7 +26,8 @@ function Event:__construct(data)
 
   self.animation_type = data.animation_type
 
-  self.anim_x = data.animation_number or 0
+  self.animation_number = data.animation_number or 0
+  self.anim_x = self.animation_number
 
   self.anim_wc = data.animation_wc or 0
   self.anim_hc = data.animation_hc or 0
@@ -46,17 +47,21 @@ end
 function Event:onPacket(action, data)
   LivingEntity.onPacket(self, action, data)
 
-  if action == "ch_active" then
+  if action == "teleport" then
+    self.anim_x = self.animation_number
+  elseif action == "ch_active" then
     self.active = data
   elseif action == "ch_animation_type" then
     self.animation_type = data.animation_type
 
-    self.anim_x = data.animation_number or 0
+    self.animation_number = data.animation_number or 0
+    self.anim_x = self.animation_number
 
     self.anim_wc = data.animation_wc or 0
     self.anim_hc = data.animation_hc or 0
   elseif action == "ch_animation_number" then
-    self.anim_x = data.animation_number
+    self.animation_number = data.animation_number
+    self.anim_x = self.animation_number
   end
 end
 

@@ -1023,7 +1023,7 @@ end
 
 -- METHODS
 
--- page_index, x, y: specific state or nil
+-- page_index: specific state or nil
 function Event:__construct(client, data, page_index)
   LivingEntity.__construct(self)
 
