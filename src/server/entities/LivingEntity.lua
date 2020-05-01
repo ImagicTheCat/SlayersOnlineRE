@@ -182,6 +182,7 @@ end
 --- "attack"
 --- "defend"
 --- "cast"
+--- "use"
 function LivingEntity:act(action, duration)
   if not self.acting then
     self.acting = action

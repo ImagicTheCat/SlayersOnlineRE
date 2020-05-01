@@ -62,9 +62,17 @@ function Inventory.Content:updateContent()
     self.grid:init(self.columns, rows)
 
     for i, item in ipairs(self.display_items) do
+      local id = item[1]
       local data = item[2]
+
+      -- quick action prefixes
+      local prefix = ""
+      if client:isQuickAction(1, "item", id) then prefix = prefix.."[Q1]" end
+      if client:isQuickAction(2, "item", id) then prefix = prefix.."[Q2]" end
+      if client:isQuickAction(3, "item", id) then prefix = prefix.."[Q3]" end
+
       local cx, cy = (i-1)%self.columns, math.floor((i-1)/self.columns)
-      self.grid:set(cx, cy, Text(Inventory.formatItem(data)), true)
+      self.grid:set(cx, cy, Text(prefix.." "..Inventory.formatItem(data)), true)
     end
 
     self:trigger("selection-update")
@@ -101,6 +109,16 @@ function Inventory:__construct()
       -- open item action menu
       self.w_menu.content:add(self.menu)
       self.gui:setFocus(self.menu)
+    end
+  end)
+
+  self.content.grid:listen("control-press", function(grid, id)
+    -- quick action binding
+    local item = self.content:getSelection()
+    if item then
+      if id == "quick1" then client:bindQuickAction(1, "item", item[1])
+      elseif id == "quick2" then client:bindQuickAction(2, "item", item[1])
+      elseif id == "quick3" then client:bindQuickAction(3, "item", item[1]) end
     end
   end)
 
