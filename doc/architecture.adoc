@@ -16,6 +16,17 @@ base game files:: base/default files
 `resources_repository/` game data files (streaming):: resources acquired from the remote repository
 `resources/` game data files:: can be used to customize the game resources
 
+.Required base resources
+- `audio/Cursor1.wav`
+- `audio/Item1.wav`
+- `font.ttf`
+- `textures/phials.png`
+- `textures/system.png`
+- `textures/xp.png`
+- `textures/sets/tileset.png` (default tileset on error)
+- `textures/sets/charaset.png` (default charaset on error)
+- `textures/loadings/...` (loading screens)
+
 === Streaming
 
 .Not all resources are remote-requested before being used, here is the process when they are:
