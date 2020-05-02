@@ -795,7 +795,7 @@ end
 local command_functions = {}
 
 function command_functions:AddObject(state, name, amount)
-  amount = Event.computeExpression(amount or "") or 0
+  amount = Event.computeExpression(amount or "") or 1
   local id = self.client.server.project.objects_by_name[name]
   if id and amount > 0 then
     for i=1,amount do self.client.inventory:put(id) end
@@ -803,7 +803,7 @@ function command_functions:AddObject(state, name, amount)
 end
 
 function command_functions:DelObject(state, name, amount)
-  amount = Event.computeExpression(amount or "") or 0
+  amount = Event.computeExpression(amount or "") or 1
   local id = self.client.server.project.objects_by_name[name]
   if id and amount > 0 then
     for i=1,amount do self.client.inventory:take(id) end
