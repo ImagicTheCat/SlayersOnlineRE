@@ -101,7 +101,7 @@ function Client:onPacket(protocol, data)
         self.valid = true
         self:send(Client.makePacket(net.MOTD_LOGIN, self.server.motd)) -- send motd (start login)
       else
-        self:kick("server/client version mismatch, download the latest client release to fix the issue")
+        self:kick("Version du client incompatible avec le serveur, téléchargez la dernière version pour résoudre le problème.")
       end
     elseif self.valid and protocol == net.LOGIN then -- login
       if not self.user_id and type(data) == "table" and type(data.pseudo) == "string" and type(data.password) == "string" then
@@ -261,9 +261,9 @@ function Client:onPacket(protocol, data)
               mana = self.mana
             }))
 
-            self:sendChatMessage("Logged in.")
+            self:sendChatMessage("Identifié.")
           else -- login failed
-            self:sendChatMessage("Login failed.")
+            self:sendChatMessage("Identification échouée.")
             self:send(Client.makePacket(net.MOTD_LOGIN, self.server.motd)) -- send motd (start login)
           end
         end)

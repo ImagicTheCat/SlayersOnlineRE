@@ -73,7 +73,7 @@ commands.help = {function(self, client, args)
         print(table.concat(lines, "\n"))
       end
     else
-      local msg = "help: unknown command \""..id.."\""
+      local msg = "help: commande \""..id.."\" inconnue"
       if client then
         client:sendChatMessage(msg)
       else
@@ -82,7 +82,7 @@ commands.help = {function(self, client, args)
     end
   else -- all commands
     local lines = {}
-    table.insert(lines, "Commands:")
+    table.insert(lines, "Commandes:")
     for id, cmd in pairs(commands) do
       table.insert(lines, "  "..id.." "..cmd[2])
       table.insert(lines, "    "..cmd[3])
@@ -94,7 +94,7 @@ commands.help = {function(self, client, args)
       print(table.concat(lines, "\n"))
     end
   end
-end, "[command]", "list all commands or print info for a single command"}
+end, "[command]", "lister toutes les commandes ou afficher l'aide d'une commande"}
 
 local bind_blacklist = {
   ["return"] = true,
@@ -108,19 +108,19 @@ commands.bind = {function(self, client, args)
     if control then
       if not bind_blacklist[scancode] then
         client:applyConfig({scancode_controls = {[scancode] = control}})
-        client:sendChatMessage("bound \""..scancode.."\" to \""..control.."\"")
+        client:sendChatMessage("\""..scancode.."\" assigné à \""..control.."\"")
       else
-        client:sendChatMessage("scancode \""..scancode.."\" can't be re-mapped")
+        client:sendChatMessage("scancode \""..scancode.."\" ne peut pas être réassigné")
       end
     else
       local controls = client.player_config.scancode_controls
       local control = (controls and controls[scancode] or "none")
-      client:sendChatMessage("\""..scancode.."\" is bound to \""..control.."\"")
+      client:sendChatMessage("\""..scancode.."\" est assigné à \""..control.."\"")
     end
   end
-end, "<scancode> [control]", [[show or map a LÖVE/SDL scancode to a control
+end, "<scancode> [control]", [[afficher ou assigner un (LÖVE/SDL) scancode à un contrôle
     scancodes: https://love2d.org/wiki/Scancode
-    controls: none, up, right, down, left, interact, attack, return, menu]]
+    contrôles: none, up, right, down, left, interact, attack, defend, quick1, quick2, quick3, return, menu]]
 }
 
 commands.volume = {function(self, client, args)
@@ -132,7 +132,7 @@ commands.volume = {function(self, client, args)
       return true
     end
   end
-end, "<type> <volume>", [[set volume
+end, "<type> <volume>", [[changer le volume
     types: master
     volume: 0-1]]
 }
@@ -152,18 +152,18 @@ commands.gui = {function(self, client, args)
       client:sendChatMessage("invalid parameter \""..param.."\"")
     end
   end
-end, "<parameter> <value>", [[set GUI parameters
-    - font_size (size in pixels)
-    - dialog_height (0-1 factor)
-    - chat_height (0-1 factor)]]
+end, "<parameter> <value>", [[changer les paramètres de la GUI
+    - font_size (taille en pixels)
+    - dialog_height (0-1 facteur)
+    - chat_height (0-1 facteur)]]
 }
 
 commands.memory = {function(self, client, args)
   if not client then
     local MB = collectgarbage("count")*1024/1000000
-    print("Lua main memory usage: "..MB.." MB")
+    print("Mémoire utilisée (Lua GC): "..MB.." Mo")
   end
-end, "", "print memory used by Lua"}
+end, "", "afficher la mémoire utilisée par la VM Lua"}
 
 commands.count = {function(self, client, args)
   local count = 0
@@ -172,21 +172,21 @@ commands.count = {function(self, client, args)
   end
 
   if client then
-    client:sendChatMessage(count.." online players")
+    client:sendChatMessage(count.." joueurs en ligne")
   else
-    print(count.." online players")
+    print(count.." joueurs en ligne")
   end
-end, "", "print number of online players"}
+end, "", "afficher le nombre de joueurs en ligne"}
 
 commands.where = {function(self, client, args)
   if client then
     if client.map then
       client:sendChatMessage(client.map.id.." "..client.cx..","..client.cy)
     else
-      client:sendChatMessage("not on a map")
+      client:sendChatMessage("pas sur une map")
     end
   end
-end, "", "print location"}
+end, "", "afficher sa position"}
 
 commands.skin = {function(self, client, args)
   if client then
@@ -203,7 +203,7 @@ commands.skin = {function(self, client, args)
 
     client:sendChatMessage("skin set to \""..skin.."\"")
   end
-end, "<skin_name>", "change skin"}
+end, "<skin_name>", "changer son skin"}
 
 commands.tp = {function(self, client, args)
   if client then
@@ -220,7 +220,7 @@ commands.tp = {function(self, client, args)
           map:addEntity(client)
           client:teleport(cx*16,cy*16)
         else
-          client:sendChatMessage("invalid map \""..map_name.."\"")
+          client:sendChatMessage("map \""..map_name.."\" invalide")
         end
       end
     end
@@ -229,7 +229,7 @@ commands.tp = {function(self, client, args)
       return true
     end
   end
-end, "<map> <cx> <cy>", "teleport to coordinates"}
+end, "<map> <cx> <cy>", "se teleporter"}
 
 -- testing command
 commands.chest = {function(self, client, args)
@@ -238,7 +238,7 @@ commands.chest = {function(self, client, args)
       client:openChest("Test.")
     end)
   end
-end, "", "open chest"}
+end, "", "ouvrir son coffre (test)"}
 
 -- testing command
 commands.shop = {function(self, client, args)
@@ -247,12 +247,12 @@ commands.shop = {function(self, client, args)
       client:openShop("Test.", {1,2,3,4})
     end)
   end
-end, "", "open shop"}
+end, "", "ouvrir un magasin (test)"}
 
 -- testing command
 commands.kill = {function(self, client, args)
   if client then client:setHealth(0) end
-end, "", "suicide"}
+end, "", "se suicider"}
 
 -- global chat
 commands.all = {function(self, client, args)
@@ -267,7 +267,7 @@ commands.all = {function(self, client, args)
       client:send(packet)
     end
   end
-end, "", "global chat"}
+end, "", "chat global"}
 
 -- server chat
 commands.say = {function(self, client, args)
@@ -279,7 +279,7 @@ commands.say = {function(self, client, args)
       client:send(packet)
     end
   end
-end, "", "server chat"}
+end, "", "envoyer un message serveur"}
 
 -- account creation
 commands.create_account = {function(self, client, args)
@@ -290,9 +290,9 @@ commands.create_account = {function(self, client, args)
     local client_password = sha2.hex2bin(sha2.sha512("<client_salt>"..pseudo..args[3]))
     local password = sha2.sha512("<server_salt>"..pseudo..client_password)
     self.db:_query(q_create_account, {pseudo = args[2], password = password})
-    print("account created")
+    print("compte créé")
   end
-end, "<pseudo> <password>", ""}
+end, "<pseudo> <password>", "créer un compte"}
 
 
 
@@ -512,7 +512,7 @@ function Server:processCommand(client, args)
   local command = commands[args[1]]
   if command then
     if command[1](self, client, args) then
-      local msg = "usage: "..args[1].." "..command[2]
+      local msg = "utilisation: "..args[1].." "..command[2]
       if client then
         client:sendChatMessage(msg)
       else
@@ -520,7 +520,7 @@ function Server:processCommand(client, args)
       end
     end
   else
-    local msg = "unknown command \""..args[1].."\" (command \"help\" to list all)"
+    local msg = "commande \""..args[1].."\" inconnue (commande \"help\" pour la liste)"
     if client then
       client:sendChatMessage(msg)
     else
