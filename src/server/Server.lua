@@ -7,6 +7,7 @@ local utils = require("lib.utils")
 local Deserializer = require("Deserializer")
 local magick = require("magick")
 local DBManager = require("DBManager")
+local net = require("protocol")
 
 local Server = class("Server")
 
@@ -225,6 +226,33 @@ commands.kill = {function(self, client, args)
   if client then client:setHealth(0) end
 end, "", "suicide"}
 
+-- global chat
+commands.all = {function(self, client, args)
+  if client and client.user_id then
+    local packet = Client.makePacket(net.GLOBAL_CHAT, {
+      pseudo = client.pseudo,
+      msg = table.concat(args, " ", 2)
+    })
+
+    -- broadcast to all logged clients
+    for id, client in pairs(self.clients_by_id) do
+      client:send(packet)
+    end
+  end
+end, "", "global chat"}
+
+-- server chat
+commands.say = {function(self, client, args)
+  if not client then
+    local packet = Client.makePacket(net.CHAT_MESSAGE_SERVER, table.concat(args, " ", 2))
+
+    -- broadcast to all logged clients
+    for id, client in pairs(self.clients_by_id) do
+      client:send(packet)
+    end
+  end
+end, "", "server chat"}
+
 -- CONSOLE THREAD
 local function console_main(flags, channel)
   while flags.running do
@@ -239,12 +267,12 @@ end
 -- return command args
 function Server.parseCommand(str)
   str = string.gsub(str, "\"(.-)\"", function(content)
-    return string.gsub(content, "%s", "\\s")
+    return string.gsub(content, " ", "\\s")
   end)
 
   local args = {}
 
-  for arg in string.gmatch(str, "([^%s]+)") do
+  for arg in string.gmatch(str, "([^ ]+)") do
     arg = string.gsub(arg, "\\s", " ")
     table.insert(args, arg)
   end
