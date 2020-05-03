@@ -1,5 +1,6 @@
 local entities = require("entities.entities")
 local TextureAtlas = require("TextureAtlas")
+local LivingEntity = require("entities.LivingEntity")
 
 local Map = class("Map")
 
@@ -32,6 +33,7 @@ function Map:__construct(data)
   end)
 
   self.data = data
+  self.packet_index = data.packet_index
   
   -- build entities
   self.entities = {} -- map of id => entity
@@ -77,6 +79,22 @@ function Map:build(data)
         if high_quad then
           self.high_layer:add(high_quad, x*16, y*16)
         end
+      end
+    end
+  end
+end
+
+function Map:onMovementsPacket(data)
+  -- check same map and valid packet
+  if data.mi == self.data.map_index and data.pi > self.packet_index then
+    self.packet_index = data.pi
+
+    -- updates
+    for _, entry in ipairs(data.entities) do
+      local id, x, y = unpack(entry)
+      local entity = self.entities[id]
+      if entity and class.is(entity, LivingEntity) then
+        entity:onUpdatePosition(x,y)
       end
     end
   end

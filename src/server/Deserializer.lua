@@ -201,6 +201,7 @@ function Deserializer.loadProject(name)
 
     for i=1,prj.map_count do
       local map = Deserializer.readProjectEntry(file_prj)
+      map.index = i
       prj.maps[map.name] = map
     end
 

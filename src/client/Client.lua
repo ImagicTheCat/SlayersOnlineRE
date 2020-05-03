@@ -396,15 +396,7 @@ function Client:onPacket(protocol, data)
       end
     end
   elseif protocol == net.MAP_MOVEMENTS then
-    if self.map then
-      for _, entry in ipairs(data) do
-        local id, x, y = unpack(entry)
-        local entity = self.map.entities[id]
-        if entity and class.is(entity, LivingEntity) then
-          entity:onUpdatePosition(x,y)
-        end
-      end
-    end
+    if self.map then self.map:onMovementsPacket(data) end
   elseif protocol == net.MAP_CHAT then
     if self.map then
       local entity = self.map.entities[data.id]
