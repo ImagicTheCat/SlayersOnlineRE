@@ -5,7 +5,7 @@ local Client = require("Client")
 local Map = require("Map")
 local utils = require("lib.utils")
 local Deserializer = require("Deserializer")
-local magick = require("magick")
+local vips = require("vips")
 local sha2 = require("sha2")
 local DBManager = require("DBManager")
 local net = require("protocol")
@@ -548,14 +548,13 @@ function Server:loadTilesetData(id)
   local data = self.project.tilesets[id]
 
   if not data then -- load tileset data
-    local image = magick.load_image("resources/project/Chipset/"..id..".png")
-    if image then
+    local ok, image = pcall(vips.Image.new_from_file, "resources/project/Chipset/"..id..".png")
+    if ok then
       data = {}
 
       -- dimensions
-      data.w, data.h = image:get_width(), image:get_height()
+      data.w, data.h = image:width(), image:height()
       data.wc, data.hc = data.w/16, data.h/16
-      image:destroy()
 
       -- passable data
       data.passable = Deserializer.loadTilesetPassableData(id)
