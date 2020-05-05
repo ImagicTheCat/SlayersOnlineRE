@@ -6,6 +6,7 @@ local Map = require("Map")
 local utils = require("lib.utils")
 local Deserializer = require("Deserializer")
 local magick = require("magick")
+local sha2 = require("sha2")
 local DBManager = require("DBManager")
 local net = require("protocol")
 
@@ -17,6 +18,33 @@ local Server = class("Server")
 
 local q_set_var = "INSERT INTO server_vars(id, value) VALUES({1}, {2}) ON DUPLICATE KEY UPDATE value = {2}"
 local q_get_vars = "SELECT id,value FROM server_vars"
+local q_create_account = [[
+INSERT INTO users(
+  pseudo,
+  password,
+  class,
+  level,
+  alignment,
+  reputation,
+  gold,
+  chest_gold,
+  xp,
+  strength_pts,
+  dexterity_pts,
+  constitution_pts,
+  magic_pts,
+  remaining_pts,
+  weapon_slot,
+  shield_slot,
+  helmet_slot,
+  armor_slot
+) VALUES(
+  {pseudo}, UNHEX({password}),
+  1, 1, 100, 0, 0,
+  0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0
+);
+]]
 
 -- COMMANDS
 
@@ -252,6 +280,21 @@ commands.say = {function(self, client, args)
     end
   end
 end, "", "server chat"}
+
+-- account creation
+commands.create_account = {function(self, client, args)
+  if not client then
+    if #args < 3 or #args[2] == 0 or #args[3] == 0 then return true end -- wrong parameters
+
+    local pseudo = args[2]
+    local client_password = sha2.hex2bin(sha2.sha512("<client_salt>"..pseudo..args[3]))
+    local password = sha2.sha512("<server_salt>"..pseudo..client_password)
+    self.db:_query(q_create_account, {pseudo = args[2], password = password})
+    print("account created")
+  end
+end, "<pseudo> <password>", ""}
+
+
 
 -- CONSOLE THREAD
 local function console_main(flags, channel)
