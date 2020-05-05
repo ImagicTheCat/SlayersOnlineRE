@@ -44,6 +44,9 @@ function Player:drawUnder()
     local inv_scale = 1/client.world_scale
     local x = (self.x+8)-self.pseudo_text:getWidth()/2*inv_scale
     local y = self.y+16
+    love.graphics.setColor(0,0,0,0.50)
+    love.graphics.draw(self.pseudo_text, x+2*inv_scale, y+2*inv_scale, 0, inv_scale) -- shadowing
+    love.graphics.setColor(1,1,1)
     love.graphics.draw(self.pseudo_text, x, y, 0, inv_scale)
   end
 end
