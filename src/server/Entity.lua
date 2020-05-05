@@ -55,9 +55,9 @@ end
 function Entity:teleport(x,y)
   self.x = x
   self.y = y
-  self:updateCell()
-
   self:broadcastPacket("teleport", {x,y})
+
+  self:updateCell()
 end
 
 -- should return a net data table
