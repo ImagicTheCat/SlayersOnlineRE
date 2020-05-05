@@ -220,10 +220,10 @@ function Client:onPacket(protocol, data)
             end
 
             ---- location
-            local map
+            local map, x, y
             if state.location then
               map = self.server:getMap(state.location.map)
-              self:teleport(state.location.x, state.location.y)
+              x,y = state.location.x, state.location.y
             end
 
             if state.orientation then
@@ -237,10 +237,11 @@ function Client:onPacket(protocol, data)
             if not map then
               local spawn_location = self.server.cfg.spawn_location
               map = self.server:getMap(spawn_location.map)
-              self:teleport(spawn_location.cx*16, spawn_location.cy*16)
+              x,y = spawn_location.cx*16, spawn_location.cy*16
             end
 
             map:addEntity(self)
+            self:teleport(x,y)
 
             -- compute characteristics, send/init stats
             self:updateCharacteristics()
@@ -496,7 +497,9 @@ function Client:eventTick()
         if map then
           map:removeEntity(event)
           -- re-create
-          map:addEntity(Event(self, event.data, page_index, event.x, event.y))
+          local nevent = Event(self, event.data, page_index)
+          map:addEntity(nevent)
+          nevent:teleport(event.x, event.y)
         end
       end
     end
@@ -663,12 +666,16 @@ function Client:onMapChange()
   Player.onMapChange(self)
 
   if self.map then -- join map
+    self.prevent_next_contact = true -- prevent cell contact on map join
+
     -- send map
     self:send(Client.makePacket(net.MAP, {map = self.map:serializeNet(self), id = self.id}))
 
     -- build events
     for _, event_data in ipairs(self.map.data.events) do
-      self.map:addEntity(Event(self, event_data))
+      local event = Event(self, event_data)
+      self.map:addEntity(event)
+      event:teleport(event_data.x*16, event_data.y*16)
     end
   end
 end
@@ -684,7 +691,7 @@ function Client:onCellChange()
     local cell = self.map:getCell(self.cx, self.cy)
     if cell then
       -- event contact check
-      if not self.ghost then
+      if not self.ghost and not self.prevent_next_contact then
         for entity in pairs(cell) do
           if class.is(entity, Event) and entity.client == self and entity.trigger_contact then
             entity:trigger(Event.Condition.CONTACT)
@@ -692,6 +699,8 @@ function Client:onCellChange()
         end
       end
     end
+
+    self.prevent_next_contact = nil
   end
 end
 

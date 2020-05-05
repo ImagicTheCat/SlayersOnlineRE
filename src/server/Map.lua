@@ -90,6 +90,7 @@ function Map:removeFromCell(entity, x, y)
 end
 
 -- will remove the entity from its previous map
+-- adding an entity set its position to (-1,-1) cell, it must be teleported afterwards
 function Map:addEntity(entity)
   -- remove the entity from the previous map
   if entity.map then
@@ -102,7 +103,8 @@ function Map:addEntity(entity)
     self.entities[entity] = id
     entity.id = id
     entity.map = self
-    self:addToCell(entity, entity.cx, entity.cy)
+    entity.x, entity.y = -16, -16
+    entity.cx, entity.cy = -1, -1
 
     -- reference client bound entity
     if entity.client then
