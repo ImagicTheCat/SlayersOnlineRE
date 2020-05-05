@@ -541,6 +541,8 @@ function Client:onPacket(protocol, data)
     self.scroll = nil
   elseif protocol == net.VIEW_SHIFT_UPDATE then
     self.view_shift = data
+  elseif protocol == net.GLOBAL_CHAT then
+    self.chat_history:addMessage({{0,0.5,1}, data.pseudo.."(all): ", {1,1,1}, data.msg})
   end
 end
 
