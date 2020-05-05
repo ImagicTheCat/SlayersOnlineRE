@@ -193,11 +193,11 @@ function Client:__construct(cfg)
   self.menu:setVisible(false)
 
   self.menu_grid = GridInterface(1,5)
-  self.menu_grid:set(0,0, Text("Inventory"), true)
-  self.menu_grid:set(0,1, Text("Spells"), true)
-  self.menu_grid:set(0,2, Text("Stats"), true)
-  self.menu_grid:set(0,3, Text("Trade"), true)
-  self.menu_grid:set(0,4, Text("Quit"), true)
+  self.menu_grid:set(0,0, Text("Inventaire"), true)
+  self.menu_grid:set(0,1, Text("Magie"), true)
+  self.menu_grid:set(0,2, Text("Statistiques"), true)
+  self.menu_grid:set(0,3, Text("Échange"), true)
+  self.menu_grid:set(0,4, Text("Quitter"), true)
   self.menu_grid:listen("cell-select", function(grid, cx, cy)
     if cy == 0 then
       self.inventory.content:updateContent()
@@ -365,12 +365,12 @@ function Client:onPacket(protocol, data)
       --- load remote manifest
       if not self.net_manager:loadRemoteManifest() then
         print("couldn't reach remote resources repository manifest")
-        self.chat_history:addMessage({{0,1,0.5}, "Couldn't reach remote resources repository manifest."})
+        self.chat_history:addMessage({{0,1,0.5}, "Impossible de joindre le dépôt distant de ressources."})
         return
       end
 
       local pseudo = self:prompt(motd.."\n\nPseudo: ")
-      local password = self:prompt(motd.."\n\nPassword: ")
+      local password = self:prompt(motd.."\n\nMot de passe: ")
 
       local pass_hash = sha2.hex2bin(sha2.sha512("<client_salt>"..pseudo..password))
       self:sendPacket(net.LOGIN, {pseudo = pseudo, password = pass_hash})
@@ -464,11 +464,11 @@ function Client:onPacket(protocol, data)
     utils.mergeInto(stats, self.stats)
 
     -- updates
-    if stats.name then self.g_stats:set(0,0, Text("Name: "..stats.name)) end
-    if stats.class then self.g_stats:set(0,1, Text("Class: "..stats.class)) end
-    if stats.level then self.g_stats:set(0,2, Text("Level: "..stats.level)) end
+    if stats.name then self.g_stats:set(0,0, Text("Nom: "..stats.name)) end
+    if stats.class then self.g_stats:set(0,1, Text("Classe: "..stats.class)) end
+    if stats.level then self.g_stats:set(0,2, Text("Niveau: "..stats.level)) end
     if stats.gold then
-      self.g_stats:set(0,3, Text("Gold: "..stats.gold))
+      self.g_stats:set(0,3, Text("Or: "..stats.gold))
       self.chest.gold_l_display:set(stats.gold)
       self.shop.content:moveSelect(0,0) -- actualize
     end
@@ -476,30 +476,30 @@ function Client:onPacket(protocol, data)
       self.chest.gold_r_display:set(stats.chest_gold)
     end
 
-    if stats.alignment then self.g_stats:set(1,0, Text("Alignment: "..stats.alignment)) end
+    if stats.alignment then self.g_stats:set(1,0, Text("Alignement: "..stats.alignment)) end
     if stats.health or stats.max_health then
       self.health_phial.factor = self.stats.health/self.stats.max_health
-      self.g_stats:set(1,1, Text("Health: "..self.stats.health.." / "..self.stats.max_health))
+      self.g_stats:set(1,1, Text("Vie: "..self.stats.health.." / "..self.stats.max_health))
     end
     if stats.mana or stats.max_mana then
       self.mana_phial.factor = self.stats.mana/self.stats.max_mana
       self.g_stats:set(1,2, Text("Mana: "..self.stats.mana.." / "..self.stats.max_mana))
     end
 
-    if stats.strength then self.g_stats:set(0,5, Text("Strength: "..stats.strength), true) end
-    if stats.dexterity then self.g_stats:set(0,6, Text("Dexterity: "..stats.dexterity), true) end
+    if stats.strength then self.g_stats:set(0,5, Text("Force: "..stats.strength), true) end
+    if stats.dexterity then self.g_stats:set(0,6, Text("Dextérité: "..stats.dexterity), true) end
     if stats.constitution then self.g_stats:set(0,7, Text("Constitution: "..stats.constitution), true) end
-    if stats.magic then self.g_stats:set(0,8, Text("Magic: "..stats.magic)) end
-    if stats.points then self.g_stats:set(0,9, Text("Remaining points: "..stats.points)) end
+    if stats.magic then self.g_stats:set(0,8, Text("Magie: "..stats.magic)) end
+    if stats.points then self.g_stats:set(0,9, Text("Points restants."..stats.points)) end
 
-    if stats.helmet_slot then self.g_stats:set(0,11, Text("Helmet: "..stats.helmet_slot.name), true) end
-    if stats.armor_slot then self.g_stats:set(0,12, Text("Armor: "..stats.armor_slot.name), true) end
-    if stats.weapon_slot then self.g_stats:set(0,13, Text("Weapon: "..stats.weapon_slot.name), true) end
-    if stats.shield_slot then self.g_stats:set(0,14, Text("Shield: "..stats.shield_slot.name), true) end
+    if stats.helmet_slot then self.g_stats:set(0,11, Text("Casque: "..stats.helmet_slot.name), true) end
+    if stats.armor_slot then self.g_stats:set(0,12, Text("Armure: "..stats.armor_slot.name), true) end
+    if stats.weapon_slot then self.g_stats:set(0,13, Text("Arme: "..stats.weapon_slot.name), true) end
+    if stats.shield_slot then self.g_stats:set(0,14, Text("Bouclier: "..stats.shield_slot.name), true) end
 
-    if stats.attack then self.g_stats:set(1,5, Text("Attack: "..stats.attack)) end
-    if stats.defense then self.g_stats:set(1,6, Text("Defense: "..stats.defense)) end
-    if stats.reputation then self.g_stats:set(1,7, Text("Reputation: "..stats.reputation)) end
+    if stats.attack then self.g_stats:set(1,5, Text("Attaque: "..stats.attack)) end
+    if stats.defense then self.g_stats:set(1,6, Text("Défense: "..stats.defense)) end
+    if stats.reputation then self.g_stats:set(1,7, Text("Réputation: "..stats.reputation)) end
     if stats.xp or stats.next_xp or stats.current_xp then
       self.xp_bar.factor = (stats.xp-stats.current_xp)/(stats.next_xp-stats.current_xp)
       self.g_stats:set(1,8, Text("XP: "..stats.xp.." / "..stats.next_xp))
@@ -552,7 +552,7 @@ function Client:sendPacket(protocol, data, unsequenced)
 end
 
 function Client:onDisconnect()
-  self.chat_history:addMessage({{0,1,0.5}, "Disconnected from server."})
+  self.chat_history:addMessage({{0,1,0.5}, "Déconnecté du serveur."})
 end
 
 function Client:close()
@@ -634,7 +634,7 @@ function Client:onResize(w, h)
   self.input_query:setPosition(2, 2)
   self.input_query:setSize(w-4, message_height)
 
-  local w_menu = self.font:getWidth("Inventory")+24
+  local w_menu = self.font:getWidth("Statistiques")+24
   local h_menu = (self.font:getHeight()+6)*5+12
   self.menu:setPosition(2, h/2-h_menu/2)
   self.menu:setSize(w_menu, h_menu)

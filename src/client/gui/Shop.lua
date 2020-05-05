@@ -13,7 +13,7 @@ function Shop.formatBuyItem(item)
 end
 
 function Shop.formatBuyItemInfo(item)
-  return item.description.."\nPrice: "..item.price.."\nTotal: "..(item.price*(item.amount or 0))
+  return item.description.."\nPrix: "..item.price.."\nTotal: "..(item.price*(item.amount or 0))
 end
 
 function Shop.formatSellItem(item)
@@ -26,7 +26,7 @@ end
 
 function Shop.formatSellItemInfo(item)
   if item.amount > 0 then
-    return item.description.."\nSell price: "..math.ceil(item.price*0.1)
+    return item.description.."\nPrix de vente: "..math.ceil(item.price*0.1)
   else
     return ""
   end
@@ -42,8 +42,8 @@ function Shop:__construct()
   self.menu = GridInterface(1,3,"vertical")
   self.menu_title = Text("title")
   self.menu:set(0,0, self.menu_title)
-  self.menu:set(0,1, Text("Buy"), true)
-  self.menu:set(0,2, Text("Sell"), true)
+  self.menu:set(0,1, Text("Acheter"), true)
+  self.menu:set(0,2, Text("Vendre"), true)
   self.w_menu.content:add(self.menu)
   self.w_menu:setZ(1)
   self:add(self.w_menu)
@@ -96,10 +96,10 @@ function Shop:__construct()
   self.content:listen("cell-focus", function(grid, cx, cy)
     if self.mode == "buy" then
       local item = self.buy_items[cy+1]
-      self.info:set(Shop.formatBuyItemInfo(item).."\nGold: "..client.stats.gold)
+      self.info:set(Shop.formatBuyItemInfo(item).."\nOr: "..client.stats.gold)
     else -- sell
       local item = self.sell_items[cy+1]
-      self.info:set(Shop.formatSellItemInfo(item).."\nGold: "..client.stats.gold)
+      self.info:set(Shop.formatSellItemInfo(item).."\nOr: "..client.stats.gold)
     end
   end)
 
@@ -132,7 +132,7 @@ function Shop:__construct()
 
       if id == "left" or id == "right" then
         self.content:set(0,grid.cy, Text(Shop.formatBuyItem(item)), true)
-        self.info:set(Shop.formatBuyItemInfo(item).."\nGold: "..client.stats.gold)
+        self.info:set(Shop.formatBuyItemInfo(item).."\nOr: "..client.stats.gold)
       end
     end
   end)

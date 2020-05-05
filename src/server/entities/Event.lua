@@ -1258,7 +1258,7 @@ end
 -- (async) execute event script commands
 -- condition: Event.Condition type triggered
 function Event:execute(condition)
-  print("EXECUTE", condition, self.map.id, self.cx, self.cy, self.page_index)
+  --print("EXECUTE", condition, self.map.id, self.cx, self.cy, self.page_index)
 
   if condition == Event.Condition.INTERACT then
     local atype = self.animation_type
@@ -1280,7 +1280,7 @@ function Event:execute(condition)
 
   while state.cursor <= size do
     local instruction = self.page.commands[state.cursor]
-    print("INS", instruction)
+    --print("INS", instruction)
     local args = {Event.parseCommand(instruction)}
 
     if args[1] == Event.Command.VARIABLE then -- variable assignment

@@ -11,7 +11,7 @@ return {
     password = "",
     name = "slayers_online_re"
   },
-  motd = "Welcome to SlayersOnlineRE.",
+  motd = "Bienvenue sur Slayers Online RE.",
   server_vars_init = { -- map of key => value
   },
   spawn_location = { -- default (re)spawn location
