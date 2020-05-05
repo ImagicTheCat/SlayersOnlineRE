@@ -1001,7 +1001,7 @@ function command_functions:Attente(state, amount)
   amount = Event.computeExpression(amount) or 0
   if amount > 0 then
     local r = async()
-    task(amount/100, function() r() end)
+    task(amount*0.03, function() r() end)
     r:wait()
   end
 end

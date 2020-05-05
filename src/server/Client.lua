@@ -232,6 +232,12 @@ function Client:onPacket(protocol, data)
 
             ---- misc
             self.respawn_point = state.respawn_point
+            self.blocked = state.blocked
+            self.blocked_skin = state.blocked_skin
+            self.blocked_attack = state.blocked_attack
+            self.blocked_defend = state.blocked_defend
+            self.blocked_cast = state.blocked_cast
+            self.blocked_chat = state.blocked_chat
 
             -- default spawn
             if not map then
@@ -907,6 +913,12 @@ function Client:save()
     state.respawn_point = self.respawn_point
     state.health = self.health
     state.mana = self.mana
+    state.blocked = self.blocked
+    state.blocked_skin = self.blocked_skin
+    state.blocked_attack = self.blocked_attack
+    state.blocked_defend = self.blocked_defend
+    state.blocked_cast = self.blocked_cast
+    state.blocked_chat = self.blocked_chat
 
     self.server.db:_query(q_set_state, {self.user_id, utils.hex(msgpack.pack(state))})
   end
@@ -1037,25 +1049,25 @@ end
 
 function Client:canAttack()
   if self.map and self.map.data.type == Map.Type.SAFE then return false end
-  return not self.running_event and not self.acting and not self.ghost
+  return not self.running_event and not self.acting and not self.ghost and not self.blocked_attack
 end
 
 function Client:canDefend()
   if self.map and self.map.data.type == Map.Type.SAFE then return false end
-  return not self.running_event and not self.acting and not self.ghost
+  return not self.running_event and not self.acting and not self.ghost and not self.blocked_defend
 end
 
 function Client:canCast()
   if self.map and self.map.data.type == Map.Type.SAFE then return false end
-  return not self.running_event and not self.ghost
+  return not self.running_event and not self.ghost and not self.blocked_cast
 end
 
 function Client:canChat()
-  return not self.running_event and not self.ghost
+  return not self.running_event and not self.ghost and not self.blocked_chat
 end
 
 function Client:canMove()
-  return not self.running_event
+  return not self.running_event and not self.blocked
 end
 
 function Client:canInteract()
@@ -1067,6 +1079,10 @@ function Client:canUseItem()
     return false
   end
   return not self.running_event and not self.acting and not self.ghost and self.alignment > 20
+end
+
+function Client:canChangeSkin()
+  return not self.blocked_skin
 end
 
 -- variables

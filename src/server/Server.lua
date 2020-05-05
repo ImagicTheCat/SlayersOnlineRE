@@ -194,14 +194,18 @@ commands.skin = {function(self, client, args)
 
     local skin = args[2] or ""
 
-    client:setCharaset({
-      path = skin,
-      x = 0, y = 0,
-      w = 24, h = 32,
-      is_skin = true
-    })
+    if client:canChangeSkin() then
+      client:setCharaset({
+        path = skin,
+        x = 0, y = 0,
+        w = 24, h = 32,
+        is_skin = true
+      })
 
-    client:sendChatMessage("skin set to \""..skin.."\"")
+      client:sendChatMessage("skin assigné à \""..skin.."\"")
+    else
+      client:sendChatMessage("impossible de changer le skin")
+    end
   end
 end, "<skin_name>", "changer son skin"}
 
