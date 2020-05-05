@@ -46,6 +46,8 @@ function Mob:__construct(data, area)
   self.min_damage = data.damage
   self.max_damage = data.damage
 
+
+  self.highest_damage_received = 0
   self.area = area
 
   -- remove Sound\ parts
@@ -54,54 +56,76 @@ function Mob:__construct(data, area)
   -- self.target -- player aggro
 end
 
--- randomly move the mob
+-- launch/do AI task
 -- (starts a unique loop, will call itself again)
-function Mob:moveAI()
-  if not self.move_ai_task then
+function Mob:doAI()
+  if not self.ai_task and self.map then
     if self.target and self.target.ghost then self.target = nil end -- lose target if ghost
+    -- lose target if aggressive and the target is gone
+    if self.data.type == Mob.Type.AGGRESSIVE and self.target and self.target.map ~= self.map then
+      self.target = nil
+    end
 
     local aggro = (self.target and self.target.map == self.map)
-    self.move_ai_task = task(utils.randf(0.75, (aggro and 1.5 or 7)), function()
+    self.ai_task = task(utils.randf(0.75, (aggro and 1.5 or 7)), function()
       if self.map then
-        if aggro then -- aggro
+        if aggro then -- aggro mode
           local dcx, dcy = self.target.cx-self.cx, self.target.cy-self.cy
-          if math.abs(dcx)+math.abs(dcy) > 1 then -- too far, move to target
-            local orientation = LivingEntity.vectorOrientation(dcx, dcy)
-            local dx, dy = LivingEntity.orientationVector(orientation)
-            local ncx, ncy = self.cx+dx, self.cy+dy
+          if math.abs(dcx)+math.abs(dcy) > 1 then -- too far, seek target
+            if self.data.type ~= Mob.Type.STATIC then -- move to target
+              local orientation = LivingEntity.vectorOrientation(dcx, dcy)
+              local dx, dy = LivingEntity.orientationVector(orientation)
+              local ncx, ncy = self.cx+dx, self.cy+dy
 
-            if self:isCellPassable(ncx, ncy) then
-              self:moveToCell(ncx, ncy)
+              if self:isCellPassable(ncx, ncy) then
+                self:moveToCell(ncx, ncy)
+              end
             end
-          else -- try attack
+          else -- close to target, try attack
             self:setOrientation(LivingEntity.vectorOrientation(self.target.x-self.x, self.target.y-self.y))
             self:act("attack", 1)
           end
-        else -- random movement
-          local ok
-          local ncx, ncy
+        else -- idle mode
+          -- random movement
+          if self.data.type ~= Mob.Type.STATIC and self.data.type ~= Mob.Type.BREAKABLE then
+            local ok
+            local ncx, ncy
 
-          -- search for a passable cell
-          local i = 1
-          while not ok and i <= 10 do
-            local orientation = math.random(0,3)
+            -- search for a passable cell
+            local i = 1
+            while not ok and i <= 10 do
+              local orientation = math.random(0,3)
 
-            local dx, dy = LivingEntity.orientationVector(orientation)
-            ncx, ncy = self.cx+dx, self.cy+dy
+              local dx, dy = LivingEntity.orientationVector(orientation)
+              ncx, ncy = self.cx+dx, self.cy+dy
 
-            ok = self:isCellPassable(ncx, ncy)
+              ok = self:isCellPassable(ncx, ncy)
 
-            i = i+1
+              i = i+1
+            end
+
+            if ok then
+              self:moveToCell(ncx, ncy)
+            end
           end
 
-          if ok then
-            self:moveToCell(ncx, ncy)
+          if self.data.type == Mob.Type.AGGRESSIVE then -- find target
+            -- target nearest player
+            if next(self.map.clients) then
+              local players = {}
+              for client in pairs(self.map.clients) do
+                local dx, dy = client.x-self.x, client.y-self.y
+                table.insert(players, {client, math.sqrt(dx*dx+dy*dy)})
+              end
+              table.sort(players, function(a,b) return a[2] < b[2] end)
+              self.target = players[1][1]
+            end
           end
         end
 
-        self.move_ai_task = nil
-
-        self:moveAI()
+        -- next AI tick
+        self.ai_task = nil
+        self:doAI()
       end
     end)
   end
@@ -124,9 +148,20 @@ end
 -- override
 function Mob:onAttack(attacker)
   if class.is(attacker, Player) then
-    self.target = attacker
     self.last_attacker = attacker
-    self:damage(attacker:computeAttack(self)) -- test
+    local amount = attacker:computeAttack(self)
+
+    if self.data.type ~= Mob.Type.BREAKABLE then -- update target
+      -- update target if previous is missing
+      if not self.target or self.target.map ~= self.map then self.target = attacker end
+      -- update target on max damage
+      if amount and amount >= self.highest_damage_received then
+        self.highest_damage_received = amount
+        self.target = attacker
+      end
+    end
+
+    self:damage(amount)
     return true
   end
 end
@@ -164,8 +199,8 @@ end
 function Mob:onMapChange()
   LivingEntity.onMapChange(self)
 
-  if self.map and (self.data.type == Mob.Type.DEFENSIVE or self.data.type == Mob.Type.AGGRESSIVE) then
-    self:moveAI()
+  if self.map and self.data.type ~= Mob.Type.BREAKABLE then
+    self:doAI()
   end
 end
 
