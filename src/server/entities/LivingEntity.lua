@@ -116,7 +116,7 @@ function LivingEntity:setMoveForward(move_forward)
           if dcx ~= 0 then dcx = dcx/math.abs(dcx) end
           if dcy ~= 0 then dcy = dcy/math.abs(dcy) end
 
-          local collision = (self.map and (not self.map:isCellPassable(self, self.cx+dcx, self.cy) or not self.map:isCellPassable(self, self.cx, self.cy+dcy) or not self.map:isCellPassable(self, self.cx+dcx, self.cy+dcy)))
+          local collision = (self.map and (dcx ~= 0 and not self.map:isCellPassable(self, self.cx+dcx, self.cy) or dcy ~= 0 and not self.map:isCellPassable(self, self.cx, self.cy+dcy) or (dcx ~= 0 or dcy ~= 0) and not self.map:isCellPassable(self, self.cx+dcx, self.cy+dcy)))
 
           if collision then
             if dx ~= 0 then -- x movement
