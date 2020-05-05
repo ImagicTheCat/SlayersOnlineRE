@@ -371,10 +371,13 @@ function Client:onPacket(protocol, data)
         local done = true
         if data == "strength" then
           self.strength_pts = self.strength_pts+1
+          self:triggerSpecialVariable("Force")
         elseif data == "dexterity" then
           self.dexterity_pts = self.dexterity_pts+1
+          self:triggerSpecialVariable("Dext")
         elseif data == "constitution" then
           self.constitution_pts = self.constitution_pts+1
+          self:triggerSpecialVariable("Consti")
         else done = false end
 
         if done then
@@ -462,6 +465,10 @@ function Client:timerTick()
     for i,time in ipairs(self.timers) do
       self.timers[i] = time+1
     end
+
+    self:triggerSpecialVariable("Timer")
+    self:triggerSpecialVariable("Timer2")
+    self:triggerSpecialVariable("Timer3")
   end
 end
 
@@ -654,6 +661,11 @@ end
 -- override
 function Client:onCellChange()
   if self.map then
+    self:triggerSpecialVariable("CaseX")
+    self:triggerSpecialVariable("CaseY")
+    self:triggerSpecialVariable("EvCaseX")
+    self:triggerSpecialVariable("EvCaseY")
+
     local cell = self.map:getCell(self.cx, self.cy)
     if cell then
       -- event contact check
@@ -740,15 +752,17 @@ function Client:updateCharacteristics()
   self.min_damage = (weapon and weapon.mod_attack_a or 0)
   self.max_damage = (weapon and weapon.mod_attack_b or 0)+math.floor((self.level*20+self.strength*2+self.dexterity*1.5)*class_data.pow_index/10)
 
-  -- clamp
-  self.health = math.min(self.health, self.max_health)
-  self.mana = math.min(self.mana, self.max_mana)
+  -- update health/mana
+  self:setHealth(self.health)
+  self:setMana(self.mana)
+
+  -- trigger vars
+  self:triggerSpecialVariable("Attaque")
+  self:triggerSpecialVariable("Defense")
+  self:triggerSpecialVariable("VieMax")
+  self:triggerSpecialVariable("MagMax")
 
   self:send(Client.makePacket(net.STATS_UPDATE, {
-    health = self.health,
-    max_health = self.max_health,
-    mana = self.mana,
-    max_mana = self.max_mana,
     strength = self.strength,
     dexterity = self.dexterity,
     constitution = self.constitution,
@@ -850,17 +864,20 @@ end
 -- override
 function Client:setHealth(health)
   Player.setHealth(self, health)
-  self:send(Client.makePacket(net.STATS_UPDATE, {health = self.health}))
+  self:triggerSpecialVariable("Vie")
+  self:send(Client.makePacket(net.STATS_UPDATE, {health = self.health, max_health = self.max_health}))
 end
 
 -- override
 function Client:setMana(mana)
   Player.setMana(self, mana)
-  self:send(Client.makePacket(net.STATS_UPDATE, {mana = self.mana}))
+  self:triggerSpecialVariable("CurrentMag")
+  self:send(Client.makePacket(net.STATS_UPDATE, {mana = self.mana, max_mana = self.max_mana}))
 end
 
 function Client:setGold(gold)
   self.gold = math.max(0,gold)
+  self:triggerSpecialVariable("Gold")
   self:send(Client.makePacket(net.STATS_UPDATE, {gold = self.gold}))
 end
 
@@ -869,19 +886,23 @@ function Client:setXP(xp)
   local current = XPtable[self.level]
   if self.xp < current then self.xp = current -- reset to current level XP
   else -- level ups
+    local new_points = 0
     local next_xp = XPtable[self.level+1]
     while next_xp and self.xp >= next_xp do
       self.level = self.level+1 -- level up
-      self.remaining_pts = self.remaining_pts+5
+      new_points = new_points+5
       next_xp = XPtable[self.level+1]
     end
+    self:setRemainingPoints(self.remaining_pts+new_points)
   end
+
+  self:triggerSpecialVariable("CurrentXP")
+  self:triggerSpecialVariable("NextXP")
 
   self:send(Client.makePacket(net.STATS_UPDATE, {
     xp = self.xp,
     next_xp = XPtable[self.level+1] or self.xp,
-    level = self.level,
-    points = self.remaining_pts
+    level = self.level
   }))
 
   self:updateCharacteristics()
@@ -889,16 +910,19 @@ end
 
 function Client:setAlignment(alignment)
   self.alignment = utils.clamp(alignment, 0, 100)
+  self:triggerSpecialVariable("Alignement")
   self:send(Client.makePacket(net.STATS_UPDATE, {alignment = self.alignment}))
 end
 
 function Client:setReputation(reputation)
   self.reputation = reputation
+  self:triggerSpecialVariable("Reputation")
   self:send(Client.makePacket(net.STATS_UPDATE, {reputation = self.reputation}))
 end
 
 function Client:setRemainingPoints(remaining_pts)
   self.remaining_pts = math.max(0, remaining_pts)
+  self:triggerSpecialVariable("LvlPoint")
   self:send(Client.makePacket(net.STATS_UPDATE, {points = self.remaining_pts}))
 end
 
