@@ -364,9 +364,7 @@ function Server:__construct(cfg)
   end)
 
   self.save_task = itask(self.cfg.save_interval, function()
-    async(function()
-      self:save()
-    end)
+    self:save()
   end)
 
   self.timer_task = itask(0.030, function()
@@ -409,11 +407,11 @@ function Server:__construct(cfg)
   self.console = effil.thread(console_main)(self.console_flags, self.console_channel)
 end
 
--- (async) save check
+-- save check
 function Server:save()
   -- save vars
   for var in pairs(self.changed_vars) do
-    self.db:query(q_set_var, {var, self.vars[var]})
+    self.db:_query(q_set_var, {var, self.vars[var]})
   end
   self.changed_vars = {}
 
