@@ -31,6 +31,7 @@ function Map:__construct(server, id, data)
   self.cells = {} -- map space partitioning (16x16 cells), map of cell index => map of entity
 
   self.living_entity_updates = {} -- map of living entity
+  self.movement_packet_count = 0
 
   self.w = self.data.width
   self.h = self.data.height
@@ -227,6 +228,8 @@ end
 -- serialize map data for a specific client
 function Map:serializeNet(client)
   local data = {
+    map_index = self.data.index,
+    packet_index = self.movement_packet_count,
     w = self.w,
     h = self.h,
     tileset = self.tileset,
@@ -248,15 +251,19 @@ end
 
 function Map:tick(dt)
   -- build continuous movement packet
-  local data = {}
+  local data = {entities = {}}
 
   for entity in pairs(self.living_entity_updates) do
     if entity.map == self then
-      table.insert(data, {entity.id, entity.x, entity.y})
+      table.insert(data.entities, {entity.id, entity.x, entity.y})
     end
   end
   
-  if next(data) then
+  -- send packet update with map and packet indexes to prevent invalid updates
+  if next(data.entities) then
+    self.movement_packet_count = self.movement_packet_count+1
+    data.mi = self.data.index
+    data.pi = self.movement_packet_count
     self:broadcastPacket(net.MAP_MOVEMENTS, data, true) -- unsequenced
   end
 
