@@ -98,7 +98,7 @@ function Client:onPacket(protocol, data)
         self:kick("server/client version mismatch, download the latest client release to fix the issue")
       end
     elseif self.valid and protocol == net.LOGIN then -- login
-      if type(data) == "table" and type(data.pseudo) == "string" and type(data.password) == "string" then
+      if not self.user_id and type(data) == "table" and type(data.pseudo) == "string" and type(data.password) == "string" then
         async(function()
           local pass_hash = sha2.sha512("<server_salt>"..data.pseudo..data.password)
 
@@ -263,19 +263,18 @@ function Client:onPacket(protocol, data)
       end
     end
   else -- logged
-    -- TODO: restrictions (blocked, event, etc.)
     if protocol == net.INPUT_ORIENTATION then
-      self:setOrientation(tonumber(data) or 0)
+      if self:canMove() then self:setOrientation(tonumber(data) or 0) end
     elseif protocol == net.INPUT_MOVE_FORWARD then
-      self:setMoveForward(not not data)
+      if self:canMove() then self:setMoveForward(not not data) end
     elseif protocol == net.INPUT_ATTACK then
-      if not self.ghost then self:act("attack", 1) end
+      if self:canAttack() then self:act("attack", 1) end
     elseif protocol == net.INPUT_DEFEND then
-      if not self.ghost then self:act("defend", 1) end
+      if self:canDefend() then self:act("defend", 1) end
     elseif protocol == net.INPUT_INTERACT then
-      if not self.ghost then self:interact() end
+      if self:canInteract() then self:interact() end
     elseif protocol == net.INPUT_CHAT then
-      if type(data) == "string" and string.len(data) > 0 and string.len(data) < 1000 then
+      if self:canChat() and type(data) == "string" and string.len(data) > 0 and string.len(data) < 1000 then
         if string.sub(data, 1, 1) == "/" then -- parse command
           local args = self.server.parseCommand(string.sub(data, 2))
           if #args > 0 then
@@ -510,6 +509,9 @@ function Client:eventTick()
       table.sort(events, function(a,b)
         return a.cx < b.cx or a.cx == b.cx and a.cy < b.cy
       end)
+
+      -- stop movement
+      self:setMoveForward(false)
 
       -- execute event
       local event = events[1]
@@ -970,6 +972,36 @@ function Client:respawn()
       end
     end
   end
+end
+
+-- restriction checks
+
+function Client:canAttack()
+  return not self.running_event and not self.ghost
+end
+
+function Client:canDefend()
+  return not self.running_event and not self.ghost
+end
+
+function Client:canCast()
+  return not self.running_event and not self.ghost
+end
+
+function Client:canChat()
+  return not self.running_event and not self.ghost
+end
+
+function Client:canMove()
+  return not self.running_event
+end
+
+function Client:canInteract()
+  return not self.running_event and not self.ghost
+end
+
+function Client:canUseItem()
+  return not self.running_event and not self.ghost
 end
 
 -- variables
