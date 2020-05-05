@@ -12,11 +12,13 @@ function Deserializer.readString(file, padding_size)
   return str
 end
 
+-- return map {}
+--- type: int (Map.Type)
 function Deserializer.readProjectEntry(file)
   local map = {}
 
   map.name = Deserializer.readString(file, 50)
-  map.mtype, map.effect = struct.unpack("BB", file:read(2))
+  map.type, map.effect = struct.unpack("BB", file:read(2))
   map.background = Deserializer.readString(file, 50)
   map.music = Deserializer.readString(file, 50)
   map.tileset = Deserializer.readString(file, 50)

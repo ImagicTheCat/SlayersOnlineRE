@@ -8,6 +8,11 @@ local sha2 = require("sha2")
 local client_version = require("client_version")
 local Inventory = require("Inventory")
 local XPtable = require("XPtable")
+-- deferred require
+local Map
+task(0.01, function()
+  Map = require("Map")
+end)
 
 -- server-side client
 local Client = class("Client", Player)
@@ -468,6 +473,9 @@ function Client:timerTick()
     self:triggerSpecialVariable("Timer")
     self:triggerSpecialVariable("Timer2")
     self:triggerSpecialVariable("Timer3")
+
+    -- reset last attacker
+    self.last_attacker = nil
   end
 end
 
@@ -937,7 +945,17 @@ end
 
 -- override
 function Client:onDeath()
+  -- XP loss (1%)
+  if self.map and self.map.data.type == Map.Type.PVE or self.map.data.type == Map.Type.PVE_PVP then
+    self:setXP(math.floor(self.xp*0.99))
+  end
+
   if self.last_attacker then -- killed by player
+    -- gold stealing (1%)
+    local gold_amount = math.floor(self.gold*0.01)
+    self.last_attacker:setGold(self.last_attacker.gold+gold_amount)
+    self:setGold(self.gold-gold_amount)
+
     self.last_attacker:onPlayerKill()
   end
 
@@ -978,14 +996,17 @@ end
 -- restriction checks
 
 function Client:canAttack()
+  if self.map and self.map.data.type == Map.Type.SAFE then return false end
   return not self.running_event and not self.ghost
 end
 
 function Client:canDefend()
+  if self.map and self.map.data.type == Map.Type.SAFE then return false end
   return not self.running_event and not self.ghost
 end
 
 function Client:canCast()
+  if self.map and self.map.data.type == Map.Type.SAFE then return false end
   return not self.running_event and not self.ghost
 end
 
@@ -1002,7 +1023,10 @@ function Client:canInteract()
 end
 
 function Client:canUseItem()
-  return not self.running_event and not self.ghost
+  if self.map and self.map.data.type == Map.Type.PVP or self.map.data.type == Map.Type.PVP_NOREPUT then
+    return false
+  end
+  return not self.running_event and not self.ghost and self.alignment > 20
 end
 
 -- variables
