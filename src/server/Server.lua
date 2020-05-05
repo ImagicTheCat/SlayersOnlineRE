@@ -466,6 +466,8 @@ function Server:tick(dt)
       local packet = msgpack.unpack(event.data)
       client:onPacket(packet[1], packet[2])
     elseif event.type == "connect" then
+      -- disable throttle deceleration (issue with unsequenced packets not sent)
+      event.peer:throttle_configure(5000, 1, 0)
       local client = Client(self, event.peer)
       self.clients[event.peer] = client
 
