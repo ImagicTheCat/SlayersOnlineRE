@@ -295,7 +295,8 @@ function Client:tick(dt)
   elseif self.orientation == 2 then control = "down"
   elseif self.orientation == 3 then control = "left" end
 
-  self:setMoveForward(not self.gui.focus and self:isControlPressed(control))
+  self:setMoveForward(not self.gui.focus and not self.loading_screen_tex --
+    and self:isControlPressed(control))
 
   -- GUI
   if not self.prompt_r and self.gui.focus == self.input_chat then
