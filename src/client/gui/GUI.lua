@@ -1,6 +1,5 @@
 local Base = require("ALGUI.ext.GUI")
 local TextInput = require("gui.TextInput")
-local Selector = require("gui.Selector")
 
 local GUI = class("GUI", Base)
 
@@ -26,10 +25,6 @@ end
 
 function GUI:isTyping()
   return class.is(self.focus, TextInput)
-end
-
-function GUI:isSelecting()
-  return class.is(self.focus, Selector)
 end
 
 -- play unspatialized GUI sound
