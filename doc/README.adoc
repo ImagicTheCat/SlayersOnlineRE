@@ -17,7 +17,7 @@ client:: LÖVE 11.x
 * https://github.com/leafo/lua-enet
 * https://luarocks.org/modules/luarocks/struct
 * https://luarocks.org/modules/luarocks/lua-iconv
-* https://github.com/leafo/magick
+* https://github.com/libvips/lua-vips
 * https://github.com/effil/effil
 * https://github.com/keplerproject/luasql/
 * https://github.com/Egor-Skriptunoff/pure_lua_SHA2
