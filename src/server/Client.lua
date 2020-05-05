@@ -225,7 +225,7 @@ function Client:onPacket(protocol, data)
             end
 
             ---- misc
-            self.res_point = state.res_point
+            self.respawn_point = state.respawn_point
 
             -- default spawn
             if not map then
@@ -617,6 +617,14 @@ function Client:kick(reason)
 end
 
 function Client:onDisconnect()
+  -- disconnect variable behavior
+  local map_data = (self.map and self.map.data)
+  if map_data and map_data.si_v >= 0 then
+    if self:getVariable("var", map_data.si_v) >= map_data.v_c then
+      self.server:setVariable(map_data.svar, map_data.sval)
+    end
+  end
+
   self:save()
   if self.map then
     self.map:removeEntity(self)
@@ -811,17 +819,27 @@ function Client:save()
     -- state
     local state = {}
     if self.map then
-      state.location = {
-        map = self.map.id,
-        x = self.x,
-        y = self.y
-      }
+      -- location
+      if self.map.data.disconnect_respawn then
+        local location = (self.respawn_point or self.server.cfg.spawn_location)
+        state.location = {
+          map = location.map,
+          x = location.cx*16,
+          y = location.cy*16
+        }
+      else
+        state.location = {
+          map = self.map.id,
+          x = self.x,
+          y = self.y
+        }
+      end
 
       state.orientation = self.orientation
     end
 
     state.charaset = self.charaset
-    state.res_point = self.res_point
+    state.respawn_point = self.respawn_point
     state.health = self.health
     state.mana = self.mana
 
@@ -909,11 +927,11 @@ function Client:respawn()
 
     -- respawn
     local respawned = false
-    if self.res_point then -- res point respawn
-      local map = self.server:getMap(self.res_point.map)
+    if self.respawn_point then -- res point respawn
+      local map = self.server:getMap(self.respawn_point.map)
       if map then
         map:addEntity(self)
-        self:teleport(self.res_point.cx*16, self.res_point.cy*16)
+        self:teleport(self.respawn_point.cx*16, self.respawn_point.cy*16)
         respawned = true
       end
     end
@@ -931,6 +949,7 @@ end
 
 -- variables
 
+-- vtype: string, "bool" (boolean) or "var" (integer)
 function Client:setVariable(vtype, id, value)
   if type(id) == "number" and type(value) == "number" then
     local vars = (vtype == "bool" and self.bool_vars or self.vars)

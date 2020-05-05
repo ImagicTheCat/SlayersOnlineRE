@@ -356,7 +356,6 @@ function Server:close()
   self.timer_task:remove()
   self.console_flags.running = false
   self.save_task:remove()
-  self:save()
 
   -- disconnect clients
   for peer, client in pairs(self.clients) do
@@ -364,6 +363,7 @@ function Server:close()
     client:onDisconnect()
   end
 
+  self:save()
   self.host:flush()
   self.db:close()
   self.tick_task:remove()

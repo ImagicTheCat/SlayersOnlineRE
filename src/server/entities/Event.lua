@@ -828,7 +828,7 @@ function command_functions:ChangeResPoint(state, map_name, cx, cy)
   cy = Event.computeExpression(cy)
 
   if map_name and cx and cy then
-    self.client.res_point = {
+    self.client.respawn_point = {
       map = map_name,
       cx = cx,
       cy = cy

@@ -15,18 +15,16 @@ end
 function Deserializer.readProjectEntry(file)
   local map = {}
 
-  map.name = Deserializer.readString(file, 50)
-  map.mtype, map.effect = struct.unpack("BB", file:read(2))
-  map.background = Deserializer.readString(file, 50)
-  map.music = Deserializer.readString(file, 50)
-  map.tileset = Deserializer.readString(file, 50)
-  map.width, _, map.height = struct.unpack("BBB", file:read(3))
-  file:seek("cur", 51)
-  map.death = struct.unpack("B", file:read(1))
-  map.si_v, map.v_c = struct.unpack("<I2 I2", file:read(4))
+  map.name = Deserializer.readString(file, 50) -- 51
+  map.mtype, map.effect = struct.unpack("BB", file:read(2)) -- 53
+  map.background = Deserializer.readString(file, 50) -- 104
+  map.music = Deserializer.readString(file, 50) -- 155
+  map.tileset = Deserializer.readString(file, 50) -- 206
+  map.width, _, map.height = struct.unpack("BBB", file:read(3)) -- 209
+  file:seek("cur", 52)
+  map.disconnect_respawn = (struct.unpack("B", file:read(1)) > 0)
+  map.si_v, map.v_c = struct.unpack("<i2 i2", file:read(4))
   map.svar, map.sval = Deserializer.readString(file, 255), Deserializer.readString(file, 255)
-
-  file:seek("cur", 1)
 
   return map
 end
