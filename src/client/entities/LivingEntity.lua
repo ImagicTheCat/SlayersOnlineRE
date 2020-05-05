@@ -232,6 +232,8 @@ function LivingEntity:drawOver()
 
       local w, h = text:getWidth()*scale, text:getHeight()*scale
       local x, y = self.x+8-w/2, self.y-16*(1-time/2)-h
+      love.graphics.setColor(0,0,0,math.min(1,time)*0.50)
+      love.graphics.draw(text, x+2*scale, y+2*scale, 0, scale) -- shadowing
       love.graphics.setColor(1,1,1,math.min(1,time))
       love.graphics.draw(text, x, y, 0, scale)
       love.graphics.setColor(1,1,1,1)
