@@ -806,10 +806,10 @@ function Client:draw()
 
   -- map rendering
   if self.map then
-    -- background
+    -- background (extend width to stay compatible with original 20x15 cells)
     if self.map.background then
       love.graphics.draw(self.map.background, 0, 0, 0,
-        w/self.map.background:getWidth(), h/self.map.background:getHeight())
+        self.world_scale*w/320, self.world_scale)
     end
 
     -- content
