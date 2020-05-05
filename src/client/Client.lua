@@ -58,13 +58,17 @@ function Client:__construct(cfg)
       lalt = "defend",
       e = "interact",
       ["return"] = "return",
-      escape = "menu"
+      escape = "menu",
+      ["1"] = "quick1",
+      ["2"] = "quick2",
+      ["3"] = "quick3"
     },
     gui = {
       font_size = 25,
       dialog_height = 0.25,
       chat_height = 0.25
-    }
+    },
+    quick_actions = {}
   }
 
   self.touches = {} -- map of id => control
@@ -576,6 +580,14 @@ function Client:onApplyConfig(config)
 
     self:onResize(love.graphics.getDimensions()) -- trigger GUI update
   end
+
+  -- force quick action update
+  if config.quick_actions then
+    self.inventory.content.dirty = true
+    if self.inventory.visible then
+      self.inventory.content:updateContent()
+    end
+  end
 end
 
 function Client:onResize(w, h)
@@ -747,6 +759,9 @@ function Client:pressControl(id)
       elseif id == "attack" then self:inputAttack()
       elseif id == "defend" then self:inputDefend()
       elseif id == "interact" then self:inputInteract()
+      elseif id == "quick1" then self:doQuickAction(1)
+      elseif id == "quick2" then self:doQuickAction(2)
+      elseif id == "quick3" then self:doQuickAction(3)
       end
     end
 
@@ -943,6 +958,10 @@ function Client:trashItem(id)
   self:sendPacket(net.ITEM_TRASH, id)
 end
 
+function Client:useItem(id)
+  self:sendPacket(net.ITEM_USE, id)
+end
+
 -- stat interactions
 
 -- id: string
@@ -964,6 +983,29 @@ end
 --- "shield"
 function Client:unequipSlot(id)
   self:sendPacket(net.SLOT_UNEQUIP, id)
+end
+
+-- n: quick action index (1-3)
+-- type: "item" or "spell"
+-- id: item/spell id
+function Client:bindQuickAction(n, type, id)
+  self:sendPacket(net.QUICK_ACTION_BIND, {n = n, type = type, id = id})
+end
+
+-- return true if a bound quick action
+function Client:isQuickAction(n, type, id)
+  local q = self.player_config.quick_actions[n]
+  return q and q.type == type and q.id == id
+end
+
+function Client:doQuickAction(n)
+  local q = self.player_config.quick_actions[n]
+  if q then
+    if q.type == "item" then
+      self:useItem(q.id)
+    elseif q.type == "spell" then
+    end
+  end
 end
 
 -- (async) load remote skin

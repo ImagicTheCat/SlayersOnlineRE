@@ -371,6 +371,9 @@ function Client:onPacket(protocol, data)
           self:send(Client.makePacket(net.STATS_UPDATE, {gold = self.gold}))
         end
       end
+    elseif protocol == net.ITEM_USE then
+      local id = tonumber(data) or 0
+      if self:canUseItem() then self:useItem(id) end
     elseif protocol == net.ITEM_TRASH then
       local id = tonumber(data) or 0
       self.inventory:take(id)
@@ -453,6 +456,18 @@ function Client:onPacket(protocol, data)
       if r then
         self.scroll_task = nil
         r()
+      end
+    elseif protocol == net.QUICK_ACTION_BIND then
+      if type(data) == "table" and type(data.n) == "number" and data.n >= 1 and data.n <= 3 then
+        local id = tonumber(data.id) or 0
+        local ok = false
+        if data.type == "item" then -- check item bind
+          local item = self.server.project.objects[id]
+          if item and item.type == 0 then ok = true end
+        end
+        if ok then
+          self:applyConfig({quick_actions = {[data.n] = {type = data.type, id = id}}})
+        end
       end
     end
   end
@@ -713,6 +728,18 @@ function Client:interact()
       entity:trigger(Event.Condition.INTERACT)
       break
     end
+  end
+end
+
+-- consume owned usable item and apply effects
+-- return true on success
+function Client:useItem(id)
+  local item = self.server.project.objects[id]
+  if item and item.type == 0 and self.inventory:take(id) then
+    self:setHealth(self.health+item.mod_hp)
+    self:setMana(self.mana+item.mod_mp)
+    self:act("use", 1)
+    return true
   end
 end
 
@@ -1010,12 +1037,12 @@ end
 
 function Client:canAttack()
   if self.map and self.map.data.type == Map.Type.SAFE then return false end
-  return not self.running_event and not self.ghost
+  return not self.running_event and not self.acting and not self.ghost
 end
 
 function Client:canDefend()
   if self.map and self.map.data.type == Map.Type.SAFE then return false end
-  return not self.running_event and not self.ghost
+  return not self.running_event and not self.acting and not self.ghost
 end
 
 function Client:canCast()
@@ -1039,7 +1066,7 @@ function Client:canUseItem()
   if self.map and self.map.data.type == Map.Type.PVP or self.map.data.type == Map.Type.PVP_NOREPUT then
     return false
   end
-  return not self.running_event and not self.ghost and self.alignment > 20
+  return not self.running_event and not self.acting and not self.ghost and self.alignment > 20
 end
 
 -- variables
