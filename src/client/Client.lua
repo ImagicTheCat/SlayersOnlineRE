@@ -295,7 +295,8 @@ function Client:tick(dt)
   elseif self.orientation == 2 then control = "down"
   elseif self.orientation == 3 then control = "left" end
 
-  self:setMoveForward(not self.gui.focus and not self.loading_screen_tex --
+  self:setMoveForward(not self.gui.focus --
+    and (not self.net_manager.requests[1] or not self.loading_screen_tex) -- not on loading screen
     and self:isControlPressed(control))
 
   -- GUI
