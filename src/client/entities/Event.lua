@@ -73,4 +73,10 @@ function Event:tick(dt)
   end
 end
 
+-- override
+function Event:drawAfterimage()
+  -- no event after image
+end
+
+
 return Event
