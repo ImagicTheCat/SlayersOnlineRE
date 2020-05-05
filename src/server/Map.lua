@@ -281,8 +281,8 @@ function Map:mobAreaSpawnTask(index)
         while not done and i < 10 do
           local cx, cy = math.random(def.x1, def.x2), math.random(def.y1, def.y2)
           if self:canSpawnMob(mob, cx, cy) then
-            mob:teleport(cx*16, cy*16)
             self:addEntity(mob)
+            mob:teleport(cx*16, cy*16)
             area.mob_count = area.mob_count+1
             done = true
           end

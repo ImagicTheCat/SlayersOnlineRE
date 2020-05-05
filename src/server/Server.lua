@@ -188,8 +188,8 @@ commands.tp = {function(self, client, args)
 
         local map = self:getMap(map_name)
         if map then
-          client:teleport(cx*16,cy*16)
           map:addEntity(client)
+          client:teleport(cx*16,cy*16)
         else
           client:sendChatMessage("invalid map \""..map_name.."\"")
         end
