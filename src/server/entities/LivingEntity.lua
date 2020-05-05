@@ -110,19 +110,32 @@ function LivingEntity:setMoveForward(move_forward)
         -- move following the orientation
         local dx, dy = LivingEntity.orientationVector(self.orientation)
         local dist = math.floor(speed*dt) -- pixels traveled
-        if dist > 0 then
+        if dist > 0 and self.map then
           local nx, ny = self.x+dx*dist, self.y+dy*dist
           local dcx, dcy = nx-self.cx*16, ny-self.cy*16
           if dcx ~= 0 then dcx = dcx/math.abs(dcx) end
           if dcy ~= 0 then dcy = dcy/math.abs(dcy) end
 
-          local collision = (self.map and (dcx ~= 0 and not self.map:isCellPassable(self, self.cx+dcx, self.cy) or dcy ~= 0 and not self.map:isCellPassable(self, self.cx, self.cy+dcy) or (dcx ~= 0 or dcy ~= 0) and not self.map:isCellPassable(self, self.cx+dcx, self.cy+dcy)))
-
-          if collision then
+          -- check collision with the 3 cells in the movement direction
+          local col_x = dcx ~= 0 and not self.map:isCellPassable(self, self.cx+dcx, self.cy)
+          local col_y = dcy ~= 0 and not self.map:isCellPassable(self, self.cx, self.cy+dcy)
+          local col_xy = (dcx ~= 0 or dcy ~= 0) and not self.map:isCellPassable(self, self.cx+dcx, self.cy+dcy)
+          if col_x or col_y or col_xy then -- collision
+            -- stop/snap on current cell for the movement axis / orthogonal movement axis
+            --- stop: prevent moving into blocking cells
+            --- snap: allow easier movements at the edges of cells
             if dx ~= 0 then -- x movement
-              self:updatePosition(self.cx*16, self.y)
+              if not col_x then -- snap
+                self:updatePosition(self.x, self.cy*16)
+              else -- stop
+                self:updatePosition(self.cx*16, self.y)
+              end
             else -- y movement
-              self:updatePosition(self.x, self.cy*16)
+              if not col_y then -- snap
+                self:updatePosition(self.cx*16, self.y)
+              else -- stop
+                self:updatePosition(self.x, self.cy*16)
+              end
             end
           else
             self:updatePosition(nx, ny)
