@@ -901,6 +901,7 @@ function Client:setXP(xp)
 
   self:send(Client.makePacket(net.STATS_UPDATE, {
     xp = self.xp,
+    current_xp = XPtable[self.level] or 0,
     next_xp = XPtable[self.level+1] or self.xp,
     level = self.level
   }))
