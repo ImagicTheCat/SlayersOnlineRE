@@ -139,7 +139,9 @@ function Inventory:__construct()
   self.menu:listen("cell-select", function(grid, cx, cy)
     local item = self.content:getSelection()
     if item then
-      if cx == 1 then -- equip
+      if cx == 0 then -- use
+        client:useItem(item[1])
+      elseif cx == 1 then -- equip
         client:equipItem(item[1])
       elseif cx == 2 then -- trash
         client:trashItem(item[1])
