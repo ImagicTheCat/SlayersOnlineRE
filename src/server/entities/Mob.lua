@@ -133,19 +133,25 @@ end
 
 -- override
 function Mob:onDeath()
-  -- loot
-  local looter = self.last_attacker
-  if looter then
+  -- loot/var
+  local killer = self.last_attacker
+  if killer then
+    -- special var increment
+    local var_id = self.data.var_id
+    if var_id >= 0 then
+      killer:setVariable("var", var_id, killer:getVariable("var", var_id)+self.data.var_increment)
+    end
+
     -- XP
-    looter:setXP(looter.xp+math.random(self.data.xp_min, self.data.xp_max))
+    killer:setXP(killer.xp+math.random(self.data.xp_min, self.data.xp_max))
 
     -- gold
-    looter:setGold(looter.gold+math.random(self.data.gold_min, self.data.gold_max))
+    killer:setGold(killer.gold+math.random(self.data.gold_min, self.data.gold_max))
 
     -- object
-    local item = looter.server.project.objects[self.data.loot_object]
+    local item = killer.server.project.objects[self.data.loot_object]
     if item and math.random(100) <= self.data.loot_chance then
-      looter.inventory:put(self.data.loot_object)
+      killer.inventory:put(self.data.loot_object)
     end
   end
 

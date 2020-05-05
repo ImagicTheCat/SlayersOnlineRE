@@ -15,12 +15,12 @@ end
 function Deserializer.readProjectEntry(file)
   local map = {}
 
-  map.name = Deserializer.readString(file, 50) -- 51
-  map.mtype, map.effect = struct.unpack("BB", file:read(2)) -- 53
-  map.background = Deserializer.readString(file, 50) -- 104
-  map.music = Deserializer.readString(file, 50) -- 155
-  map.tileset = Deserializer.readString(file, 50) -- 206
-  map.width, _, map.height = struct.unpack("BBB", file:read(3)) -- 209
+  map.name = Deserializer.readString(file, 50)
+  map.mtype, map.effect = struct.unpack("BB", file:read(2))
+  map.background = Deserializer.readString(file, 50)
+  map.music = Deserializer.readString(file, 50)
+  map.tileset = Deserializer.readString(file, 50)
+  map.width, _, map.height = struct.unpack("BBB", file:read(3))
   file:seek("cur", 52)
   map.disconnect_respawn = (struct.unpack("B", file:read(1)) > 0)
   map.si_v, map.v_c = struct.unpack("<i2 i2", file:read(4))
@@ -90,7 +90,7 @@ function Deserializer.readProjectMobEntry(file)
   mob.health = struct.unpack("<I4", file:read(4))
   mob.xp_min, mob.xp_max, mob.gold_min, mob.gold_max = struct.unpack("<I4 I4 I4 I4", file:read(4*4))
   mob.loot_object, mob.loot_chance = struct.unpack("<I2 I2", file:read(2*2))
-  mob.var_id, mob.var_increment = struct.unpack("<I2 I2", file:read(2*2))
+  mob.var_id, mob.var_increment = struct.unpack("<i2 I2", file:read(2*2))
 
   mob.spells = {}
   -- 10 spells id
