@@ -49,6 +49,10 @@ function love.textinput(data)
   client:onTextInput(data)
 end
 
+function love.wheelmoved(x,y)
+  client:onWheelMoved(x,y)
+end
+
 function love.resize(w, h)
   client:onResize(w, h)
 end

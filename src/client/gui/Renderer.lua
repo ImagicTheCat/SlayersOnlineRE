@@ -138,7 +138,15 @@ widgets[GridInterface.Overlay] = function(self, widget)
   end
 end
 
-widgets[ChatHistory] = widgets[Window]
+widgets[ChatHistory] = function(self, widget)
+  widgets[Window](self, widget) -- window display
+  -- chat arrow
+  --- up (bottom-right corner)
+  if widget.scroll_h > 0 and (scheduler.time%1 < 0.5) then -- 0.5s blinking interval
+    love.graphics.draw(self.system.tex, self.system.down_arrow, widget.w-16*self.system_scale-6, widget.h-8*self.system_scale-10, 0, self.system_scale)
+  end
+end
+
 widgets[Inventory.Content] = widgets[Window]
 
 -- METHODS
