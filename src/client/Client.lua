@@ -740,6 +740,11 @@ function Client:onTouchReleased(id, x, y)
   end
 end
 
+function Client:onWheelMoved(x,y)
+  local mx, my = love.mouse.getPosition()
+  self.gui:triggerPointerWheel(0, mx, my, y)
+end
+
 -- abstraction layer for controls
 function Client:pressControl(id)
   local control = self.controls[id]
