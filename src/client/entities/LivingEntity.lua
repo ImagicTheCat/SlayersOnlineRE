@@ -20,6 +20,8 @@ function LivingEntity.getTextureAtlas(x, y, tw, th, w, h)
   return atlas
 end
 
+local ANIM_STEP_LENGTH = 11 -- pixel length for a movement step
+
 -- METHODS
 
 function LivingEntity:__construct(data)
@@ -28,8 +30,8 @@ function LivingEntity:__construct(data)
   self.tx = self.x
   self.ty = self.y
 
-  self.anim_traveled = 0 -- distance traveled (pixels) for the movement animation
-  self.anim_step_length = 15 -- pixel length for a movement step
+  self.anim_move_traveled = 0 -- distance traveled (pixels) for the movement animation
+  self.anim_move_index = 1
 
   self.anim_x = 1
   self.anim_y = data.orientation
@@ -69,6 +71,7 @@ function LivingEntity:onPacket(action, data)
     self.ty = self.y
     self.move_to_cell = nil
     self.anim_x = 1
+    self.anim_move_index = 0
   elseif action == "ch_orientation" then
     self.anim_y = data
   elseif action == "act" then
@@ -170,26 +173,27 @@ function LivingEntity:tick(dt)
 
     -- compute movement animation
     local progress = mtc.time/mtc.duration
-    local steps = math.floor((mtc.dist*progress)/self.anim_step_length)
-    self.anim_x = steps%3
+    local steps = math.floor((mtc.dist*progress)/ANIM_STEP_LENGTH)
+    self.anim_x = math.abs((steps%4+2)%4-2) -- 0,1,2,3... => 0,1,2,1...
     self.x = utils.lerp(mtc.x, mtc.cx*16, progress)
     self.y = utils.lerp(mtc.y, mtc.cy*16, progress)
 
     if mtc.time >= mtc.duration then
       self.move_to_cell = nil
     end
-  else
+  elseif self.x ~= self.tx or self.y ~= self.ty then -- free movement
     -- lerp
     local x = math.floor(utils.lerp(self.x, self.tx, 0.5))
     local y = math.floor(utils.lerp(self.y, self.ty, 0.5))
 
     -- compute movement animation
     local dist = math.abs(x-self.x)+math.abs(y-self.y)
-    self.anim_traveled = self.anim_traveled+dist
+    self.anim_move_traveled = self.anim_move_traveled+dist
 
-    local steps = math.floor(self.anim_traveled/self.anim_step_length)
-    self.anim_traveled = self.anim_traveled-self.anim_step_length*steps
-    self.anim_x = (self.anim_x+steps)%3
+    local steps = math.floor(self.anim_move_traveled/ANIM_STEP_LENGTH)
+    self.anim_move_traveled = self.anim_move_traveled-ANIM_STEP_LENGTH*steps
+    self.anim_move_index = (self.anim_move_index+steps)%4
+    self.anim_x = math.abs((self.anim_move_index+2)%4-2) -- 0,1,2,3... => 0,1,2,1...
 
     -- apply new position
     self.x = x
