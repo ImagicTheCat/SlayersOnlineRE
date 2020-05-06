@@ -118,8 +118,8 @@ function LivingEntity:onPacket(action, data)
   elseif action == "move_to_cell" then
     data.x = self.x
     data.y = self.y
-    data.dx = data.cx-data.x/16
-    data.dy = data.cy-data.y/16
+    data.dx = data.cx*16-data.x
+    data.dy = data.cy*16-data.y
     data.dist = math.sqrt(data.dx*data.dx+data.dy*data.dy)
     data.duration = data.dist/data.speed
     data.time = 0
@@ -177,6 +177,8 @@ function LivingEntity:tick(dt)
     self.anim_x = math.abs((steps%4+2)%4-2) -- 0,1,2,3... => 0,1,2,1...
     self.x = utils.lerp(mtc.x, mtc.cx*16, progress)
     self.y = utils.lerp(mtc.y, mtc.cy*16, progress)
+    self.tx = self.x
+    self.ty = self.y
 
     if mtc.time >= mtc.duration then
       self.move_to_cell = nil

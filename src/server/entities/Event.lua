@@ -1410,7 +1410,7 @@ end
 function Event:moveAI()
   if self.map and not self.move_ai_task
     and (self.animation_type == Event.Animation.CHARACTER_RANDOM or self.animation_type == Event.Animation.CHARACTER_FOLLOW) then
-    self.move_ai_task = task(utils.randf(0.75, 7), function()
+    self.move_ai_task = task(utils.randf(1, 5)/self.speed*2, function()
       local ok
       local ncx, ncy
 

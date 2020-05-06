@@ -56,10 +56,15 @@ function Mob:__construct(data, area)
   -- self.target -- player aggro
 end
 
--- launch/do AI task
+-- (re)launch/do AI task
 -- (starts a unique loop, will call itself again)
 function Mob:doAI()
-  if not self.ai_task and self.map then
+  if self.map then
+    if self.ai_task then -- remove previous task if not done
+      self.ai_task:remove()
+      self.ai_task = nil
+    end
+
     if self.target and self.target.ghost then self.target = nil end -- lose target if ghost
     -- lose target if aggressive and the target is gone
     if self.data.type == Mob.Type.AGGRESSIVE and self.target and self.target.map ~= self.map then
@@ -67,7 +72,7 @@ function Mob:doAI()
     end
 
     local aggro = (self.target and self.target.map == self.map)
-    self.ai_task = task(utils.randf(0.75, (aggro and 1.5 or 7)), function()
+    self.ai_task = task(utils.randf(1, 5)/self.speed*(aggro and 0.5 or 2), function()
       if self.map then
         if aggro then -- aggro mode
           local dcx, dcy = self.target.cx-self.cx, self.target.cy-self.cy
@@ -109,7 +114,7 @@ function Mob:doAI()
             end
           end
 
-          if self.data.type == Mob.Type.AGGRESSIVE then -- find target
+          if not aggro and self.data.type == Mob.Type.AGGRESSIVE then -- find target
             -- target nearest player
             if next(self.map.clients) then
               local players = {}
@@ -152,12 +157,11 @@ function Mob:onAttack(attacker)
     local amount = attacker:computeAttack(self)
 
     if self.data.type ~= Mob.Type.BREAKABLE then -- update target
-      -- update target if previous is missing
-      if not self.target or self.target.map ~= self.map then self.target = attacker end
-      -- update target on max damage
-      if amount and amount >= self.highest_damage_received then
-        self.highest_damage_received = amount
+      -- update target if without target or on max damage
+      if not (self.target and self.target.map == self.map) or (amount and amount >= self.highest_damage_received) then
+        self.highest_damage_received = amount or 0
         self.target = attacker
+        self:doAI() -- update task
       end
     end
 
