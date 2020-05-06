@@ -159,8 +159,8 @@ function LivingEntity:moveToCell(cx, cy, blocking)
   if blocking then r = async() end
 
   -- basic implementation
-  local dx, dy = cx-self.x/16, cy-self.y/16
-  local speed = LivingEntity.pixelSpeed(self.speed)/16 -- cells per second
+  local dx, dy = cx*16-self.x, cy*16-self.y
+  local speed = LivingEntity.pixelSpeed(self.speed) -- pixels per second
   self:setOrientation(LivingEntity.vectorOrientation(dx,dy))
   self:broadcastPacket("move_to_cell", {cx = cx, cy = cy, speed = speed})
 
