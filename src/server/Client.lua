@@ -246,7 +246,7 @@ function Client:onPacket(protocol, data)
               x,y = spawn_location.cx*16, spawn_location.cy*16
             end
 
-            map:addEntity(self)
+            if map then map:addEntity(self) end
             self:teleport(x,y)
 
             -- compute characteristics, send/init stats
@@ -394,7 +394,7 @@ function Client:onPacket(protocol, data)
           self:triggerSpecialVariable("Dext")
         elseif data == "constitution" then
           self.constitution_pts = self.constitution_pts+1
-          self:triggerSpecialVariable("Consti")
+          self:triggerSpecialVariable("Constit")
         else done = false end
 
         if done then

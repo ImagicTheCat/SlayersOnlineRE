@@ -504,7 +504,7 @@ function Server:getMap(id)
     if map_data then
       map = Map(self, id, map_data)
       self.maps[id] = map
-    end
+    else print("couldn't load \""..id.."\" map data") end
   end
 
   return map
@@ -535,16 +535,18 @@ end
 
 function Server:loadMapData(id)
   local map = self.project.maps[id]
-  if map and not map.loaded then
-    map.loaded = true
-    map.tiledata = Deserializer.loadMapTiles(id)
-    map.events = Deserializer.loadMapEvents(id)
-    map.mob_areas = Deserializer.loadMapMobAreas(id)
+  if map then
+    if not map.loaded then
+      map.tiledata = Deserializer.loadMapTiles(id)
+      map.events = Deserializer.loadMapEvents(id)
+      map.mob_areas = Deserializer.loadMapMobAreas(id)
 
-    map.tileset_id = string.sub(map.tileset, 9, string.len(map.tileset)-4)
-    map.tileset_data = self:loadTilesetData(map.tileset_id)
+      map.tileset_id = string.sub(map.tileset, 9, string.len(map.tileset)-4)
+      map.tileset_data = self:loadTilesetData(map.tileset_id)
+      map.loaded = (map.tiledata and map.events and map.mob_areas and map.tileset_data)
+    end
 
-    return map
+    if map.loaded then return map end
   end
 end
 
