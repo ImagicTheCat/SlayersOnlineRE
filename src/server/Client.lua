@@ -117,6 +117,7 @@ function Client:onPacket(protocol, data)
 
             -- load user data
             self.pseudo = user_row.pseudo
+            self.user_rank = tonumber(user_row.rank)
             self.class = tonumber(user_row.class)
             self.level = tonumber(user_row.level)
             self.alignment = tonumber(user_row.alignment)
