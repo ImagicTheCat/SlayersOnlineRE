@@ -543,23 +543,20 @@ function client_special_vars:Groupe(value)
 end
 
 function client_special_vars:Guilde(value)
-  -- TODO
   if not value then
-    return "Admin"
+    return self.client.guild
   end
 end
 
 function client_special_vars:Rang(value)
-  -- TODO
   if not value then
-    return "Default"
+    return self.client.guild_rank_title
   end
 end
 
 function client_special_vars:Grade(value)
-  -- TODO
   if not value then
-    return 0
+    return self.client.guild_rank
   end
 end
 

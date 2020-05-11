@@ -21,9 +21,17 @@ function Player:__construct(data)
   self.chat_gui:add(self.chat_w)
 
   self.pseudo = data.pseudo
-  self.pseudo_text = love.graphics.newText(client.font)
-  self.pseudo_text:set(self.pseudo)
+  self.guild = data.guild
+  self.name_tag = love.graphics.newText(client.font)
+  self:updateNameTag()
   self.visible = true
+end
+
+function Player:updateNameTag()
+  local final = self.pseudo
+  if #self.guild > 0 then final = final.."["..self.guild.."]" end
+  if self.group_data then final = "{"..final.."}" end
+  self.name_tag:set(final)
 end
 
 -- override
@@ -35,11 +43,11 @@ function Player:onPacket(action, data)
   elseif action == "ch_draw_order" then
     client.map:updateEntityDrawOrder(self, data)
   elseif action == "group_update" then
-    if not self.group_data then self.pseudo_text:set("{"..self.pseudo.."}") end
     self.group_data = data
+    self:updateNameTag()
   elseif action == "group_remove" then
-    self.pseudo_text:set(self.pseudo)
     self.group_data = nil
+    self:updateNameTag()
   end
 end
 
@@ -48,17 +56,17 @@ function Player:drawUnder()
   if self.visible then
     -- draw pseudo
     local inv_scale = 1/client.world_scale
-    local x = (self.x+8)-self.pseudo_text:getWidth()/2*inv_scale
+    local x = (self.x+8)-self.name_tag:getWidth()/2*inv_scale
     local y = self.y+16
     love.graphics.setColor(0,0,0,0.50)
-    love.graphics.draw(self.pseudo_text, x+2*inv_scale, y+2*inv_scale, 0, inv_scale) -- shadowing
+    love.graphics.draw(self.name_tag, x+2*inv_scale, y+2*inv_scale, 0, inv_scale) -- shadowing
     love.graphics.setColor(1,1,1)
-    love.graphics.draw(self.pseudo_text, x, y, 0, inv_scale)
+    love.graphics.draw(self.name_tag, x, y, 0, inv_scale)
 
     -- draw health (group)
     if self.group_data and self.id ~= client.id then
       local p = self.group_data.health/self.group_data.max_health
-      love.graphics.rectangle("fill", (self.x+8)-16, self.y+16+self.pseudo_text:getHeight()*inv_scale, math.floor(p*32), 4)
+      love.graphics.rectangle("fill", (self.x+8)-16, self.y+16+self.name_tag:getHeight()*inv_scale, math.floor(p*32), 4)
     end
   end
 end
