@@ -52,5 +52,6 @@ return {
   ITEM_USE = 49,
   GLOBAL_CHAT = 50,
   GROUP_CHAT = 51,
-  GUILD_CHAT = 52
+  GUILD_CHAT = 52,
+  PRIVATE_CHAT = 53
 }

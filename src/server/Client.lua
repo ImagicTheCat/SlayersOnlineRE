@@ -113,10 +113,11 @@ function Client:onPacket(protocol, data)
             local user_row = rows[1]
 
             self.user_id = tonumber(user_row.id) -- mark as logged
+            self.pseudo = user_row.pseudo
             self.server.clients_by_id[self.user_id] = self
+            self.server.clients_by_pseudo[self.pseudo] = self
 
             -- load user data
-            self.pseudo = user_row.pseudo
             self.user_rank = tonumber(user_row.rank)
             self.class = tonumber(user_row.class)
             self.level = tonumber(user_row.level)
@@ -685,6 +686,7 @@ function Client:onDisconnect()
 
   if self.user_id then
     self.server.clients_by_id[self.user_id] = nil
+    self.server.clients_by_pseudo[self.pseudo] = nil
     self.user_id = nil
   end
 end
