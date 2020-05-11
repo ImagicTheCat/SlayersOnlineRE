@@ -23,6 +23,7 @@ local q_create_account = [[
 INSERT INTO users(
   pseudo,
   password,
+  rank,
   class,
   level,
   alignment,
@@ -41,7 +42,7 @@ INSERT INTO users(
   armor_slot
 ) VALUES(
   {pseudo}, UNHEX({password}),
-  1, 1, 100, 0, 0,
+  {rank}, 1, 1, 100, 0, 0,
   0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0
 );
@@ -49,7 +50,11 @@ INSERT INTO users(
 
 -- COMMANDS
 
--- map of command id => {handler, usage, description}
+-- map of command id => {rank, handler, usage, description}
+-- rank: 0-10, permissions
+--- Each rank inherits from higher ranks permissions.
+--- 0: server (the minimum for a user is 1)
+--- 10: normal player
 -- handler(server, client, args)
 --- client: client or nil if emitted from the server
 --- args: command arguments list (first is command id/name)
@@ -59,14 +64,16 @@ INSERT INTO users(
 
 local commands = {}
 
-commands.help = {function(self, client, args)
+commands.help = {10, function(self, client, args)
+  local rank = client and math.max(client.user_rank or 10, 1) or 0
+
   local id = args[2]
   if id then -- single command
     local cmd = commands[id]
-    if cmd then -- found
+    if cmd and rank <= cmd[1] then -- found
       local lines = {}
-      table.insert(lines, "  "..id.." "..cmd[2])
-      table.insert(lines, "    "..cmd[3])
+      table.insert(lines, "  "..id.." "..cmd[3])
+      table.insert(lines, "    "..cmd[4])
 
       if client then
         client:sendChatMessage(table.concat(lines, "\n"))
@@ -85,8 +92,10 @@ commands.help = {function(self, client, args)
     local lines = {}
     table.insert(lines, "Commandes:")
     for id, cmd in pairs(commands) do
-      table.insert(lines, "  "..id.." "..cmd[2])
-      table.insert(lines, "    "..cmd[3])
+      if rank <= cmd[1] then
+        table.insert(lines, "  "..id.." "..cmd[3])
+        table.insert(lines, "    "..cmd[4])
+      end
     end
 
     if client then
@@ -101,7 +110,7 @@ local bind_blacklist = {
   ["return"] = true,
   escape = true
 }
-commands.bind = {function(self, client, args)
+commands.bind = {10, function(self, client, args)
   if client then
     local scancode, control = args[2], args[3]
     if not scancode then return true end
@@ -124,7 +133,7 @@ end, "<scancode> [control]", [[afficher ou assigner un (LÖVE/SDL) scancode à u
     contrôles: none, up, right, down, left, interact, attack, defend, quick1, quick2, quick3, return, menu]]
 }
 
-commands.volume = {function(self, client, args)
+commands.volume = {10, function(self, client, args)
   if client then
     local vtype, volume = args[2], tonumber(args[3])
     if vtype and volume then
@@ -138,7 +147,7 @@ end, "<type> <volume>", [[changer le volume
     volume: 0-1]]
 }
 
-commands.gui = {function(self, client, args)
+commands.gui = {10, function(self, client, args)
   if client then
     local param, value = args[2], args[3]
     if not param or not value then return true end
@@ -159,14 +168,14 @@ end, "<parameter> <value>", [[changer les paramètres de la GUI
     - chat_height (0-1 facteur)]]
 }
 
-commands.memory = {function(self, client, args)
+commands.memory = {0, function(self, client, args)
   if not client then
     local MB = collectgarbage("count")*1024/1000000
     print("Mémoire utilisée (Lua GC): "..MB.." Mo")
   end
 end, "", "afficher la mémoire utilisée par la VM Lua"}
 
-commands.count = {function(self, client, args)
+commands.count = {10, function(self, client, args)
   local count = 0
   for _ in pairs(self.clients) do
     count = count+1
@@ -179,7 +188,7 @@ commands.count = {function(self, client, args)
   end
 end, "", "afficher le nombre de joueurs en ligne"}
 
-commands.where = {function(self, client, args)
+commands.where = {10, function(self, client, args)
   if client then
     if client.map then
       client:sendChatMessage(client.map.id.." "..client.cx..","..client.cy)
@@ -189,7 +198,7 @@ commands.where = {function(self, client, args)
   end
 end, "", "afficher sa position"}
 
-commands.skin = {function(self, client, args)
+commands.skin = {10, function(self, client, args)
   if client then
     if not args[2] then return true end
 
@@ -210,7 +219,7 @@ commands.skin = {function(self, client, args)
   end
 end, "<skin_name>", "changer son skin"}
 
-commands.tp = {function(self, client, args)
+commands.tp = {1, function(self, client, args)
   if client then
     local ok
 
@@ -237,7 +246,7 @@ commands.tp = {function(self, client, args)
 end, "<map> <cx> <cy>", "se teleporter"}
 
 -- testing command
-commands.chest = {function(self, client, args)
+commands.chest = {1, function(self, client, args)
   if client then
     async(function()
       client:openChest("Test.")
@@ -246,7 +255,7 @@ commands.chest = {function(self, client, args)
 end, "", "ouvrir son coffre (test)"}
 
 -- testing command
-commands.shop = {function(self, client, args)
+commands.shop = {1, function(self, client, args)
   if client then
     async(function()
       client:openShop("Test.", {1,2,3,4})
@@ -255,12 +264,12 @@ commands.shop = {function(self, client, args)
 end, "", "ouvrir un magasin (test)"}
 
 -- testing command
-commands.kill = {function(self, client, args)
+commands.kill = {10, function(self, client, args)
   if client then client:setHealth(0) end
 end, "", "se suicider"}
 
 -- global chat
-commands.all = {function(self, client, args)
+commands.all = {10, function(self, client, args)
   if client and client.user_id and client:canChat() then
     local packet = Client.makePacket(net.GLOBAL_CHAT, {
       pseudo = client.pseudo,
@@ -275,7 +284,7 @@ commands.all = {function(self, client, args)
 end, "", "chat global"}
 
 -- server chat
-commands.say = {function(self, client, args)
+commands.say = {0, function(self, client, args)
   if not client then
     local packet = Client.makePacket(net.CHAT_MESSAGE_SERVER, table.concat(args, " ", 2))
 
@@ -287,20 +296,24 @@ commands.say = {function(self, client, args)
 end, "", "envoyer un message serveur"}
 
 -- account creation
-commands.create_account = {function(self, client, args)
+commands.create_account = {0, function(self, client, args)
   if not client then
     if #args < 3 or #args[2] == 0 or #args[3] == 0 then return true end -- wrong parameters
 
     local pseudo = args[2]
     local client_password = sha2.hex2bin(sha2.sha512("<client_salt>"..pseudo..args[3]))
     local password = sha2.sha512("<server_salt>"..pseudo..client_password)
-    self.db:_query(q_create_account, {pseudo = args[2], password = password})
+    self.db:_query(q_create_account, {
+      pseudo = args[2],
+      password = password,
+      rank = tonumber(args[4]) or 10
+    })
     print("compte créé")
   end
-end, "<pseudo> <password>", "créer un compte"}
+end, "<pseudo> <password> [rank]", "créer un compte"}
 
 -- join group
-commands.join = {function(self, client, args)
+commands.join = {10, function(self, client, args)
   if client then
     if not args[2] or #args[2] <= GROUP_ID_LIMIT then
       client:setGroup(args[2])
@@ -311,7 +324,7 @@ commands.join = {function(self, client, args)
 end, "[groupe]", "rejoindre un groupe ou juste quitter l'actuel si non spécifié"}
 
 -- group chat
-commands.party = {function(self, client, args)
+commands.party = {10, function(self, client, args)
   if client and client:canChat() then
     local group = client.group and self.groups[client.group]
     if group then
@@ -329,7 +342,7 @@ commands.party = {function(self, client, args)
 end, "", "chat de groupe"}
 
 -- show groups
-commands.groups = {function(self, client, args)
+commands.groups = {0, function(self, client, args)
   if not client then
     for id, group in pairs(self.groups) do
       local count = 0
@@ -553,10 +566,11 @@ end
 -- client: client or nil from server console
 function Server:processCommand(client, args)
   -- dispatch command
+  local rank = client and math.max(client.user_rank or 10, 1) or 0
   local command = commands[args[1]]
-  if command then
-    if command[1](self, client, args) then
-      local msg = "utilisation: "..args[1].." "..command[2]
+  if command and rank <= command[1] then
+    if command[2](self, client, args) then
+      local msg = "utilisation: "..args[1].." "..command[3]
       if client then
         client:sendChatMessage(msg)
       else

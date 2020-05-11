@@ -2,9 +2,10 @@ CREATE TABLE users(
   id INTEGER UNSIGNED AUTO_INCREMENT,
   pseudo VARCHAR(50) UNIQUE,
   password BINARY(64),
+  rank TINYINT UNSIGNED, -- user rank (permissions); 0: server, 10: normal player
   config BLOB, -- player config (msgpack)
   state BLOB, -- player state (msgpack)
-  class TINYINT UNSIGNED, -- class index (start at 1)
+  class TINYINT UNSIGNED, -- class index (1-based)
   level TINYINT UNSIGNED,
   alignment TINYINT UNSIGNED,
   reputation INTEGER UNSIGNED,
@@ -16,7 +17,7 @@ CREATE TABLE users(
   constitution_pts INTEGER UNSIGNED,
   magic_pts INTEGER UNSIGNED,
   remaining_pts INTEGER UNSIGNED,
-  weapon_slot INTEGER UNSIGNED, -- object index (start at 1, 0 is empty)
+  weapon_slot INTEGER UNSIGNED, -- object index (1-based, 0 is empty)
   shield_slot INTEGER UNSIGNED,
   helmet_slot INTEGER UNSIGNED,
   armor_slot INTEGER UNSIGNED,
