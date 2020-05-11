@@ -13,6 +13,7 @@ local net = require("protocol")
 local Server = class("Server")
 
 -- PRIVATE STATICS
+local GROUP_ID_LIMIT = 100
 
 -- QUERIES
 
@@ -260,7 +261,7 @@ end, "", "se suicider"}
 
 -- global chat
 commands.all = {function(self, client, args)
-  if client and client.user_id then
+  if client and client.user_id and client:canChat() then
     local packet = Client.makePacket(net.GLOBAL_CHAT, {
       pseudo = client.pseudo,
       msg = table.concat(args, " ", 2)
@@ -298,7 +299,45 @@ commands.create_account = {function(self, client, args)
   end
 end, "<pseudo> <password>", "créer un compte"}
 
+-- join group
+commands.join = {function(self, client, args)
+  if client then
+    if not args[2] or #args[2] <= GROUP_ID_LIMIT then
+      client:setGroup(args[2])
+    else
+      client:sendChatMessage("Nom de groupe trop long.")
+    end
+  end
+end, "[groupe]", "rejoindre un groupe ou juste quitter l'actuel si non spécifié"}
 
+-- group chat
+commands.party = {function(self, client, args)
+  if client and client:canChat() then
+    local group = client.group and self.groups[client.group]
+    if group then
+      local packet = Client.makePacket(net.GROUP_CHAT, {
+        pseudo = client.pseudo,
+        msg = table.concat(args, " ", 2)
+      })
+
+      -- broadcast to all group members
+      for client in pairs(group) do
+        client:send(packet)
+      end
+    else client:sendChatMessage("Pas dans un groupe.") end
+  end
+end, "", "chat de groupe"}
+
+-- show groups
+commands.groups = {function(self, client, args)
+  if not client then
+    for id, group in pairs(self.groups) do
+      local count = 0
+      for _ in pairs(group) do count = count+1 end
+      print(id, count)
+    end
+  end
+end, "", "lister les groupes"}
 
 -- CONSOLE THREAD
 local function console_main(flags, channel)
@@ -351,6 +390,7 @@ function Server:__construct(cfg)
   self.var_listeners = {} -- map of id => map of callback
   self.commands = {} -- map of id => callback
   self.motd = self.cfg.motd
+  self.groups = {} -- player groups, map of id => map of client
 
   self.last_time = clock()
 
