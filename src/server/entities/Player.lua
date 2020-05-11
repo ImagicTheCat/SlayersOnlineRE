@@ -46,6 +46,7 @@ end
 function Player:serializeNet()
   local data = LivingEntity.serializeNet(self)
   data.pseudo = self.pseudo
+  data.guild = self.guild
   return data
 end
 

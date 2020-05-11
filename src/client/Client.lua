@@ -538,6 +538,8 @@ function Client:onPacket(protocol, data)
     self.chat_history:addMessage({{0,0.5,1}, data.pseudo.."(all): ", {1,1,1}, data.msg})
   elseif protocol == net.GROUP_CHAT then
     self.chat_history:addMessage({{1,0.5,0}, data.pseudo.."(grp): ", {1,1,1}, data.msg})
+  elseif protocol == net.GUILD_CHAT then
+    self.chat_history:addMessage({{1,0,0.5}, data.pseudo.."(gui): ", {1,1,1}, data.msg})
   end
 end
 

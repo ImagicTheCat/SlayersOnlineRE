@@ -51,5 +51,6 @@ return {
   QUICK_ACTION_BIND = 48,
   ITEM_USE = 49,
   GLOBAL_CHAT = 50,
-  GROUP_CHAT = 51
+  GROUP_CHAT = 51,
+  GUILD_CHAT = 52
 }

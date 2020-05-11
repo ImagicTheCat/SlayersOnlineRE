@@ -134,6 +134,9 @@ function Client:onPacket(protocol, data)
             self.shield_slot = tonumber(user_row.shield_slot)
             self.helmet_slot = tonumber(user_row.helmet_slot)
             self.armor_slot = tonumber(user_row.armor_slot)
+            self.guild = user_row.guild
+            self.guild_rank = tonumber(user_row.guild_rank)
+            self.guild_rank_title = user_row.guild_rank_title
 
             local class_data = self.server.project.classes[self.class]
             self:setSounds(string.sub(class_data.attack_sound, 7), string.sub(class_data.hurt_sound, 7))

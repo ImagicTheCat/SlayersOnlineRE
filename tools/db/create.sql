@@ -21,6 +21,9 @@ CREATE TABLE users(
   shield_slot INTEGER UNSIGNED,
   helmet_slot INTEGER UNSIGNED,
   armor_slot INTEGER UNSIGNED,
+  guild VARCHAR(100),
+  guild_rank TINYINT UNSIGNED,
+  guild_rank_title VARCHAR(100),
   CONSTRAINT pk_users PRIMARY KEY(id)
 );
 

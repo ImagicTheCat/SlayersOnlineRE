@@ -39,14 +39,21 @@ INSERT INTO users(
   weapon_slot,
   shield_slot,
   helmet_slot,
-  armor_slot
+  armor_slot,
+  guild,
+  guild_rank,
+  guild_rank_title
 ) VALUES(
   {pseudo}, UNHEX({password}),
   {rank}, 1, 1, 100, 0, 0,
   0, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0
+  0, 0, 0, 0,
+  "", 0, ""
 );
 ]]
+
+local q_set_rank = "UPDATE users SET rank = {rank} WHERE pseudo = {pseudo}"
+local q_set_guild = "UPDATE users SET guild = {guild}, guild_rank = {rank}, guild_rank_title = {title} WHERE pseudo = {pseudo}"
 
 -- COMMANDS
 
@@ -351,6 +358,50 @@ commands.groups = {0, function(self, client, args)
     end
   end
 end, "", "lister les groupes"}
+
+commands.uset = {0, function(self, client, args)
+  if not client then
+    -- check arguments
+    if not args[2] or #args[2] == 0 or not args[3] or #args[3] == 0 then return true end
+
+    local pseudo, prop = args[2], args[3]
+    if prop == "rank" then
+      async(function()
+        local affected = self.db:query(q_set_rank, {pseudo = pseudo, rank = tonumber(args[4]) or 10})
+        print(affected.." affected row(s)")
+      end)
+    elseif prop == "guild" then
+      async(function()
+        local affected = self.db:query(q_set_guild, {
+          pseudo = pseudo,
+          guild = args[4] or "" ,
+          rank = tonumber(args[5]) or 0,
+          title = args[6] or ""
+        })
+        print(affected.." affected row(s)")
+      end)
+    else return true end
+  end
+end, "<pseudo> <rank|guild> ...", [=[set user persistent data
+    rank: [1-10]
+    guild: <name> [rank] [title]]=]}
+
+-- guild chat
+commands.guild = {10, function(self, client, args)
+  if client and client:canChat() then
+    if client.user_id and #client.guild > 0 then
+      local packet = Client.makePacket(net.GUILD_CHAT, {
+        pseudo = client.pseudo,
+        msg = table.concat(args, " ", 2)
+      })
+
+      -- broadcast to all guild members
+      for id, tclient in pairs(self.clients_by_id) do
+        if tclient.guild == client.guild then tclient:send(packet) end
+      end
+    else client:sendChatMessage("Pas dans une guilde.") end
+  end
+end, "", "chat de guilde"}
 
 -- CONSOLE THREAD
 local function console_main(flags, channel)
