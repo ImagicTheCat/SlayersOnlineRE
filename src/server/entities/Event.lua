@@ -56,8 +56,8 @@ Event.patterns = {
   server_var = "Serveur%[([%w_%-%%éèàçê]+)%]", -- Serveur[string]
   client_var = "Variable%[([%d%.]+)%]", -- Variable[int]
   client_bool_var = "Bool%[([%d%.]+)%]", -- Bool[int]
-  event_special_var = "%%([^%.%%]+)%.([^%.%s%%]+)%%", -- %Nom Ev.Var%
-  client_special_var = "%%([^%.%s%%]+)%%" -- %Var%
+  event_special_var = "%%([^%.%%]+)%.([^%.%s%%%(%)]+)%%", -- %Nom Ev.Var%
+  client_special_var = "%%([^%.%s%%%(%)]+)%%" -- %Var%
 }
 
 -- return (Event.Variable type, parameters...) or nil
@@ -237,7 +237,7 @@ function client_special_vars:Dext(value)
   end
 end
 
-function client_special_vars:Consti(value)
+function client_special_vars:Constit(value)
   if value then
     self.client.constitution_pts = Event.computeExpression(value) or 0
     self.client:updateCharacteristics()
@@ -492,7 +492,7 @@ function client_special_vars:BloqueDialogue(value)
   end
 end
 
-function client_special_vars:NbObjectInventaire(value)
+function client_special_vars:NbObjetInventaire(value)
   if not value then
     return self.client.inventory:getAmount()
   end
@@ -868,7 +868,7 @@ function command_functions:Condition(state, condition)
 
     if ctype == Event.Condition.VARIABLE or ctype == Event.Condition.EXPRESSION then -- condition check
       ok = self:checkCondition(condition)
-    else -- trigger condition check
+    else -- condition trigger check
       ok = (ctype == state.condition)
     end
 
@@ -899,6 +899,7 @@ function command_functions:InputQuery(state, title, ...)
   local options = {...}
 
   local answer = options[self.client:requestInputQuery(title, options)] or ""
+  answer = self:instructionSubstitution(answer)
 
   local i = state.cursor+1
   local size = #self.page.commands
@@ -906,7 +907,7 @@ function command_functions:InputQuery(state, title, ...)
   while not i_found and i <= size do -- skip after valid OnResultQuery or QueryEnd
     local args = {Event.parseCommand(self.page.commands[i])}
     if args[1] == Event.Command.FUNCTION then
-      if (args[2] == "OnResultQuery" and args[3] == answer)
+      if (args[2] == "OnResultQuery" and self:instructionSubstitution(args[3]) == answer)
         or args[2] == "QueryEnd" then
         i_found = i
       end
@@ -1008,7 +1009,7 @@ end
 
 function command_functions:PlayMusic(state, path)
   local sub_path = string.match(path, "^Sound\\(.+)%.mid$")
-  path = sub_path and subpath..".ogg"
+  path = sub_path and sub_path..".ogg"
 
   if path then self.client:playMusic(path) end
 end
@@ -1104,12 +1105,7 @@ function Event:instructionSubstitution(str, f_input)
       for i=1,#args do
         args[i] = self:instructionSubstitution(args[i], f_input)
       end
-
-      if f then
-        f(self, unpack(args))
-      end
-
-      return f(self)
+      return f(self, unpack(args))
     end
   end)
 
@@ -1151,11 +1147,11 @@ end
 -- check condition instruction
 -- return bool
 function Event:checkCondition(instruction)
+  --print("CD", self.data.x, self.data.y, instruction)
   local args = {Event.parseCondition(instruction)}
 
+  local lhs, op, expr
   if args[1] == Event.Condition.VARIABLE then -- comparison check
-    local lhs, op, expr
-
     if args[2] == Event.Variable.SERVER then
       local key = self:instructionSubstitution(args[3])
       lhs = self.client.server:getVariable(key)
@@ -1164,45 +1160,34 @@ function Event:checkCondition(instruction)
       lhs = self.client:getVariable(args[3], args[4][1])
       op, expr = args[5], args[6]
     elseif args[2] == Event.Variable.CLIENT_SPECIAL then
-      local f = client_special_vars[args[3]]
-      if f then lhs = f(self) end
-
+      if args[3] == "Inventaire" then -- inventory check, set lhs as rhs or "" if not owned
+        local rhs = self:instructionSubstitution(args[5])
+        local id = self.client.server.project.objects_by_name[rhs]
+        lhs = (id and (self.client.inventory.items[id] or 0) > 0 and rhs or "")
+      else -- regular
+        local f = client_special_vars[args[3]]
+        if f then lhs = f(self)
+        else print("event: client special variable \""..args[3].."\" not implemented") end
+      end
       op, expr = args[4], args[5]
     elseif args[2] == Event.Variable.EVENT_SPECIAL then
       local event = self.client.events_by_name[args[3]]
       if event then
         local f = event_special_vars[args[4]]
-        if f then lhs = f(event) end
+        if f then lhs = f(event)
+        else print("event: event special variable \""..args[4].."\" not implemented") end
       end
 
       op, expr = args[5], args[6]
     end
-
-    if not lhs then return false end
-    local rhs = self:instructionSubstitution(expr)
-
-    local rhs_n = Event.computeExpression(rhs)
-    local lhs_n = Event.computeExpression(lhs)
-    if rhs_n and lhs_n then -- number comparison
-      lhs = lhs_n
-      rhs = rhs_n
-    else -- string comparison
-      lhs = lhs_n and tostring(lhs_n) or lhs
-      rhs = rhs_n and tostring(rhs_n) or rhs
-    end
-
-    if op == "=" then return (lhs == rhs)
-    elseif op == "<" then return (lhs < rhs)
-    elseif op == ">" then return (lhs > rhs)
-    elseif op == "<=" then return (lhs <= rhs)
-    elseif op == ">=" then return (lhs >= rhs)
-    elseif op == "!=" then return (lhs ~= rhs)
-    else return false end
   elseif args[1] == Event.Condition.EXPRESSION then -- expression comparison
-    local lhs_expr, op, rhs_expr = args[2], args[3], args[4]
+    lhs, op, expr = self:instructionSubstitution(args[2]), args[3], args[4]
+  end
 
-    local lhs = self:instructionSubstitution(lhs_expr)
-    local rhs = self:instructionSubstitution(rhs_expr)
+  if op then -- comparison
+    if not lhs then return false end
+    lhs = tostring(lhs)
+    local rhs = self:instructionSubstitution(expr)
 
     local rhs_n = Event.computeExpression(rhs)
     local lhs_n = Event.computeExpression(lhs)
