@@ -402,7 +402,7 @@ function Client:onPacket(protocol, data)
       local entity = self.map.entities[data.id]
       if class.is(entity, Player) then
         entity:onMapChat(data.msg)
-        self.chat_history:addMessage({{0,0.5,1}, tostring(entity.pseudo)..": ", {1,1,1}, data.msg})
+        self.chat_history:addMessage({{0.83,0.80,0.68}, tostring(entity.pseudo)..": ", {1,1,1}, data.msg})
       end
     end
   elseif protocol == net.CHAT_MESSAGE_SERVER then
@@ -535,11 +535,13 @@ function Client:onPacket(protocol, data)
   elseif protocol == net.VIEW_SHIFT_UPDATE then
     self.view_shift = data
   elseif protocol == net.GLOBAL_CHAT then
-    self.chat_history:addMessage({{0,0.5,1}, data.pseudo.."(all): ", {1,1,1}, data.msg})
+    self.chat_history:addMessage({{0.68,0.57,0.81}, data.pseudo.."(all): ", {1,1,1}, data.msg})
   elseif protocol == net.GROUP_CHAT then
-    self.chat_history:addMessage({{1,0.5,0}, data.pseudo.."(grp): ", {1,1,1}, data.msg})
+    self.chat_history:addMessage({{0.97,0.65,0.32}, data.pseudo.."(grp): ", {1,1,1}, data.msg})
   elseif protocol == net.GUILD_CHAT then
-    self.chat_history:addMessage({{1,0,0.5}, data.pseudo.."(gui): ", {1,1,1}, data.msg})
+    self.chat_history:addMessage({{0.42,0.7,0.98}, data.pseudo.."(gui): ", {1,1,1}, data.msg})
+  elseif protocol == net.PRIVATE_CHAT then
+    self.chat_history:addMessage({{0.45,0.83,0.22}, data.pseudo.."(msg): ", {1,1,1}, data.msg})
   end
 end
 

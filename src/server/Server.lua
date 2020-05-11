@@ -332,7 +332,7 @@ end, "[groupe]", "rejoindre un groupe ou juste quitter l'actuel si non spécifi�
 
 -- group chat
 commands.party = {10, function(self, client, args)
-  if client and client:canChat() then
+  if client and client.user_id and client:canChat() then
     local group = client.group and self.groups[client.group]
     if group then
       local packet = Client.makePacket(net.GROUP_CHAT, {
@@ -388,8 +388,8 @@ end, "<pseudo> <rank|guild> ...", [=[set user persistent data
 
 -- guild chat
 commands.guild = {10, function(self, client, args)
-  if client and client:canChat() then
-    if client.user_id and #client.guild > 0 then
+  if client and client.user_id and client:canChat() then
+    if #client.guild > 0 then
       local packet = Client.makePacket(net.GUILD_CHAT, {
         pseudo = client.pseudo,
         msg = table.concat(args, " ", 2)
@@ -402,6 +402,24 @@ commands.guild = {10, function(self, client, args)
     else client:sendChatMessage("Pas dans une guilde.") end
   end
 end, "", "chat de guilde"}
+
+-- private chat
+commands.msg = {10, function(self, client, args)
+  if client and client.user_id and client:canChat() then
+    if not args[2] or #args[2] == 0 then return true end
+
+    local tclient = self.clients_by_pseudo[args[2]]
+    if tclient then
+      local packet = Client.makePacket(net.PRIVATE_CHAT, {
+        pseudo = client.pseudo,
+        msg = table.concat(args, " ", 3)
+      })
+
+      client:send(packet)
+      tclient:send(packet)
+    else client:sendChatMessage("Joueur introuvable.") end
+  end
+end, "<pseudo> ...", "chat privé"}
 
 -- CONSOLE THREAD
 local function console_main(flags, channel)
@@ -448,6 +466,7 @@ function Server:__construct(cfg)
 
   self.clients = {} -- map of peer => client
   self.clients_by_id = {} -- map of user id => logged client
+  self.clients_by_pseudo = {} -- map of pseudo => logged client
   self.maps = {} -- map of id => map instances
   self.vars = {} -- server variables, map of id (str) => value (string or number)
   self.changed_vars = {} -- map of server var id
