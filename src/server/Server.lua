@@ -404,19 +404,33 @@ commands.guild = {10, function(self, client, args)
 end, "", "chat de guilde"}
 
 -- private chat
+local EEgg_self_talk = {
+  "Euh... C'est moi...",
+  "C'est encore moi.",
+  "Parfois, dans la solitude, je repense à cette gemme. A quoi servait-elle ? Dans une profonde introspection, entre deux clics, j'entrevoyais le génie ou l'absurdité de son existence. Mais quel était le rapport avec Pâques... Ah ! Je me parle encore à moi-même !",
+  "Il est écrit dans les tablettes de Skélos, que seul un Gnome des forêts du Nord unijambiste dansant à la pleine lune au milieu des douzes statuettes enroulées dans du jambon ouvrira la porte de Zaral Bak et permettra l'accomplissement de la prophétie... Mais pourquoi je pense à ça moi.",
+  "Un jour, peut-être, j'arriverais à communiquer avec d'autres personnes. En ne tapant pas mon propre pseudo, par exemple."
+}
 commands.msg = {10, function(self, client, args)
   if client and client.user_id and client:canChat() then
     if not args[2] or #args[2] == 0 then return true end
 
     local tclient = self.clients_by_pseudo[args[2]]
     if tclient then
-      local packet = Client.makePacket(net.PRIVATE_CHAT, {
-        pseudo = client.pseudo,
-        msg = table.concat(args, " ", 3)
-      })
+      if tclient == client then -- easter egg: speak to self
+        client:send(Client.makePacket(net.PRIVATE_CHAT, {
+          pseudo = client.pseudo,
+          msg = EEgg_self_talk[math.random(#EEgg_self_talk)]
+        }))
+      else
+        local packet = Client.makePacket(net.PRIVATE_CHAT, {
+          pseudo = client.pseudo,
+          msg = table.concat(args, " ", 3)
+        })
 
-      client:send(packet)
-      tclient:send(packet)
+        client:send(packet)
+        tclient:send(packet)
+      end
     else client:sendChatMessage("Joueur introuvable.") end
   end
 end, "<pseudo> ...", "chat privé"}
