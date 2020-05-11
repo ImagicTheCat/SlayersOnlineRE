@@ -289,15 +289,17 @@ function Client:onPacket(protocol, data)
     elseif protocol == net.INPUT_INTERACT then
       if self:canInteract() then self:interact() end
     elseif protocol == net.INPUT_CHAT then
-      if self:canChat() and type(data) == "string" and string.len(data) > 0 and string.len(data) < 1000 then
+      if type(data) == "string" and string.len(data) > 0 and string.len(data) < 1000 then
         if string.sub(data, 1, 1) == "/" then -- parse command
           local args = self.server.parseCommand(string.sub(data, 2))
           if #args > 0 then
             self.server:processCommand(self, args)
           end
-        elseif not self.ghost then -- message
+        elseif self:canChat() then -- message
           self:mapChat(data)
         end
+      else
+        self:sendChatMessage("Message trop long.")
       end
     elseif protocol == net.EVENT_MESSAGE_SKIP then
       local r = self.message_task
@@ -670,6 +672,7 @@ function Client:onDisconnect()
       self.server:setVariable(map_data.svar, map_data.sval)
     end
   end
+  self:setGroup(nil)
 
   self:save()
   if self.map then
@@ -698,6 +701,9 @@ function Client:onMapChange()
       self.map:addEntity(event)
       event:teleport(event_data.x*16, event_data.y*16)
     end
+
+    self:sendGroupUpdate()
+    self:receiveGroupUpdates()
   end
 end
 
@@ -929,6 +935,7 @@ function Client:setHealth(health)
   Player.setHealth(self, health)
   self:triggerSpecialVariable("Vie")
   self:send(Client.makePacket(net.STATS_UPDATE, {health = self.health, max_health = self.max_health}))
+  self:sendGroupUpdate()
 end
 
 -- override
@@ -988,6 +995,105 @@ function Client:setRemainingPoints(remaining_pts)
   self.remaining_pts = math.max(0, remaining_pts)
   self:triggerSpecialVariable("LvlPoint")
   self:send(Client.makePacket(net.STATS_UPDATE, {points = self.remaining_pts}))
+end
+
+-- leave current group and join new group
+-- id: key (string) or falsy to just leave
+function Client:setGroup(id)
+  if self.group then -- leave old group
+    local group = self.server.groups[self.group]
+    if group then
+      -- broadcast leave packet to group member on the map and to self (self included)
+      if self.map then
+        local packet = Client.makePacket(net.ENTITY_PACKET, {
+          id = self.id,
+          act = "group_remove"
+        })
+
+        for client in pairs(group) do
+          if client.map == self.map then
+            -- leave packet to other group member
+            if client ~= self then client:send(packet) end
+
+            -- leave packet to self
+            self:send(Client.makePacket(net.ENTITY_PACKET, {
+              id = client.id,
+              act = "group_remove"
+            }))
+          end
+        end
+      end
+
+      -- notify
+      for client in pairs(group) do
+        if client ~= self then
+          client:sendChatMessage("\""..self.pseudo.."\" a quitté le groupe.")
+        else
+          client:sendChatMessage("Vous avez quitté le groupe \""..self.group.."\".")
+        end
+      end
+
+      group[self] = nil
+      -- remove if empty
+      if not next(group) then self.server.groups[self.group] = nil end
+      self.group = nil
+    end
+  end
+
+  if id then -- join
+    local group = self.server.groups[id]
+    if not group then -- create group
+      group = {}
+      self.server.groups[id] = group
+    end
+
+    group[self] = true
+    self.group = id
+    self:sendGroupUpdate()
+    self:receiveGroupUpdates()
+    -- notify
+    for client in pairs(group) do
+      if client ~= self then
+        client:sendChatMessage("\""..self.pseudo.."\" a rejoint le groupe.")
+      else
+        client:sendChatMessage("Vous avez rejoint le groupe \""..self.group.."\".")
+      end
+    end
+  end
+end
+
+-- send group update packet (join/data)
+function Client:sendGroupUpdate()
+  -- broadcast update packet to group members on the map and to self (self included)
+  local group = self.group and self.server.groups[self.group]
+  if group and self.map then
+    local packet = Client.makePacket(net.ENTITY_PACKET, {
+      id = self.id,
+      act = "group_update",
+      data = {health = self.health, max_health = self.max_health}
+    })
+
+    for client in pairs(group) do
+      if client.map == self.map then client:send(packet) end
+    end
+  end
+end
+
+-- send group update packet for other group members
+function Client:receiveGroupUpdates()
+  -- update packet for each group member on the map to self
+  local group = self.group and self.server.groups[self.group]
+  if group and self.map then
+    for client in pairs(group) do
+      if client ~= self and client.map == self.map then
+        self:send(Client.makePacket(net.ENTITY_PACKET, {
+          id = client.id,
+          act = "group_update",
+          data = {health = client.health, max_health = client.max_health}
+        }))
+      end
+    end
+  end
 end
 
 function Client:onPlayerKill()

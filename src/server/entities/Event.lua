@@ -535,9 +535,10 @@ function client_special_vars:Direction(value)
 end
 
 function client_special_vars:Groupe(value)
-  -- TODO
   if not value then
-    return ""
+    return self.client.group or ""
+  else
+    self.client:setGroup(#value > 0 and value or nil)
   end
 end
 
