@@ -12,8 +12,13 @@ then
   exit 1
 fi
 
+if [ -z "$LOVE_EXEC" ]
+then
+  LOVE_EXEC="love.exe"
+fi
+
 # build directory
 rsync -av --exclude "*.exe" --exclude "readme.txt" --exclude "changes.txt" $LOVE_PATH/ $1
-cat $LOVE_PATH/love.exe game.love > $1/$1.exe
+cat $LOVE_PATH/$LOVE_EXEC game.love > $1/$1.exe
 zip -r $1.zip $1
 rm $1 -r
