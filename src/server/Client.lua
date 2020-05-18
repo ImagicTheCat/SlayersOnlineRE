@@ -757,6 +757,13 @@ function Client:useItem(id)
     self:setHealth(self.health+item.mod_hp)
     self:setMana(self.mana+item.mod_mp)
     self:act("use", 1)
+
+    -- heal sound
+    if self.health > 0 then
+      self:emitSound("Holy2.wav")
+      self:emitHint({{0,1,0}, self.health})
+    end
+
     return true
   end
 end

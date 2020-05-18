@@ -306,6 +306,15 @@ function LivingEntity:setCharaset(charaset)
   self:broadcastPacket("ch_charaset", self.charaset)
 end
 
+-- play sound on self
+function LivingEntity:emitSound(sound)
+  self:broadcastPacket("emit_sound", sound)
+end
+
+function LivingEntity:emitHint(colored_text)
+  self:broadcastPacket("emit_hint", colored_text)
+end
+
 -- continuous movement update (should end with a teleport)
 function LivingEntity:updatePosition(x, y)
   self.x = x

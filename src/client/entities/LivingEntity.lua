@@ -81,13 +81,7 @@ function LivingEntity:onPacket(action, data)
 
     if self.acting == "attack" then
       if self.attack_sound then
-        async(function()
-          if client.net_manager:requestResource("audio/"..self.attack_sound) then
-            local source = client:playSound("resources/audio/"..self.attack_sound)
-            source:setPosition(self.x+8, self.y+8, 0)
-            source:setAttenuationDistances(16, 16*15)
-          end
-        end)
+        self:emitSound(self.attack_sound)
       end
     end
   elseif action == "damage" then
@@ -95,13 +89,7 @@ function LivingEntity:onPacket(action, data)
 
     -- sound
     if amount and self.hurt_sound then
-      async(function()
-        if client.net_manager:requestResource("audio/"..self.hurt_sound) then
-          local source = client:playSound("resources/audio/"..self.hurt_sound)
-          source:setPosition(self.x+8, self.y+8, 0)
-          source:setAttenuationDistances(16, 16*15)
-        end
-      end)
+      self:emitSound(self.hurt_sound)
     end
 
     -- hint
@@ -127,6 +115,10 @@ function LivingEntity:onPacket(action, data)
     self.move_to_cell = data
   elseif action == "ch_ghost" then
     self.ghost = data
+  elseif action == "emit_sound" then
+    self:emitSound(data)
+  elseif action == "emit_hint" then
+    self:emitHint(data)
   end
 end
 
@@ -163,6 +155,19 @@ function LivingEntity:emitHint(colored_text)
   local text = love.graphics.newText(client.font)
   text:set(colored_text)
   table.insert(self.hints, {text, 2})
+end
+
+-- play spatialized sound on self
+-- sound: path (will request resource)
+function LivingEntity:emitSound(sound)
+  async(function()
+    if client.net_manager:requestResource("audio/"..sound) then
+      local source = client:playSound("resources/audio/"..sound)
+      source:setPosition(self.x+8, self.y+8, 0)
+      source:setAttenuationDistances(16, 16*15)
+      source:setRelative(false)
+    end
+  end)
 end
 
 -- override

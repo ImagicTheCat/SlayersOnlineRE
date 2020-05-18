@@ -1081,7 +1081,7 @@ function Client:playMusic(path)
   end
 end
 
--- play a sound source and return it
+-- play a relative sound source and return it
 -- return source
 function Client:playSound(path)
   local data = self.sounds[path]
@@ -1091,6 +1091,7 @@ function Client:playSound(path)
   end
 
   local source = love.audio.newSource(data, "static")
+  source:setRelative(true)
   source:play()
 
   table.insert(self.sound_sources, source)
