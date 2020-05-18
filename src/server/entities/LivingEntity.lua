@@ -315,6 +315,21 @@ function LivingEntity:emitHint(colored_text)
   self:broadcastPacket("emit_hint", colored_text)
 end
 
+-- path: set path
+-- x,y: world offset
+-- w,h: frame dimensions
+-- duration: seconds
+-- alpha: (optional) 0-1
+function LivingEntity:emitAnimation(path, x, y, w, h, duration, alpha)
+  self:broadcastPacket("emit_animation", {
+    path = path,
+    x = x, y = y,
+    w = w, h = h,
+    duration = duration,
+    alpha = alpha
+  })
+end
+
 -- continuous movement update (should end with a teleport)
 function LivingEntity:updatePosition(x, y)
   self.x = x

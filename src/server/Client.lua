@@ -761,6 +761,7 @@ function Client:useItem(id)
     -- heal sound
     if self.health > 0 then
       self:emitSound("Holy2.wav")
+      self:emitAnimation("heal.png", 0, 0, 48, 56, 0.75)
       self:emitHint({{0,1,0}, self.health})
     end
 

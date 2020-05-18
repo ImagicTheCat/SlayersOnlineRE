@@ -8,6 +8,7 @@ local LivingEntity = class("LivingEntity", Entity)
 
 LivingEntity.atlases = {}
 
+-- get cached texture atlas
 function LivingEntity.getTextureAtlas(x, y, tw, th, w, h)
   local key = table.concat({x,y,tw,th,w,h}, ",")
 
@@ -60,6 +61,7 @@ function LivingEntity:__construct(data)
   end
 
   self.hints = {} -- list of {text, time}
+  self.animations = {} -- list of animations
 end
 
 -- override
@@ -119,6 +121,8 @@ function LivingEntity:onPacket(action, data)
     self:emitSound(data)
   elseif action == "emit_hint" then
     self:emitHint(data)
+  elseif action == "emit_animation" then
+    self:emitAnimation(data.path, data.x, data.y, data.w, data.h, data.duration, data.alpha)
   end
 end
 
@@ -166,6 +170,30 @@ function LivingEntity:emitSound(sound)
       source:setPosition(self.x+8, self.y+8, 0)
       source:setAttenuationDistances(16, 16*15)
       source:setRelative(false)
+    end
+  end)
+end
+
+-- path: set path (will request resource)
+-- x,y: world offset
+-- w,h: frame dimensions
+-- duration: seconds
+-- alpha: (optional) 0-1
+function LivingEntity:emitAnimation(path, x, y, w, h, duration, alpha)
+  async(function()
+    if client.net_manager:requestResource("textures/sets/"..path) then
+      local texture = client:loadTexture("resources/textures/sets/"..path)
+      local anim = {
+        texture = texture,
+        atlas = LivingEntity.getTextureAtlas(0, 0, texture:getWidth(), texture:getHeight(), w, h),
+        x = x,
+        y = y,
+        time = 0,
+        duration = duration,
+        alpha = alpha or 1
+      }
+
+      table.insert(self.animations, anim)
     end
   end)
 end
@@ -230,6 +258,15 @@ function LivingEntity:tick(dt)
       table.remove(self.hints, i)
     end
   end
+
+  -- animations
+  for i=#self.animations,1,-1 do
+    local anim = self.animations[i]
+    anim.time = anim.time+dt
+    if anim.time >= anim.duration then -- remove
+      table.remove(self.animations, i)
+    end
+  end
 end
 
 -- override
@@ -254,6 +291,7 @@ end
 
 -- override
 function LivingEntity:draw()
+  -- character
   if self.texture then
     local quad = self.atlas:getQuad(self.anim_x, self.anim_y)
 
@@ -267,6 +305,21 @@ function LivingEntity:draw()
         self.y+16-self.atlas.cell_h)
 
       if self.ghost then love.graphics.setColor(1,1,1) end
+    end
+  end
+
+  -- animations
+  for _, anim in ipairs(self.animations) do
+    local frame = math.floor(anim.time/anim.duration*anim.atlas.wc*anim.atlas.hc)
+    local cx, cy = frame%anim.atlas.wc, math.floor(frame/anim.atlas.wc)
+    local quad = anim.atlas:getQuad(cx, cy)
+    if quad then
+      if anim.alpha < 1 then love.graphics.setColor(1,1,1,anim.alpha) end
+      love.graphics.draw(anim.texture, quad,
+        self.x+8-math.floor(anim.atlas.cell_w/2)+anim.x,
+        self.y-math.floor(anim.atlas.cell_h/2)+anim.y)
+
+      if anim.alpha < 1 then love.graphics.setColor(1,1,1) end
     end
   end
 end
