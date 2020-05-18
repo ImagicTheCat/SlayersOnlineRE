@@ -31,8 +31,6 @@ end
 -- return source
 function GUI:playSound(path)
   local source = self.client:playSound(path)
-  source:setRelative(true)
-
   return source
 end
 
