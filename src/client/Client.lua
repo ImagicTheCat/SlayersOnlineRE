@@ -47,6 +47,11 @@ function Client:__construct(cfg)
 
   self.orientation_stack = {}
   self.controls = {} -- map of control id (string) when pressed
+  -- repeated controls, map of control id => repeat interval (seconds)
+  self.controls_repeat = {
+    attack = 0.25,
+    defend = 0.25
+  }
 
   self.player_config = {
     scancode_controls = {
@@ -755,7 +760,16 @@ end
 function Client:pressControl(id)
   local control = self.controls[id]
   if not control then
-    self.controls[id] = true
+    local interval = self.controls_repeat[id]
+    if interval then -- repeated, bind timer
+      self.controls[id] = scheduler:timer(interval, function()
+        -- press again
+        self:releaseControl(id)
+        self:pressControl(id)
+      end)
+    else
+      self.controls[id] = true
+    end
 
     -- character controls
     if not self.gui.focus then
@@ -780,6 +794,8 @@ end
 function Client:releaseControl(id)
   local control = self.controls[id]
   if control then
+    local timer = self.controls[id]
+    if type(timer) == "table" then timer:remove() end
     self.controls[id] = nil
 
     -- handling
