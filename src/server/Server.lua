@@ -150,7 +150,7 @@ commands.volume = {10, function(self, client, args)
     end
   end
 end, "<type> <volume>", [[changer le volume
-    types: master
+    types: master, music
     volume: 0-1]]
 }
 
