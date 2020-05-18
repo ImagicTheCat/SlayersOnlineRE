@@ -73,7 +73,11 @@ function Client:__construct(cfg)
       dialog_height = 0.25,
       chat_height = 0.25
     },
-    quick_actions = {}
+    quick_actions = {},
+    volume = {
+      master = 1,
+      music = 0.75
+    }
   }
 
   self.touches = {} -- map of id => control
@@ -571,9 +575,12 @@ end
 
 function Client:onApplyConfig(config)
   if config.volume then -- set volume
-    local master = config.volume.master
-    if master then
-      love.audio.setVolume(master)
+    if config.volume.master then
+      love.audio.setVolume(config.volume.master)
+    end
+
+    if config.volume.music and self.music_source then
+      self.music_source:setVolume(config.volume.music)
     end
   end
 
@@ -1076,6 +1083,7 @@ function Client:playMusic(path)
     self.music_source = love.audio.newSource(path, "stream")
     self.music_source:setLooping(true)
     self.music_source:play()
+    self.music_source:setVolume(self.player_config.volume.music)
 
     self.music_path = path
   end
