@@ -3,6 +3,7 @@ local utils = require("lib.utils")
 local msgpack = require("MessagePack")
 local Map = require("Map")
 local LivingEntity = require("entities.LivingEntity")
+local Mob = require("entities.Mob")
 local Player = require("entities.Player")
 local NetManager = require("NetManager")
 local URL = require("socket.url")
@@ -306,6 +307,7 @@ function Client:tick(dt)
 
   self:setMoveForward(not self.gui.focus --
     and (not self.net_manager.requests[1] or not self.loading_screen_tex) -- not on loading screen
+    and not self.pick_target --
     and self:isControlPressed(control))
 
   -- GUI
@@ -389,6 +391,12 @@ function Client:onPacket(protocol, data)
     self:showLoading()
     self.map = Map(data.map)
     self.id = data.id -- entity id
+
+    if self.pick_target then
+      -- cancel target pick
+      self:sendPacket(net.TARGET_PICK)
+      self.pick_target = nil
+    end
   elseif protocol == net.ENTITY_ADD then
     if self.map then
       self.map:createEntity(data)
@@ -551,6 +559,33 @@ function Client:onPacket(protocol, data)
     self.chat_history:addMessage({{0.42,0.7,0.98}, data.pseudo.."(gui): ", {1,1,1}, data.msg})
   elseif protocol == net.PRIVATE_CHAT then
     self.chat_history:addMessage({{0.45,0.83,0.22}, data.pseudo.."(msg): ", {1,1,1}, data.msg})
+  elseif protocol == net.TARGET_PICK then
+    local entities = {}
+    if self.map then -- add valid entities
+      local player = self.map.entities[self.id]
+      if player then
+        for id, entity in pairs(self.map.entities) do
+          local dx = math.abs(player.x-entity.x)
+          local dy = math.abs(player.y-entity.y)
+          if dx <= data.radius and dy <= data.radius --
+            and (data.type == "player" and class.is(entity, Player) and entity ~= player --
+            or data.type == "mob" and class.is(entity, Mob)) then
+            table.insert(entities, {id, math.sqrt(dx*dx+dy*dy)})
+          end
+        end
+      end
+    end
+
+    if #entities > 0 then
+      -- sort entities by distance
+      table.sort(entities, function(a,b) return a[2] < b[2] end)
+      self.pick_target = {
+        entities = entities, -- list of entities {id, dist}
+        selected = 1
+      }
+    else
+      self:sendPacket(net.TARGET_PICK) -- end/cancel
+    end
   end
 end
 
@@ -778,8 +813,24 @@ function Client:pressControl(id)
       self.controls[id] = true
     end
 
-    -- character controls
-    if not self.gui.focus then
+    -- gameplay handling
+    local pickt = self.pick_target
+    if not self.gui.focus and pickt and self.map then
+      if id == "left" or id == "up" then -- previous
+        pickt.selected = pickt.selected-1
+        if pickt.selected <= 0 then pickt.selected = #pickt.entities end
+        self:playSound("resources/audio/Cursor1.wav")
+      elseif id == "right" or id == "down" then -- next
+        pickt.selected = pickt.selected+1
+        if pickt.selected > #pickt.entities then pickt.selected = 1 end
+        self:playSound("resources/audio/Cursor1.wav")
+      elseif id == "interact" then -- valid
+        local entry = pickt.entities[pickt.selected]
+        self:sendPacket(net.TARGET_PICK, entry and entry[1])
+        self.pick_target = nil
+        self:playSound("resources/audio/Item1.wav")
+      end
+    elseif not self.gui.focus then -- character controls
       if id == "up" then self:pressOrientation(0)
       elseif id == "right" then self:pressOrientation(1)
       elseif id == "down" then self:pressOrientation(2)
@@ -793,7 +844,7 @@ function Client:pressControl(id)
       end
     end
 
-    -- handling
+    -- GUI handling
     self.gui:triggerControlPress(id)
   end
 end
@@ -865,8 +916,20 @@ function Client:draw()
 
     love.graphics.scale(self.world_scale) -- pixel scale
     love.graphics.translate(-self.camera[1], -self.camera[2])
-
     self.map:draw()
+
+    -- draw target picking selection
+    if self.pick_target then
+      local entry = self.pick_target.entities[self.pick_target.selected]
+      local entity = self.map.entities[entry and entry[1]]
+      if class.is(entity, LivingEntity) and scheduler.time%1 < 0.5 then -- blinking
+        self.gui_renderer:drawBorders(self.gui_renderer.system.window_borders,
+          entity.x-math.floor((entity.atlas.cell_w-16)/2),
+          entity.y+16-entity.atlas.cell_h,
+          entity.atlas.cell_w,
+          entity.atlas.cell_h)
+      end
+    end
 
     love.graphics.pop()
   end

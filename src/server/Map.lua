@@ -26,7 +26,8 @@ function Map:__construct(server, id, data)
 
   self.data = data -- map data
 
-  self.entities = {} -- map of entity
+  self.entities = {} -- map of entity => id
+  self.entities_by_id = {} -- map of id => entity
   self.clients = {} -- map of client
   self.cells = {} -- map space partitioning (16x16 cells), map of cell index => map of entity
 
@@ -102,6 +103,7 @@ function Map:addEntity(entity)
     -- reference
     local id = self.ids:gen()
     self.entities[entity] = id
+    self.entities_by_id[id] = entity
     entity.id = id
     entity.map = self
     entity.x, entity.y = -16, -16
@@ -140,6 +142,7 @@ function Map:removeEntity(entity)
     entity.id = nil
     entity.map = nil
     self.entities[entity] = nil
+    self.entities_by_id[id] = nil
     self:removeFromCell(entity, entity.cx, entity.cy)
 
     -- unreference client bound entity
