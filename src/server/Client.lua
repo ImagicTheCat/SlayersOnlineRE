@@ -482,6 +482,17 @@ function Client:onPacket(protocol, data)
           self:applyConfig({quick_actions = {[data.n] = {type = data.type, id = id}}})
         end
       end
+    elseif protocol == net.TARGET_PICK then
+      local r = self.pick_target_task
+      if r then
+        self.pick_target_task = nil
+        local id = tonumber(data)
+        if id and self.map then
+          r(self.map.entities_by_id[id])
+        else
+          r()
+        end
+      end
     end
   end
 end
@@ -590,6 +601,27 @@ function Client:requestInputString(title)
   self.input_string_task = async()
   self:send(Client.makePacket(net.EVENT_INPUT_STRING, {title = title}))
   return self.input_string_task:wait()
+end
+
+-- (async)
+-- type: target type (string)
+--- "player"
+--- "mob"
+-- radius: square radius in cells
+-- return picked entity or nothing if invalid
+function Client:requestPickTarget(type, radius)
+  self.pick_target_task = async()
+  self:send(Client.makePacket(net.TARGET_PICK, {type = type, radius = radius*16}))
+  local entity = self.pick_target_task:wait()
+  if entity then
+    local dx = math.abs(self.x-entity.x)
+    local dy = math.abs(self.y-entity.y)
+    if dx <= radius*16 and dy <= radius*16 --
+      and (type == "player" and class.is(entity, Player) and entity ~= self --
+      or type == "mob" and class.is(entity, Mob)) then
+      return entity
+    end
+  end
 end
 
 -- (async) open chest GUI

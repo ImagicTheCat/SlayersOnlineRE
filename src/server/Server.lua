@@ -271,6 +271,16 @@ commands.shop = {1, function(self, client, args)
 end, "", "ouvrir un magasin (test)"}
 
 -- testing command
+commands.pick = {1, function(self, client, args)
+  if client then
+    async(function()
+      local entity = client:requestPickTarget(args[2] or "mob", tonumber(args[3]) or 15)
+      client:sendChatMessage("Entité selectionnée: "..tostring(entity))
+    end)
+  end
+end, "[type] [radius]", "selectionner une entité\n"}
+
+-- testing command
 commands.kill = {10, function(self, client, args)
   if client then client:setHealth(0) end
 end, "", "se suicider"}
