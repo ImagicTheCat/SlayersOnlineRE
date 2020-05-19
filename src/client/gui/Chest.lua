@@ -48,11 +48,11 @@ function Chest:__construct()
   self:add(self.w_gold_r)
 
   -- inventory content
-  self.content_l = Inventory.Content(2)
+  self.content_l = Inventory.Content("item", 2)
   self:add(self.content_l)
 
   -- chest content
-  self.content_r = Inventory.Content(2)
+  self.content_r = Inventory.Content("item", 2)
   self:add(self.content_r)
 
   -- info
@@ -64,7 +64,7 @@ function Chest:__construct()
   -- info updates
   local function selection_update(content)
     local item = content:getSelection()
-    self.info:set(item and Inventory.formatItemDescription(item[2]) or "")
+    self.info:set(item and Inventory.formatItemDescription("item", item[2]) or "")
   end
 
   self.content_l:listen("selection-update", selection_update)

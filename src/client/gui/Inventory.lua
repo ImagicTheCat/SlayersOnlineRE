@@ -9,22 +9,23 @@ Inventory.Content = class("Inventory.Content", Window)
 
 -- STATICS
 
-function Inventory.formatItem(item_data)
+function Inventory.formatItem(itype, item_data)
   return "("..item_data.amount..") "..item_data.name
 end
 
-function Inventory.formatItemDescription(item_data)
+function Inventory.formatItemDescription(itype, item_data)
   return item_data.description
 end
 
 -- SUBCLASS
 
-function Inventory.Content:__construct(columns)
+function Inventory.Content:__construct(itype, columns)
   Window.__construct(self)
 
   self.columns = columns
   self.grid = GridInterface(0,0)
   self.content:add(self.grid)
+  self.itype = itype
 
   self.items = {} -- map of id => item data, synced inventory items
   self.dirty = false
@@ -67,12 +68,12 @@ function Inventory.Content:updateContent()
 
       -- quick action prefixes
       local prefix = ""
-      if client:isQuickAction(1, "item", id) then prefix = prefix.."[Q1]" end
-      if client:isQuickAction(2, "item", id) then prefix = prefix.."[Q2]" end
-      if client:isQuickAction(3, "item", id) then prefix = prefix.."[Q3]" end
+      if client:isQuickAction(1, self.itype, id) then prefix = prefix.."[Q1]" end
+      if client:isQuickAction(2, self.itype, id) then prefix = prefix.."[Q2]" end
+      if client:isQuickAction(3, self.itype, id) then prefix = prefix.."[Q3]" end
 
       local cx, cy = (i-1)%self.columns, math.floor((i-1)/self.columns)
-      self.grid:set(cx, cy, Text(prefix.." "..Inventory.formatItem(data)), true)
+      self.grid:set(cx, cy, Text(prefix.." "..Inventory.formatItem(self.itype, data)), true)
     end
 
     self:trigger("selection-update")
@@ -86,20 +87,26 @@ end
 
 -- METHODS
 
-function Inventory:__construct()
+-- itype: inventory item type (string)
+--- "item"
+--- "spell"
+function Inventory:__construct(itype)
   Widget.__construct(self)
 
   -- inventory content
-  self.content = Inventory.Content(3)
+  self.content = Inventory.Content(itype, 3)
   self:add(self.content)
+  self.itype = itype
 
   -- info/menu
   self.w_menu = Window("vertical")
   self.description = Text()
   self.menu = GridInterface(3,1,"vertical")
-  self.menu:set(0,0, Text("Utiliser"), true)
-  self.menu:set(1,0, Text("Equiper"), true)
-  self.menu:set(2,0, Text("Jeter"), true)
+  if self.itype == "item" then
+    self.menu:set(0,0, Text("Utiliser"), true)
+    self.menu:set(1,0, Text("Equiper"), true)
+    self.menu:set(2,0, Text("Jeter"), true)
+  end
   self.w_menu.content:add(self.description)
   self:add(self.w_menu)
 
@@ -116,15 +123,15 @@ function Inventory:__construct()
     -- quick action binding
     local item = self.content:getSelection()
     if item then
-      if id == "quick1" then client:bindQuickAction(1, "item", item[1])
-      elseif id == "quick2" then client:bindQuickAction(2, "item", item[1])
-      elseif id == "quick3" then client:bindQuickAction(3, "item", item[1]) end
+      if id == "quick1" then client:bindQuickAction(1, self.itype, item[1])
+      elseif id == "quick2" then client:bindQuickAction(2, self.itype, item[1])
+      elseif id == "quick3" then client:bindQuickAction(3, self.itype, item[1]) end
     end
   end)
 
   self.content:listen("selection-update", function(content)
     local item = content:getSelection()
-    self.description:set(item and Inventory.formatItemDescription(item[2]) or "")
+    self.description:set(item and Inventory.formatItemDescription(self.itype, item[2]) or "")
   end)
 
   self.menu:listen("control-press", function(grid, id)
@@ -139,12 +146,14 @@ function Inventory:__construct()
   self.menu:listen("cell-select", function(grid, cx, cy)
     local item = self.content:getSelection()
     if item then
-      if cx == 0 then -- use
-        client:useItem(item[1])
-      elseif cx == 1 then -- equip
-        client:equipItem(item[1])
-      elseif cx == 2 then -- trash
-        client:trashItem(item[1])
+      if self.itype == "item" then
+        if cx == 0 then -- use
+          client:useItem(item[1])
+        elseif cx == 1 then -- equip
+          client:equipItem(item[1])
+        elseif cx == 2 then -- trash
+          client:trashItem(item[1])
+        end
       end
     end
   end)

@@ -139,22 +139,6 @@ function Event.parseCommand(instruction)
   end
 end
 
--- process/compute string expression using basic Lua features
--- return computed number (integer) or nil on failure
-function Event.computeExpression(str)
-  if string.find(str, "[^%.%*/%-%+%(%)%d%s]") then return end -- reject on unallowed characters
-
-  local expr = "return "..str
-  local f = utils.loadstring(expr)
-  local ok, r = pcall(f)
-  if ok then
-    local n = tonumber(r)
-    if n and n == n and math.abs(n) ~= 1/0 then -- reject NaN/inf values
-      return utils.round(n)
-    end
-  end
-end
-
 -- PRIVATE METHODS
 
 -- special var function definitions, map of id => function
@@ -165,19 +149,19 @@ local client_special_vfunctions = {}
 
 function client_special_vfunctions:rand(max)
   if max then
-    return math.random(0, (Event.computeExpression(max) or 1)-1)
+    return math.random(0, (utils.computeExpression(max) or 1)-1)
   end
 end
 
 function client_special_vfunctions:min(a, b)
   if a and b then
-    return math.min(Event.computeExpression(a) or 0, Event.computeExpression(b) or 0)
+    return math.min(utils.computeExpression(a) or 0, utils.computeExpression(b) or 0)
   end
 end
 
 function client_special_vfunctions:max(a, b)
   if a and b then
-    return math.max(Event.computeExpression(a) or 0, Event.computeExpression(b) or 0)
+    return math.max(utils.computeExpression(a) or 0, utils.computeExpression(b) or 0)
   end
 end
 
@@ -221,7 +205,7 @@ end
 
 function client_special_vars:Force(value)
   if value then
-    self.client.strength_pts = Event.computeExpression(value) or 0
+    self.client.strength_pts = utils.computeExpression(value) or 0
     self.client:updateCharacteristics()
   else
     return self.client.strength_pts
@@ -230,7 +214,7 @@ end
 
 function client_special_vars:Dext(value)
   if value then
-    self.client.dexterity_pts = Event.computeExpression(value) or 0
+    self.client.dexterity_pts = utils.computeExpression(value) or 0
     self.client:updateCharacteristics()
   else
     return self.client.dexterity_pts
@@ -239,7 +223,7 @@ end
 
 function client_special_vars:Constit(value)
   if value then
-    self.client.constitution_pts = Event.computeExpression(value) or 0
+    self.client.constitution_pts = utils.computeExpression(value) or 0
     self.client:updateCharacteristics()
   else
     return self.client.constitution_pts
@@ -248,7 +232,7 @@ end
 
 function client_special_vars:Magie(value)
   if value then
-    self.client.magic_pts = Event.computeExpression(value) or 0
+    self.client.magic_pts = utils.computeExpression(value) or 0
     self.client:updateCharacteristics()
   else
     return self.client.magic_pts
@@ -257,7 +241,7 @@ end
 
 function client_special_vars:Attaque(value)
   if value then
-    self.client.ch_attack = Event.computeExpression(value) or 0
+    self.client.ch_attack = utils.computeExpression(value) or 0
     self.client:send(Client.makePacket(net.STATS_UPDATE, {
       attack = self.client.ch_attack,
     }))
@@ -268,7 +252,7 @@ end
 
 function client_special_vars:Defense(value)
   if value then
-    self.client.ch_defense = Event.computeExpression(value) or 0
+    self.client.ch_defense = utils.computeExpression(value) or 0
     self.client:send(Client.makePacket(net.STATS_UPDATE, {
       defense = self.client.ch_defense,
     }))
@@ -279,7 +263,7 @@ end
 
 function client_special_vars:Vie(value)
   if value then
-    self.client:setHealth(Event.computeExpression(value) or 0)
+    self.client:setHealth(utils.computeExpression(value) or 0)
   else
     return self.client.health
   end
@@ -293,7 +277,7 @@ end
 
 function client_special_vars:CurrentMag(value)
   if value then
-    self.client:setMana(Event.computeExpression(value) or 0)
+    self.client:setMana(utils.computeExpression(value) or 0)
   else
     return self.client.mana
   end
@@ -307,7 +291,7 @@ end
 
 function client_special_vars:Alignement(value)
   if value then
-    self.client:setAlignment(Event.computeExpression(value) or 0)
+    self.client:setAlignment(utils.computeExpression(value) or 0)
   else
     return self.client.alignment
   end
@@ -315,7 +299,7 @@ end
 
 function client_special_vars:Reputation(value)
   if value then
-    self.client:setReputation(Event.computeExpression(value) or 0)
+    self.client:setReputation(utils.computeExpression(value) or 0)
   else
     return self.client.reputation
   end
@@ -323,7 +307,7 @@ end
 
 function client_special_vars:Gold(value)
   if value then
-    self.client:setGold(Event.computeExpression(value) or 0)
+    self.client:setGold(utils.computeExpression(value) or 0)
   else
     return self.client.gold
   end
@@ -331,7 +315,7 @@ end
 
 function client_special_vars:Lvl(value)
   if value then
-    local xp = XPtable[Event.computeExpression(value) or 0]
+    local xp = XPtable[utils.computeExpression(value) or 0]
     if xp then self.client:setXP(xp) end
   else
     return self.client.level
@@ -340,7 +324,7 @@ end
 
 function client_special_vars:LvlPoint(value)
   if value then
-    self.client:setRemainingPoints(Event.computeExpression(value) or 0)
+    self.client:setRemainingPoints(utils.computeExpression(value) or 0)
   else
     return self.client.remaining_pts
   end
@@ -348,7 +332,7 @@ end
 
 function client_special_vars:CurrentXP(value)
   if value then
-    self.client:setXP(Event.computeExpression(value) or 0)
+    self.client:setXP(utils.computeExpression(value) or 0)
   else
     return self.client.xp
   end
@@ -362,7 +346,7 @@ end
 
 function client_special_vars:Timer(value)
   if value then
-    self.client.timers[1] = (Event.computeExpression(value) or 0)
+    self.client.timers[1] = (utils.computeExpression(value) or 0)
   else
     return self.client.timers[1]
   end
@@ -370,7 +354,7 @@ end
 
 function client_special_vars:Timer2(value)
   if value then
-    self.client.timers[2] = (Event.computeExpression(value) or 0)
+    self.client.timers[2] = (utils.computeExpression(value) or 0)
   else
     return self.client.timers[2]
   end
@@ -378,7 +362,7 @@ end
 
 function client_special_vars:Timer3(value)
   if value then
-    self.client.timers[3] = (Event.computeExpression(value) or 0)
+    self.client.timers[3] = (utils.computeExpression(value) or 0)
   else
     return self.client.timers[3]
   end
@@ -386,7 +370,7 @@ end
 
 function client_special_vars:KillPlayer(value)
   if value then
-    self.client.kill_player = (Event.computeExpression(value) or 0)
+    self.client.kill_player = (utils.computeExpression(value) or 0)
   else
     return self.client.kill_player
   end
@@ -394,7 +378,7 @@ end
 
 function client_special_vars:Visible(value)
   if value then
-    self.client.visible = (Event.computeExpression(value) or 0) > 0
+    self.client.visible = (utils.computeExpression(value) or 0) > 0
     self.client:broadcastPacket("ch_visible", visible)
   else
     return self.client.visible and 1 or 0
@@ -403,7 +387,7 @@ end
 
 function client_special_vars:Bloque(value)
   if value then
-    self.client.blocked = (Event.computeExpression(value) or 0) > 0
+    self.client.blocked = (utils.computeExpression(value) or 0) > 0
   else
     return self.client.blocked and 1 or 0
   end
@@ -411,7 +395,7 @@ end
 
 function client_special_vars:CaseX(value)
   if value then
-    self.client:moveToCell(Event.computeExpression(value) or self.client.cx, self.client.cy, true)
+    self.client:moveToCell(utils.computeExpression(value) or self.client.cx, self.client.cy, true)
   else
     return self.client.cx
   end
@@ -419,7 +403,7 @@ end
 
 function client_special_vars:CaseY(value)
   if value then
-    self:moveToCell(self.client.cx, Event.computeExpression(value) or self.client.cy, true)
+    self:moveToCell(self.client.cx, utils.computeExpression(value) or self.client.cy, true)
   else
     return self.client.cy
   end
@@ -427,7 +411,7 @@ end
 
 function client_special_vars:Position(value)
   if value then
-    self.client.draw_order = Event.computeExpression(value) or 0
+    self.client.draw_order = utils.computeExpression(value) or 0
     self.client:broadcastPacket("ch_draw_order", self.client.draw_order)
   else
     return self.client.draw_order
@@ -436,7 +420,7 @@ end
 
 function client_special_vars:CentreX(value)
   if value then
-    self.client.view_shift[1] = (Event.computeExpression(value) or 0)*(-16)
+    self.client.view_shift[1] = (utils.computeExpression(value) or 0)*(-16)
     self.client:send(Client.makePacket(net.VIEW_SHIFT_UPDATE, self.client.view_shift))
   else
     return self.client.view_shift[1]/-16
@@ -445,7 +429,7 @@ end
 
 function client_special_vars:CentreY(value)
   if value then
-    self.client.view_shift[2] = (Event.computeExpression(value) or 0)*(-16)
+    self.client.view_shift[2] = (utils.computeExpression(value) or 0)*(-16)
     self.client:send(Client.makePacket(net.VIEW_SHIFT_UPDATE, self.client.view_shift))
   else
     return self.client.view_shift[2]/-16
@@ -454,7 +438,7 @@ end
 
 function client_special_vars:BloqueChangeSkin(value)
   if value then
-    self.client.blocked_skin = (Event.computeExpression(value) or 0) > 0
+    self.client.blocked_skin = (utils.computeExpression(value) or 0) > 0
   else
     return self.client.blocked_skin and 1 or 0
   end
@@ -462,7 +446,7 @@ end
 
 function client_special_vars:BloqueAttaque(value)
   if value then
-    self.client.blocked_attack = (Event.computeExpression(value) or 0) > 0
+    self.client.blocked_attack = (utils.computeExpression(value) or 0) > 0
   else
     return self.client.blocked_attack and 1 or 0
   end
@@ -470,7 +454,7 @@ end
 
 function client_special_vars:BloqueDefense(value)
   if value then
-    self.client.blocked_defend = (Event.computeExpression(value) or 0) > 0
+    self.client.blocked_defend = (utils.computeExpression(value) or 0) > 0
   else
     return self.client.blocked_defend and 1 or 0
   end
@@ -478,7 +462,7 @@ end
 
 function client_special_vars:BloqueMagie(value)
   if value then
-    self.client.blocked_cast = (Event.computeExpression(value) or 0) > 0
+    self.client.blocked_cast = (utils.computeExpression(value) or 0) > 0
   else
     return self.client.blocked_cast and 1 or 0
   end
@@ -486,7 +470,7 @@ end
 
 function client_special_vars:BloqueDialogue(value)
   if value then
-    self.client.blocked_chat = (Event.computeExpression(value) or 0) > 0
+    self.client.blocked_chat = (utils.computeExpression(value) or 0) > 0
   else
     return self.client.blocked_chat and 1 or 0
   end
@@ -528,7 +512,7 @@ end
 
 function client_special_vars:Direction(value)
   if value then
-    self.client:setOrientation(Event.computeExpression(value) or 0)
+    self.client:setOrientation(utils.computeExpression(value) or 0)
   else
     return self.client.orientation
   end
@@ -632,7 +616,7 @@ end
 
 function event_special_vars:Bloquant(value)
   if value then
-    self.obstacle = ((Event.computeExpression(value) or 0) > 0)
+    self.obstacle = ((utils.computeExpression(value) or 0) > 0)
   else
     return (self.obstacle and 1 or 0)
   end
@@ -640,7 +624,7 @@ end
 
 function event_special_vars:Visible(value)
   if value then
-    self.active = ((Event.computeExpression(value) or 0) > 0)
+    self.active = ((utils.computeExpression(value) or 0) > 0)
     self:broadcastPacket("ch_active", self.active)
   else
     return (self.active and 1 or 0)
@@ -649,7 +633,7 @@ end
 
 function event_special_vars:TypeAnim(value)
   if value then
-    self.animation_type = (Event.computeExpression(value) or 0)
+    self.animation_type = (utils.computeExpression(value) or 0)
 
     -- update
     local data = {
@@ -677,7 +661,7 @@ end
 
 function event_special_vars:Direction(value)
   if value then
-    self:setOrientation(Event.computeExpression(value) or 0)
+    self:setOrientation(utils.computeExpression(value) or 0)
   else
     return self.orientation
   end
@@ -685,7 +669,7 @@ end
 
 function event_special_vars:CaseX(value)
   if value then
-    self:moveToCell(Event.computeExpression(value) or self.cx, self.cy, true)
+    self:moveToCell(utils.computeExpression(value) or self.cx, self.cy, true)
   else
     return self.cx
   end
@@ -693,7 +677,7 @@ end
 
 function event_special_vars:CaseY(value)
   if value then
-    self:moveToCell(self.cx, Event.computeExpression(value) or self.cy, true)
+    self:moveToCell(self.cx, utils.computeExpression(value) or self.cy, true)
   else
     return self.cy
   end
@@ -701,19 +685,19 @@ end
 
 function event_special_vars:CaseNBX(value)
   if value then
-    self:moveToCell(Event.computeExpression(value) or self.cx, self.cy)
+    self:moveToCell(utils.computeExpression(value) or self.cx, self.cy)
   end
 end
 
 function event_special_vars:CaseNBY(value)
   if value then
-    self:moveToCell(self.cx, Event.computeExpression(value) or self.cy)
+    self:moveToCell(self.cx, utils.computeExpression(value) or self.cy)
   end
 end
 
 function event_special_vars:X(value)
   if value then
-    self.charaset.x = (Event.computeExpression(value) or 0)
+    self.charaset.x = (utils.computeExpression(value) or 0)
     self:setCharaset(self.charaset)
   else
     return self.charaset.x
@@ -722,7 +706,7 @@ end
 
 function event_special_vars:Y(value)
   if value then
-    self.charaset.y = (Event.computeExpression(value) or 0)
+    self.charaset.y = (utils.computeExpression(value) or 0)
     self:setCharaset(self.charaset)
   else
     return self.charaset.y
@@ -731,7 +715,7 @@ end
 
 function event_special_vars:W(value)
   if value then
-    self.charaset.w = (Event.computeExpression(value) or 0)
+    self.charaset.w = (utils.computeExpression(value) or 0)
     self:setCharaset(self.charaset)
   else
     return self.charaset.w
@@ -740,7 +724,7 @@ end
 
 function event_special_vars:H(value)
   if value then
-    self.charaset.h = (Event.computeExpression(value) or 0)
+    self.charaset.h = (utils.computeExpression(value) or 0)
     self:setCharaset(self.charaset)
   else
     return self.charaset.h
@@ -749,7 +733,7 @@ end
 
 function event_special_vars:NumAnim(value)
   if value then
-    self.animation_number = (Event.computeExpression(value) or 0)
+    self.animation_number = (utils.computeExpression(value) or 0)
     self:broadcastPacket("ch_animation_number", self.animation_number)
   else
     return self.animation_number
@@ -758,7 +742,7 @@ end
 
 function event_special_vars:Vitesse(value)
   if value then
-    self.speed = (Event.computeExpression(value) or 0)
+    self.speed = (utils.computeExpression(value) or 0)
   else
     return self.speed
   end
@@ -766,7 +750,7 @@ end
 
 function event_special_vars:Transparent(value)
   if value then
-    self:setGhost((Event.computeExpression(value) or 0) > 0)
+    self:setGhost((utils.computeExpression(value) or 0) > 0)
   else
     return self.ghost and 1 or 0
   end
@@ -793,7 +777,7 @@ end
 local command_functions = {}
 
 function command_functions:AddObject(state, name, amount)
-  amount = Event.computeExpression(amount or "") or 1
+  amount = utils.computeExpression(amount or "") or 1
   local id = self.client.server.project.objects_by_name[name]
   if id and amount > 0 then
     for i=1,amount do self.client.inventory:put(id) end
@@ -801,7 +785,7 @@ function command_functions:AddObject(state, name, amount)
 end
 
 function command_functions:DelObject(state, name, amount)
-  amount = Event.computeExpression(amount or "") or 1
+  amount = utils.computeExpression(amount or "") or 1
   local id = self.client.server.project.objects_by_name[name]
   if id and amount > 0 then
     for i=1,amount do self.client.inventory:take(id) end
@@ -809,8 +793,8 @@ function command_functions:DelObject(state, name, amount)
 end
 
 function command_functions:Teleport(state, map_name, cx, cy)
-  local cx = Event.computeExpression(cx)
-  local cy = Event.computeExpression(cy)
+  local cx = utils.computeExpression(cx)
+  local cy = utils.computeExpression(cy)
 
   if map_name and cx and cy then
     local map = self.client.server:getMap(map_name)
@@ -822,8 +806,8 @@ function command_functions:Teleport(state, map_name, cx, cy)
 end
 
 function command_functions:ChangeResPoint(state, map_name, cx, cy)
-  cx = Event.computeExpression(cx)
-  cy = Event.computeExpression(cy)
+  cx = utils.computeExpression(cx)
+  cy = utils.computeExpression(cy)
 
   if map_name and cx and cy then
     self.client.respawn_point = {
@@ -835,8 +819,8 @@ function command_functions:ChangeResPoint(state, map_name, cx, cy)
 end
 
 function command_functions:SScroll(state, cx, cy)
-  cx = Event.computeExpression(cx)
-  cy = Event.computeExpression(cy)
+  cx = utils.computeExpression(cx)
+  cy = utils.computeExpression(cy)
 
   if cx and cy then
     self.client:scrollTo(cx*16, cy*16)
@@ -961,7 +945,7 @@ function command_functions:Coffre(state, title)
 end
 
 function command_functions:GenereMonstre(state, name, x, y, amount)
-  x,y,amount = Event.computeExpression(x), Event.computeExpression(y), Event.computeExpression(amount) or 0
+  x,y,amount = utils.computeExpression(x), utils.computeExpression(y), utils.computeExpression(amount) or 0
   if name and x and y and amount > 0 then
     local mob_data = self.client.server.project.mobs[self.client.server.project.mobs_by_name[name]]
     if mob_data then
@@ -997,7 +981,7 @@ function command_functions:ChBlesseSound(state, path)
 end
 
 function command_functions:Attente(state, amount)
-  amount = Event.computeExpression(amount) or 0
+  amount = utils.computeExpression(amount) or 0
   if amount > 0 then
     local r = async()
     task(amount*0.03, function() r() end)
@@ -1187,8 +1171,8 @@ function Event:checkCondition(instruction)
     lhs = tostring(lhs)
     local rhs = self:instructionSubstitution(expr)
 
-    local rhs_n = Event.computeExpression(rhs)
-    local lhs_n = Event.computeExpression(lhs)
+    local rhs_n = utils.computeExpression(rhs)
+    local lhs_n = utils.computeExpression(lhs)
     if rhs_n and lhs_n then -- number comparison
       lhs = lhs_n
       rhs = rhs_n
@@ -1290,9 +1274,9 @@ function Event:execute(condition)
 
         if args[2] == Event.Variable.SERVER then
           local key = self:instructionSubstitution(args[3])
-          self.client.server:setVariable(key, Event.computeExpression(expr) or expr)
+          self.client.server:setVariable(key, utils.computeExpression(expr) or expr)
         elseif args[2] == Event.Variable.CLIENT then
-          local value = (Event.computeExpression(expr) or 0)
+          local value = (utils.computeExpression(expr) or 0)
           for id=args[4][1], (args[4][2] or args[4][1]) do -- range set
             self.client:setVariable(args[3], id, value)
           end

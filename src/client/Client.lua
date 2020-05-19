@@ -152,7 +152,7 @@ function Client:__construct(cfg)
   self.chat_history:setVisible(false)
   self.gui:add(self.chat_history)
 
-  -- chat events
+  -- global GUI controls
   self.gui:listen("control-press", function(gui, id)
     if id == "return" then
       if not gui.focus then
@@ -213,6 +213,10 @@ function Client:__construct(cfg)
       self.inventory.content:updateContent()
       self.inventory:setVisible(true)
       self.gui:setFocus(self.inventory.content.grid)
+    elseif cy == 1 then
+      self.spell_inventory.content:updateContent()
+      self.spell_inventory:setVisible(true)
+      self.gui:setFocus(self.spell_inventory.content.grid)
     elseif cy == 2 then
       self.w_stats:setVisible(true)
       self.gui:setFocus(self.g_stats)
@@ -224,7 +228,7 @@ function Client:__construct(cfg)
   self.menu.content:add(self.menu_grid)
   self.gui:add(self.menu)
 
-  self.inventory = Inventory()
+  self.inventory = Inventory("item")
   self.inventory:setVisible(false)
   self.inventory.content.grid:listen("control-press", function(grid, id)
     if id == "menu" then
@@ -233,6 +237,16 @@ function Client:__construct(cfg)
     end
   end)
   self.gui:add(self.inventory)
+
+  self.spell_inventory = Inventory("spell")
+  self.spell_inventory:setVisible(false)
+  self.spell_inventory.content.grid:listen("control-press", function(grid, id)
+    if id == "menu" then
+      self.spell_inventory:setVisible(false)
+      self.gui:setFocus(self.menu_grid)
+    end
+  end)
+  self.gui:add(self.spell_inventory)
 
   self.chest = Chest()
   self.chest:setVisible(false)
@@ -455,6 +469,11 @@ function Client:onPacket(protocol, data)
     if self.chest.visible then
       self.chest.content_l:updateContent()
     end
+  elseif protocol == net.SPELL_INVENTORY_UPDATE_ITEMS then
+    self.spell_inventory.content:updateItems(data)
+    if self.spell_inventory.visible then
+      self.spell_inventory.content:updateContent()
+    end
   elseif protocol == net.CHEST_OPEN then
     self.chest.title:set(data[1])
     self.chest.content_r:updateItems(data[2], true)
@@ -636,6 +655,11 @@ function Client:onApplyConfig(config)
     if self.inventory.visible then
       self.inventory.content:updateContent()
     end
+
+    self.spell_inventory.content.dirty = true
+    if self.spell_inventory.visible then
+      self.spell_inventory.content:updateContent()
+    end
   end
 end
 
@@ -687,6 +711,9 @@ function Client:onResize(w, h)
 
   self.inventory:setPosition(self.menu.w+2, 2)
   self.inventory:setSize(w-4-self.menu.w, h-4)
+
+  self.spell_inventory:setPosition(self.menu.w+2, 2)
+  self.spell_inventory:setSize(w-4-self.menu.w, h-4)
 
   self.w_stats:setPosition(self.menu.w+2, 2)
   self.w_stats:setSize(w-4-self.menu.w, h-4)
@@ -829,6 +856,9 @@ function Client:pressControl(id)
         self:sendPacket(net.TARGET_PICK, entry and entry[1])
         self.pick_target = nil
         self:playSound("resources/audio/Item1.wav")
+      elseif id == "menu" then -- cancel
+        self:sendPacket(net.TARGET_PICK)
+        self.pick_target = nil
       end
     elseif not self.gui.focus then -- character controls
       if id == "up" then self:pressOrientation(0)
@@ -1055,6 +1085,10 @@ function Client:useItem(id)
   self:sendPacket(net.ITEM_USE, id)
 end
 
+function Client:castSpell(id)
+  self:sendPacket(net.SPELL_CAST, id)
+end
+
 -- stat interactions
 
 -- id: string
@@ -1097,6 +1131,7 @@ function Client:doQuickAction(n)
     if q.type == "item" then
       self:useItem(q.id)
     elseif q.type == "spell" then
+      self:castSpell(q.id)
     end
   end
 end
