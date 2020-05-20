@@ -962,12 +962,20 @@ function command_functions:TueMonstre(state)
   -- TODO
 end
 
-function command_functions:AddMagie(state, name)
-  -- TODO
+function command_functions:AddMagie(state, name, amount)
+  amount = utils.computeExpression(amount or "") or 1
+  local id = self.client.server.project.spells_by_name[name]
+  if id and amount > 0 then
+    for i=1,amount do self.client.spell_inventory:put(id) end
+  end
 end
 
-function command_functions:DelMagie(state, name)
-  -- TODO
+function command_functions:DelMagie(state, name, amount)
+  amount = utils.computeExpression(amount or "") or 1
+  local id = self.client.server.project.spells_by_name[name]
+  if id and amount > 0 then
+    for i=1,amount do self.client.spell_inventory:take(id) end
+  end
 end
 
 function command_functions:ChAttaqueSound(state, path)
