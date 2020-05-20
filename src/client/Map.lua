@@ -4,9 +4,6 @@ local LivingEntity = require("entities.LivingEntity")
 
 local Map = class("Map")
 
--- Afterimages are removed entities which are still drawed for a while (fade out).
-local AFTERIMAGE_DURATION = 2 -- seconds
-
 local function sort_entities(a, b)
   return a.y < b.y
 end
@@ -113,8 +110,10 @@ function Map:tick(dt)
     local ntime = time-dt
     if ntime >= 0 then
       self.afterimages[entity] = ntime
+      entity.afterimage = ntime/entity.afterimage_duration
     else -- remove
       self.afterimages[entity] = nil
+      entity.afterimage = nil
 
       -- remove from draw list
       local draw_list
@@ -162,32 +161,17 @@ function Map:draw()
   -- base
   --- back entities
   for _, entity in ipairs(self.back_draw_list) do
-    local ai_time = self.afterimages[entity]
-    if ai_time then -- draw afterimage
-      love.graphics.setColor(1,1,1,ai_time/AFTERIMAGE_DURATION)
-      entity:drawAfterimage()
-      love.graphics.setColor(1,1,1)
-    else entity:draw() end -- regular draw
+    entity:draw()
   end
 
   --- dynamic entities
   for _, entity in ipairs(self.dynamic_draw_list) do
-    local ai_time = self.afterimages[entity]
-    if ai_time then -- draw afterimage
-      love.graphics.setColor(1,1,1,ai_time/AFTERIMAGE_DURATION)
-      entity:drawAfterimage()
-      love.graphics.setColor(1,1,1)
-    else entity:draw() end -- regular draw
+    entity:draw()
   end
 
   --- front entities
   for _, entity in ipairs(self.front_draw_list) do
-    local ai_time = self.afterimages[entity]
-    if ai_time then -- draw afterimage
-      love.graphics.setColor(1,1,1,ai_time/AFTERIMAGE_DURATION)
-      entity:drawAfterimage()
-      love.graphics.setColor(1,1,1)
-    else entity:draw() end -- regular draw
+    entity:draw()
   end
 
   -- over
@@ -236,7 +220,8 @@ function Map:removeEntity(id)
   local entity = self.entities[id]
   if entity then -- remove entity / add to afterimages
     self.entities[id] = nil
-    self.afterimages[entity] = AFTERIMAGE_DURATION
+    self.afterimages[entity] = entity.afterimage_duration
+    entity.afterimage = 1
   end
 end
 

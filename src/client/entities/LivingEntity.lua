@@ -27,6 +27,7 @@ local ANIM_STEP_LENGTH = 11 -- pixel length for a movement step
 
 function LivingEntity:__construct(data)
   Entity.__construct(self, data)
+  self.afterimage_duration = 2
 
   self.tx = self.x
   self.ty = self.y
@@ -297,6 +298,7 @@ function LivingEntity:draw()
 
     if quad then
       if self.ghost then love.graphics.setColor(1,1,1,0.60) end
+      if self.afterimage then love.graphics.setColor(1,1,1,self.afterimage) end
 
       love.graphics.draw(
         self.texture,
@@ -304,6 +306,7 @@ function LivingEntity:draw()
         self.x-math.floor((self.atlas.cell_w-16)/2),
         self.y+16-self.atlas.cell_h)
 
+      if self.afterimage then love.graphics.setColor(1,1,1) end
       if self.ghost then love.graphics.setColor(1,1,1) end
     end
   end
@@ -314,26 +317,12 @@ function LivingEntity:draw()
     local cx, cy = frame%anim.atlas.wc, math.floor(frame/anim.atlas.wc)
     local quad = anim.atlas:getQuad(cx, cy)
     if quad then
-      if anim.alpha < 1 then love.graphics.setColor(1,1,1,anim.alpha) end
+      if anim.alpha < 1 or self.afterimage then love.graphics.setColor(1,1,1,anim.alpha*(self.afterimage or 1)) end
       love.graphics.draw(anim.texture, quad,
         self.x+8-math.floor(anim.atlas.cell_w/2)+anim.x,
         self.y-math.floor(anim.atlas.cell_h/2)+anim.y)
 
-      if anim.alpha < 1 then love.graphics.setColor(1,1,1) end
-    end
-  end
-end
-
--- override
-function LivingEntity:drawAfterimage()
-  if self.texture then
-    local quad = self.atlas:getQuad(self.anim_x, self.anim_y)
-    if quad then
-      love.graphics.draw(
-        self.texture,
-        quad,
-        self.x-math.floor((self.atlas.cell_w-16)/2),
-        self.y+16-self.atlas.cell_h)
+      if anim.alpha < 1 or self.afterimage then love.graphics.setColor(1,1,1) end
     end
   end
 end
