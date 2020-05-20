@@ -392,7 +392,7 @@ commands.uset = {0, function(self, client, args)
       end)
     else return true end
   end
-end, "<pseudo> <rank|guild> ...", [=[set user persistent data
+end, "<pseudo> <rank|guild> ...", [=[changer des données persistantes d'un utilisateur
     rank: [1-10]
     guild: <name> [rank] [title]]=]}
 
@@ -444,6 +444,48 @@ commands.msg = {10, function(self, client, args)
     else client:sendChatMessage("Joueur introuvable.") end
   end
 end, "<pseudo> ...", "chat privé"}
+
+-- give item
+commands.giveitem = {1, function(self, client, args)
+  if client then
+    if #args < 2 then return true end -- wrong parameters
+
+    local id = self.project.objects_by_name[args[2]]
+    if id then
+      for i=1,math.floor(tonumber(args[3]) or 1) do
+        client.inventory:put(id)
+      end
+
+      client:sendChatMessage("Objet(s) créé(s).")
+    end
+  end
+end, "<name> [amount]", "créer des objets"}
+
+-- give spell
+commands.givespell = {1, function(self, client, args)
+  if client then
+    if #args < 2 then return true end -- wrong parameters
+
+    local id = self.project.spells_by_name[args[2]]
+    if id then
+      for i=1,math.floor(tonumber(args[3]) or 1) do
+        client.spell_inventory:put(id)
+      end
+
+      client:sendChatMessage("Magie(s) créée(s).")
+    end
+  end
+end, "<name> [amount]", "créer des magies"}
+
+-- give gold
+commands.givegold = {1, function(self, client, args)
+  if client then
+    if #args < 2 then return true end -- wrong parameters
+    local amount = math.floor(tonumber(args[2]) or 0)
+    client:setGold(client.gold+amount)
+    client:sendChatMessage("Or créé ("..amount..").")
+  end
+end, "<amount>", "créer de l'or"}
 
 -- CONSOLE THREAD
 local function console_main(flags, channel)
