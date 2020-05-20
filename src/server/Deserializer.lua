@@ -111,6 +111,20 @@ function Deserializer.readProjectMobEntry(file)
   return mob
 end
 
+-- return spell {}
+--- target_type:
+---- 1: mob (and player)
+---- 2: player
+---- 3: self
+---- 4: area
+--- type:
+---- 1: unique target
+---- 2: fireball
+---- 3: AOE
+---- 4: teleport
+---- 5: resurrect
+---- 6: jump attack
+---- 7: sneak attack
 function Deserializer.readProjectSpellEntry(file)
   local spell = {}
 
@@ -121,7 +135,7 @@ function Deserializer.readProjectSpellEntry(file)
   spell.area_expr = Deserializer.readString(file, 255)
   spell.aggro_expr = Deserializer.readString(file, 255)
   spell.duration_expr = Deserializer.readString(file, 255)
-  spell.touch_expr = Deserializer.readString(file, 255)
+  spell.hit_expr = Deserializer.readString(file, 255)
   spell.effect_expr = Deserializer.readString(file, 255)
   file:seek("cur", 2)
   spell.x, spell.y, spell.w, spell.h, spell.opacity = struct.unpack("<i4 i4 I4 I4 I4", file:read(4*5))
@@ -252,6 +266,7 @@ function Deserializer.loadProject(name)
 
     -- read spell entries
     prj.spells = {}
+    prj.spells_by_name = {} -- map of name => id
     prj.spell_count = file_mag:seek("end")/1936 -- 1936 bytes per entry
 
     file_mag:seek("set")
@@ -259,6 +274,7 @@ function Deserializer.loadProject(name)
     for i=1,prj.spell_count do
       local spell = Deserializer.readProjectSpellEntry(file_mag)
       table.insert(prj.spells, spell)
+      prj.spells_by_name[spell.name] = i
     end
 
     file_mag:close()

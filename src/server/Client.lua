@@ -163,8 +163,10 @@ function Client:onPacket(protocol, data)
             --- inventories
             self.inventory = Inventory(self.user_id, 1, 100)
             self.chest_inventory = Inventory(self.user_id, 2, 1000)
+            self.spell_inventory = Inventory(self.user_id, 3, 100)
             self.inventory:load(self.server.db)
             self.chest_inventory:load(self.server.db)
+            self.spell_inventory:load(self.server.db)
 
             ---- on item update
             function self.inventory.onItemUpdate(inv, id)
@@ -214,6 +216,39 @@ function Client:onPacket(protocol, data)
                 }
               end
               self:send(Client.makePacket(net.CHEST_UPDATE_ITEMS, {{id,data}}))
+            end
+
+            ---- on spell item update
+            function self.spell_inventory.onItemUpdate(inv, id)
+              local data
+              local amount = inv.items[id]
+              local spell = self.server.project.spells[id]
+              if spell and inv.items[id] then
+                data = {
+                  amount = inv.items[id],
+                  name = spell.name,
+                  description = spell.description
+                }
+              end
+              self:send(Client.makePacket(net.SPELL_INVENTORY_UPDATE_ITEMS, {{id,data}}))
+            end
+
+            ---- send spell inventory init items
+            do
+              local spells = self.server.project.spells
+              local items = {}
+              for id, amount in pairs(self.spell_inventory.items) do
+                local spell = spells[id]
+                if spell then
+                  table.insert(items, {id, {
+                    amount = amount,
+                    name = spell.name,
+                    description = spell.description
+                  }})
+                end
+              end
+
+              self:send(Client.makePacket(net.SPELL_INVENTORY_UPDATE_ITEMS, items))
             end
 
             --- state
@@ -477,6 +512,9 @@ function Client:onPacket(protocol, data)
         if data.type == "item" then -- check item bind
           local item = self.server.project.objects[id]
           if item and item.type == 0 then ok = true end
+        elseif data.type == "spell" then -- check spell bind
+          local spell = self.server.project.spells[id]
+          if spell then ok = true end
         end
         if ok then
           self:applyConfig({quick_actions = {[data.n] = {type = data.type, id = id}}})
@@ -493,6 +531,9 @@ function Client:onPacket(protocol, data)
           r()
         end
       end
+    elseif protocol == net.SPELL_CAST then
+      local id = tonumber(data) or 0
+      if self:canCast() then self:castSpell(id) end
     end
   end
 end
@@ -801,6 +842,46 @@ function Client:useItem(id)
   end
 end
 
+-- try to cast a spell
+function Client:castSpell(id)
+  local spell = self.server.project.spells[id]
+  if spell and self.spell_inventory.items[id] > 0 then -- check owned
+    if spell.mp > self.mana then -- mana check
+      self:sendChatMessage("Pas assez de mana.")
+      return
+    end
+    if self.level < spell.req_level then -- level check
+      self:sendChatMessage("Niveau trop bas.")
+      return
+    end
+
+    async(function()
+      -- acquire target
+      local target
+      if spell.target_type == 1 then -- mob
+        target = self:requestPickTarget("mob", 15)
+      elseif spell.target_type == 2 then -- player
+        target = self:requestPickTarget("player", 15)
+      elseif spell.target_type == 3 then -- self
+        target = self
+      elseif spell.target_type == 4 then -- area
+        -- TODO
+      end
+
+      if not target then -- target check
+        self:sendChatMessage("Cible invalide.")
+        return
+      end
+
+      local cast_duration = spell.cast_duration*0.03
+
+      -- cast spell
+      self:act("cast", cast_duration)
+      task(cast_duration, function() target:applySpell(self, spell) end)
+    end)
+  end
+end
+
 function Client:playMusic(path)
   self:send(Client.makePacket(net.PLAY_MUSIC, path))
 end
@@ -932,6 +1013,7 @@ function Client:save()
     -- inventories
     self.inventory:save(self.server.db)
     self.chest_inventory:save(self.server.db)
+    self.spell_inventory:save(self.server.db)
 
     -- config
     if self.player_config_changed then
@@ -1211,7 +1293,7 @@ end
 
 function Client:canCast()
   if self.map and self.map.data.type == Map.Type.SAFE then return false end
-  return not self.running_event and not self.ghost and not self.blocked_cast
+  return not self.running_event and not self.acting and not self.ghost and not self.blocked_cast
 end
 
 function Client:canChat()

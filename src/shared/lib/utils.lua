@@ -137,4 +137,20 @@ function utils.dump(v, level)
   end
 end
 
+-- process/compute string expression using basic Lua features
+-- return computed number (integer) or nil on failure
+function utils.computeExpression(str)
+  if string.find(str, "[^%.%*/%-%+%(%)%d%s]") then return end -- reject on unallowed characters
+
+  local expr = "return "..str
+  local f = utils.loadstring(expr)
+  local ok, r = pcall(f)
+  if ok then
+    local n = tonumber(r)
+    if n and n == n and math.abs(n) ~= 1/0 then -- reject NaN/inf values
+      return utils.round(n)
+    end
+  end
+end
+
 return utils

@@ -11,6 +11,14 @@ local LivingEntity = class("LivingEntity", Entity)
 
 -- STATICS
 
+LivingEntity.spell_patterns = {
+  vfunction = "%%([%w_]+)%((.-)%)%%", -- %func(...)%
+  caster_var = "%%%[Wizard%]%.([^%.%s%%%(%)]+)%%", -- %[Wizard].var%
+  target_var = "%%%[Cible%]%.([^%.%s%%%(%)]+)%%", -- %[Cible].var%
+  spell_ins = "^%s*spell:%s*([^%.%%%(%)]+)%s*$", -- spell: name
+  assignment_ins = "^%s*(.-)=(.*)$" -- var=value
+}
+
 -- return dx,dy (direction) or nil on invalid orientation (0-3)
 function LivingEntity.orientationVector(orientation)
   if orientation == 0 then return 0,-1
@@ -34,6 +42,217 @@ end
 -- convert game speed to px/s
 function LivingEntity.pixelSpeed(speed)
   return speed*4*16
+end
+
+-- PRIVATE METHODS
+
+-- spell var function definitions, map of id => function
+-- function(target, args...): should return a number or a string
+--- args...: passed string expressions (after substitution)
+
+local spell_vfunctions = {}
+
+function spell_vfunctions:rand(max)
+  if max then
+    return math.random(0, (utils.computeExpression(max) or 1)-1)
+  end
+end
+
+function spell_vfunctions:min(a, b)
+  if a and b then
+    return math.min(utils.computeExpression(a) or 0, utils.computeExpression(b) or 0)
+  end
+end
+
+function spell_vfunctions:max(a, b)
+  if a and b then
+    return math.max(utils.computeExpression(a) or 0, utils.computeExpression(b) or 0)
+  end
+end
+
+-- caster var accessor definitions, map of id => function
+-- function(caster, value): should return a number or a string on get mode
+--- value: passed string expression (after substitution) on set mode (nil on get mode)
+
+local caster_vars = {}
+
+function caster_vars:Force(value)
+  if not value then
+    return self.strength_pts or 0
+  end
+end
+
+function caster_vars:Dext(value)
+  if not value then
+    return self.dexterity_pts or 0
+  end
+end
+
+function caster_vars:Constit(value)
+  if not value then
+    return self.constitution_pts or 0
+  end
+end
+
+function caster_vars:Magie(value)
+  if not value then
+    return self.magic_pts or 0
+  end
+end
+
+function caster_vars:Attaque(value)
+  if not value then
+    return self.ch_attack
+  end
+end
+
+function caster_vars:Defense(value)
+  if not value then
+    return self.ch_defense
+  end
+end
+
+function caster_vars:Vie(value)
+  if value then
+    self:setHealth(utils.computeExpression(value) or 0)
+  else
+    return self.health
+  end
+end
+
+function caster_vars:VieMax(value)
+  if not value then
+    return self.max_health
+  end
+end
+
+function caster_vars:CurrentMag(value)
+  if value then
+    self:setMana(utils.computeExpression(value) or 0)
+  else
+    return self.mana
+  end
+end
+
+function caster_vars:MagMax(value)
+  if not value then
+    return self.max_mana
+  end
+end
+
+function caster_vars:Alignement(value)
+  if not value then
+    return self.alignment or 0
+  end
+end
+
+function caster_vars:Reputation(value)
+  if not value then
+    return self.reputation or 0
+  end
+end
+
+function caster_vars:Gold(value)
+  if not value then
+    return self.gold or 0
+  end
+end
+
+function caster_vars:Lvl(value)
+  if not value then
+    return self.level or 0
+  end
+end
+
+function caster_vars:CurrentXP(value)
+  if not value then
+    return self.xp or 0
+  end
+end
+
+function caster_vars:Dommage(value)
+  if not value then
+    return 0
+  end
+end
+
+function caster_vars:HandDom(value)
+  if not value then
+    return 0
+  end
+end
+
+function caster_vars:IndOff(value)
+  if not value then
+    local class_data = server.project.classes[self.class]
+    return class_data and class_data.off_index or 0
+  end
+end
+
+function caster_vars:IndDef(value)
+  if not value then
+    local class_data = server.project.classes[self.class]
+    return class_data and class_data.def_index or 0
+  end
+end
+
+function caster_vars:IndPui(value)
+  if not value then
+    local class_data = server.project.classes[self.class]
+    return class_data and class_data.pow_index or 0
+  end
+end
+
+function caster_vars:IndVit(value)
+  if not value then
+    local class_data = server.project.classes[self.class]
+    return class_data and class_data.health_index or 0
+  end
+end
+
+function caster_vars:IndMag(value)
+  if not value then
+    local class_data = server.project.classes[self.class]
+    return class_data and class_data.mag_index or 0
+  end
+end
+
+-- target var accessor definitions, map of id => function
+-- function(target, value): should return a number or a string on get mode
+--- value: passed string expression (after substitution) on set mode (nil on get mode)
+
+local target_vars = {}
+
+function target_vars:Vie(value)
+  if value then
+    self:setHealth(utils.computeExpression(value) or 0)
+  else
+    return self.health
+  end
+end
+
+function target_vars:Attaque(value)
+  if not value then
+    return self.ch_attack
+  end
+end
+
+function target_vars:Defense(value)
+  if not value then
+    return self.ch_defense
+  end
+end
+
+function target_vars:Bloque(value)
+  if not value then
+    return 0
+  end
+end
+
+function target_vars:Dommage(value)
+  if not value then
+    return 0
+  end
 end
 
 -- METHODS
@@ -251,6 +470,122 @@ end
 function LivingEntity:computeAttack(target)
   if math.random(self.ch_attack) > math.random(target.ch_defense) then
     return math.random(self.min_damage, self.max_damage)
+  end
+end
+
+-- apply spell (self is target)
+-- caster: spell caster (LivingEntity)
+-- spell: spell data
+function LivingEntity:applySpell(caster, spell)
+  local CE, ES = utils.computeExpression, self.spellExpressionSubstitution
+  local area = CE(ES(self, caster, spell.area_expr)) or 0
+  local aggro = CE(ES(self, caster, spell.aggro_expr)) or 0
+  local duration = CE(ES(self, caster, spell.duration_expr)) or 1
+  local hit = CE(ES(self, caster, spell.hit_expr)) or 1
+
+  if hit > 0 then -- success
+    -- audio/visual effects
+    self:emitAnimation(string.sub(spell.set, 9), -- remove Chipset\ part
+      spell.x, spell.y, spell.w, spell.h, spell.anim_duration*0.03, spell.opacity/255)
+    self:emitSound(string.sub(spell.sound, 7)) -- remove Sound\ part
+
+    -- instructions
+    self:spellExecuteInstructions(caster, spell.effect_expr)
+  else
+    self:damage(nil) -- miss
+  end
+end
+
+-- process the string to substitute all spell language patterns (self is target)
+-- caster: spell caster (LivingEntity)
+-- return processed string
+function LivingEntity:spellExpressionSubstitution(caster, str)
+  local pat = LivingEntity.spell_patterns
+
+  -- variable functions "%func(...)%"
+  str = utils.gsub(str, pat.vfunction, function(id, content)
+    local f = spell_vfunctions[id]
+    if f then
+      -- process function arguments
+      local args = utils.split(content, ",")
+      for i=1,#args do
+        args[i] = self:spellExpressionSubstitution(caster, args[i])
+      end
+      return f(self, unpack(args))
+    end
+  end)
+
+  -- caster vars
+  str = string.gsub(str, pat.caster_var, function(id)
+    -- check for client variable
+    local v_id = string.match(id, "Variable%[(%d+)%]")
+    if v_id then
+      return class.is(caster, Client) and caster:getVariable("var", tonumber(v_id)) or 0
+    else -- regular variable
+      local f = caster_vars[id]
+      if f then return f(caster) end
+    end
+  end)
+
+  -- target vars
+  str = string.gsub(str, pat.target_var, function(id)
+    local f = target_vars[id]
+    if f then return f(self) end
+  end)
+
+  return str
+end
+
+-- execute spell instructions (self is target)
+-- caster: spell caster (LivingEntity)
+function LivingEntity:spellExecuteInstructions(caster, str)
+  local pat = LivingEntity.spell_patterns
+
+  local spells = {}
+  local instructions = utils.split(str, ";")
+  for i, instruction in ipairs(instructions) do
+    -- spell instruction
+    local spell = string.match(instruction, pat.spell_ins)
+    if spell then table.insert(spells, spell); break end
+
+    -- assignment
+    local lhs, rhs = string.match(instruction, pat.assignment_ins)
+    if lhs then
+      -- compute rhs
+      local rhs = self:spellExpressionSubstitution(caster, rhs)
+
+      -- parse lhs var type and id
+      local lhs_type, lhs_id
+      lhs_id = string.match(lhs, pat.caster_var)
+      if lhs_id then lhs_type = "caster"
+      else
+        lhs_id = string.match(lhs, pat.target_var)
+        if lhs_id then lhs_type = "target" end
+      end
+
+      -- assignment
+      if lhs_type == "caster" then
+        -- check for client variable
+        local v_id = string.match(id, "Variable%[(%d+)%]")
+        if v_id then
+          if class.is(caster, Client) then
+            caster:setVariable("var", tonumber(v_id), utils.computeExpression(rhs) or 0)
+          end
+        else -- regular variable
+          local f = caster_vars[id]
+          if f then f(caster, rhs) end
+        end
+      elseif lhs_type == "target" then
+        local f = target_vars[lhs_id]
+        if f then f(self, rhs) end
+      end
+    end
+  end
+
+  -- apply spells
+  for _, name in pairs(spells) do
+    local spell = server.project.spells[server.project.spells_by_name[name]]
+    if spell then self:applySpell(caster, spell) end
   end
 end
 

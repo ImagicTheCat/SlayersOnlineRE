@@ -50,7 +50,7 @@ end
 -- create server
 local Server = require("Server")
 
-local server = Server(config)
+server = Server(config) -- global
 
 -- loop
 
