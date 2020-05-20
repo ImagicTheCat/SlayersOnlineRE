@@ -23,6 +23,7 @@ Event.Animation = {
 
 function Event:__construct(data)
   LivingEntity.__construct(self, data)
+  self.afterimage_duration = 0
 
   self.animation_type = data.animation_type
 
@@ -77,11 +78,5 @@ function Event:tick(dt)
     end
   end
 end
-
--- override
-function Event:drawAfterimage()
-  -- no event after image
-end
-
 
 return Event

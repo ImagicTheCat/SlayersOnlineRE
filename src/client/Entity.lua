@@ -7,6 +7,8 @@ function Entity:__construct(data)
   self.x = data.x
   self.y = data.y
   self.draw_order = 0 -- 0: dynamic, -1: back, 1: front (must be set at construction)
+  self.afterimage_duration = 0 -- configured duration for the afterimage when removed (seconds)
+  -- self.afterimage -- opacity factor when the entity is an afterimage
 end
 
 function Entity:onPacket(action, data)
@@ -26,10 +28,6 @@ function Entity:drawUnder()
 end
 
 function Entity:drawOver()
-end
-
--- draw afterimage when removed
-function Entity:drawAfterimage()
 end
 
 return Entity
