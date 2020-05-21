@@ -646,20 +646,20 @@ end
 
 -- (async)
 -- type: target type (string)
---- "player"
---- "mob"
+--- "player" (only player)
+--- "mob" (mob/player)
 -- radius: square radius in cells
 -- return picked entity or nothing if invalid
 function Client:requestPickTarget(type, radius)
   self.pick_target_task = async()
   self:send(Client.makePacket(net.TARGET_PICK, {type = type, radius = radius*16}))
   local entity = self.pick_target_task:wait()
-  if entity then
+  if entity and entity ~= self then
     local dx = math.abs(self.x-entity.x)
     local dy = math.abs(self.y-entity.y)
     if dx <= radius*16 and dy <= radius*16 --
-      and (type == "player" and class.is(entity, Player) and entity ~= self --
-      or type == "mob" and class.is(entity, Mob)) then
+      and (type == "player" and class.is(entity, Player) --
+      or type == "mob" and (class.is(entity, Mob) or class.is(entity, Player))) then
       return entity
     end
   end
@@ -858,13 +858,14 @@ function Client:castSpell(id)
     async(function()
       -- acquire target
       local target
-      if spell.target_type == 1 then -- mob
-        target = self:requestPickTarget("mob", 15)
-      elseif spell.target_type == 2 then -- player
+      if spell.target_type == 0 then -- player
         target = self:requestPickTarget("player", 15)
-      elseif spell.target_type == 3 then -- self
+      elseif spell.target_type == 1 then -- mob
+        target = self:requestPickTarget("mob", 15)
+      elseif spell.target_type == 2 then -- self
         target = self
-      elseif spell.target_type == 4 then -- area
+      elseif spell.target_type == 3 then -- area
+        target = self
         -- TODO
       end
 

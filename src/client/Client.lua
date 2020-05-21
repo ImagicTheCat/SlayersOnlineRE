@@ -586,9 +586,9 @@ function Client:onPacket(protocol, data)
         for id, entity in pairs(self.map.entities) do
           local dx = math.abs(player.x-entity.x)
           local dy = math.abs(player.y-entity.y)
-          if dx <= data.radius and dy <= data.radius --
-            and (data.type == "player" and class.is(entity, Player) and entity ~= player --
-            or data.type == "mob" and class.is(entity, Mob)) then
+          if dx <= data.radius and dy <= data.radius and entity ~= player --
+            and (data.type == "player" and class.is(entity, Player) --
+            or data.type == "mob" and (class.is(entity, Mob) or class.is(entity, Player))) then
             table.insert(entities, {id, math.sqrt(dx*dx+dy*dy)})
           end
         end
