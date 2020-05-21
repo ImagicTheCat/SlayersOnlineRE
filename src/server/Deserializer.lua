@@ -113,18 +113,18 @@ end
 
 -- return spell {}
 --- target_type:
+---- 0: player
 ---- 1: mob (and player)
----- 2: player
----- 3: self
----- 4: area
+---- 2: self
+---- 3: area
 --- type:
----- 1: unique target
----- 2: fireball
----- 3: AOE
----- 4: teleport
----- 5: resurrect
----- 6: jump attack
----- 7: sneak attack
+---- 0: unique target
+---- 1: fireball
+---- 2: AOE
+---- 3: teleport
+---- 4: resurrect
+---- 5: jump attack
+---- 6: sneak attack
 function Deserializer.readProjectSpellEntry(file)
   local spell = {}
 
