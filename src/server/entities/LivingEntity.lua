@@ -497,9 +497,11 @@ function LivingEntity:applySpell(caster, spell)
 
   if hit > 0 then -- success
     -- audio/visual effects
-    self:emitAnimation(string.sub(spell.set, 9), -- remove Chipset\ part
-      spell.x, spell.y, spell.w, spell.h, spell.anim_duration*0.03, spell.opacity/255)
-    self:emitSound(string.sub(spell.sound, 7)) -- remove Sound\ part
+    if #spell.set > 0 then
+      self:emitAnimation(string.sub(spell.set, 9), -- remove Chipset\ part
+        spell.x, spell.y, spell.w, spell.h, spell.anim_duration*0.03, spell.opacity/255)
+    end
+    if #spell.sound > 0 then self:emitSound(string.sub(spell.sound, 7)) end -- remove Sound\ part
 
     -- instructions
     self:spellExecuteInstructions(caster, spell.effect_expr)
