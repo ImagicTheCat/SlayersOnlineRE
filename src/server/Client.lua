@@ -996,11 +996,11 @@ function Client:useItem(id)
     self:setMana(self.mana+item.mod_mp)
     self:act("use", 1)
 
-    -- heal sound
-    if self.health > 0 then
+    -- heal effect
+    if item.mod_hp > 0 then
       self:emitSound("Holy2.wav")
       self:emitAnimation("heal.png", 0, 0, 48, 56, 0.75)
-      self:emitHint({{0,1,0}, self.health})
+      self:emitHint({{0,1,0}, item.mod_hp})
     end
 
     return true
@@ -1043,7 +1043,10 @@ function Client:castSpell(id)
 
       -- cast spell
       self:act("cast", cast_duration)
-      task(cast_duration, function() target:applySpell(self, spell) end)
+      task(cast_duration, function()
+        self:emitHint({{0.77,0.18,1}, spell.name})
+        target:applySpell(self, spell)
+      end)
     end)
   end
 end
@@ -1399,15 +1402,21 @@ end
 function Client:onDeath()
   -- XP loss (1%)
   if self.map and self.map.data.type == Map.Type.PVE or self.map.data.type == Map.Type.PVE_PVP then
-    self:setXP(math.floor(self.xp*0.99))
+    local new_xp = math.floor(self.xp*0.99)
+    local delta = new_xp-self.xp
+    if delta < 0 then self:emitHint({{0,0.9,1}, delta}) end
+    self:setXP(new_xp)
   end
 
   if self.last_attacker then -- killed by player
     -- gold stealing (1%)
     local gold_amount = math.floor(self.gold*0.01)
-    self.last_attacker:setGold(self.last_attacker.gold+gold_amount)
-    self:setGold(self.gold-gold_amount)
-
+    if gold_amount > 0 then
+      self.last_attacker:setGold(self.last_attacker.gold+gold_amount)
+      self:setGold(self.gold-gold_amount)
+      self.last_attacker:emitHint({{1,0.78,0}, "+"..gold_amount})
+      self:emitHint({{1,0.78,0}, -gold_amount})
+    end
     self.last_attacker:onPlayerKill()
   end
 

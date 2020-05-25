@@ -114,7 +114,13 @@ end
 
 function caster_vars:Vie(value)
   if value then
-    self:setHealth(utils.computeExpression(value) or 0)
+    -- effect
+    value = utils.computeExpression(value) or 0
+    local delta = value-self.health
+    if delta > 0 then self:emitHint({{0,1,0}, delta})
+    elseif delta < 0 then self:emitHint({{1,0,0}, -delta}) end
+
+    self:setHealth(value)
   else
     return self.health
   end
@@ -225,7 +231,13 @@ local target_vars = {}
 
 function target_vars:Vie(value)
   if value then
-    self:setHealth(utils.computeExpression(value) or 0)
+    -- effect
+    value = utils.computeExpression(value) or 0
+    local delta = value-self.health
+    if delta > 0 then self:emitHint({{0,1,0}, delta})
+    elseif delta < 0 then self:emitHint({{1,0,0}, -delta}) end
+
+    self:setHealth(value)
   else
     return self.health
   end
