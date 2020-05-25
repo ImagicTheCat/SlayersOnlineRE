@@ -182,15 +182,20 @@ function Mob:onDeath()
     end
 
     -- XP
-    killer:setXP(killer.xp+math.random(self.data.xp_min, self.data.xp_max))
+    local xp = math.random(self.data.xp_min, self.data.xp_max)
+    killer:setXP(killer.xp+xp)
+    if xp > 0 then killer:emitHint({{0,0.9,1}, "+"..xp}) end
 
     -- gold
-    killer:setGold(killer.gold+math.random(self.data.gold_min, self.data.gold_max))
+    local gold = math.random(self.data.gold_min, self.data.gold_max)
+    killer:setGold(killer.gold+gold)
+    if gold > 0 then killer:emitHint({{1,0.78,0}, "+"..gold}) end
 
     -- object
     local item = killer.server.project.objects[self.data.loot_object]
     if item and math.random(100) <= self.data.loot_chance then
       killer.inventory:put(self.data.loot_object)
+      killer:emitHint("+ "..item.name)
     end
   end
 

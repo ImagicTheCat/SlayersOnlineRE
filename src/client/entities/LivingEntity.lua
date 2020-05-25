@@ -4,6 +4,8 @@ local utils = require("lib.utils")
 
 local LivingEntity = class("LivingEntity", Entity)
 
+local HINT_DURATION = 2
+
 -- STATICS
 
 LivingEntity.atlases = {}
@@ -96,7 +98,7 @@ function LivingEntity:onPacket(action, data)
     end
 
     -- hint
-    local color = (client.id == self.id and {1,0.5,0} or {1,1,1})
+    local color = (client.id == self.id and (amount and {1,0,0} or {1,0.5,0}) or {1,1,1})
     if not amount then
       self:emitHint({color, "Miss"})
     else
@@ -159,7 +161,7 @@ end
 function LivingEntity:emitHint(colored_text)
   local text = love.graphics.newText(client.font)
   text:set(colored_text)
-  table.insert(self.hints, {text, 2})
+  table.insert(self.hints, {text, HINT_DURATION})
 end
 
 -- play spatialized sound on self
@@ -252,12 +254,18 @@ function LivingEntity:tick(dt)
   end
 
   -- hints
-  for i=#self.hints,1,-1 do
-    local hint = self.hints[i]
-    hint[2] = hint[2]-dt
-    if hint[2] <= 0 then
-      table.remove(self.hints, i)
+  for i, hint in ipairs(self.hints) do
+    -- prevent overlaps
+    local prev_hint = self.hints[i-1]
+    if prev_hint --
+      and 16*(1-prev_hint[2]/HINT_DURATION) <= hint[1]:getHeight()/client.world_scale then
+      break
     end
+    -- tick
+    hint[2] = hint[2]-dt
+  end
+  for i=#self.hints,1,-1 do -- remove ended hints
+    if self.hints[i][2] <= 0 then table.remove(self.hints, i) end
   end
 
   -- animations
@@ -279,13 +287,15 @@ function LivingEntity:drawOver()
     for _, hint in ipairs(self.hints) do
       local text, time = hint[1], hint[2]
 
-      local w, h = text:getWidth()*scale, text:getHeight()*scale
-      local x, y = self.x+8-w/2, self.y-16*(1-time/2)-h
-      love.graphics.setColor(0,0,0,math.min(1,time)*0.50)
-      love.graphics.draw(text, x+2*scale, y+2*scale, 0, scale) -- shadowing
-      love.graphics.setColor(1,1,1,math.min(1,time))
-      love.graphics.draw(text, x, y, 0, scale)
-      love.graphics.setColor(1,1,1,1)
+      if time < HINT_DURATION then -- discard queued hints
+        local w, h = text:getWidth()*scale, text:getHeight()*scale
+        local x, y = self.x+8-w/2, self.y-16*(1-time/HINT_DURATION)-h
+        love.graphics.setColor(0,0,0,math.min(1,time)*0.50)
+        love.graphics.draw(text, x+2*scale, y+2*scale, 0, scale) -- shadowing
+        love.graphics.setColor(1,1,1,math.min(1,time))
+        love.graphics.draw(text, x, y, 0, scale)
+        love.graphics.setColor(1,1,1,1)
+      end
     end
   end
 end

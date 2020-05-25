@@ -263,7 +263,12 @@ end
 
 function client_special_vars:Vie(value)
   if value then
-    self.client:setHealth(utils.computeExpression(value) or 0)
+    value = utils.computeExpression(value) or 0
+    local delta = value-self.client.health
+    if delta > 0 then self.client:emitHint({{0,1,0}, delta})
+    elseif delta < 0 then self.client:emitHint({{1,0,0}, -delta}) end
+
+    self.client:setHealth(value)
   else
     return self.client.health
   end
@@ -307,7 +312,12 @@ end
 
 function client_special_vars:Gold(value)
   if value then
-    self.client:setGold(utils.computeExpression(value) or 0)
+    value = utils.computeExpression(value) or 0
+    local delta = value-self.client.health
+    if delta > 0 then self.client:emitHint({{1,0.78,0}, "+"..delta})
+    elseif delta < 0 then self.client:emitHint({{1,0.78,0}, delta}) end
+
+    self.client:setGold(value)
   else
     return self.client.gold
   end
@@ -781,6 +791,7 @@ function command_functions:AddObject(state, name, amount)
   local id = self.client.server.project.objects_by_name[name]
   if id and amount > 0 then
     for i=1,amount do self.client.inventory:put(id) end
+    self.client:emitHint("+ "..name..(amount > 1 and " x"..amount or ""))
   end
 end
 
@@ -789,6 +800,7 @@ function command_functions:DelObject(state, name, amount)
   local id = self.client.server.project.objects_by_name[name]
   if id and amount > 0 then
     for i=1,amount do self.client.inventory:take(id) end
+    self.client:emitHint("- "..name..(amount > 1 and " x"..amount or ""))
   end
 end
 
@@ -967,6 +979,7 @@ function command_functions:AddMagie(state, name, amount)
   local id = self.client.server.project.spells_by_name[name]
   if id and amount > 0 then
     for i=1,amount do self.client.spell_inventory:put(id) end
+    self.client:emitHint("+ "..name..(amount > 1 and " x"..amount or ""))
   end
 end
 
@@ -975,6 +988,7 @@ function command_functions:DelMagie(state, name, amount)
   local id = self.client.server.project.spells_by_name[name]
   if id and amount > 0 then
     for i=1,amount do self.client.spell_inventory:take(id) end
+    self.client:emitHint("- "..name..(amount > 1 and " x"..amount or ""))
   end
 end
 
