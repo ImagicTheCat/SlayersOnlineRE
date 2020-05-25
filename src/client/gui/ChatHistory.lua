@@ -34,6 +34,7 @@ end
 function ChatHistory:show(time)
   self:setVisible(true)
   if time then
+    if self.timer then self.timer:remove() end
     self.timer = scheduler:timer(time, function() self:hide() end)
   end
 end

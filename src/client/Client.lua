@@ -731,12 +731,12 @@ function Client:onResize(w, h)
   local phials_h = self.gui_renderer.phials_atlas.cell_h
 
   self.world_scale = math.ceil(h/16/15) -- display 15 tiles max (height)
-  self.xp_scale = utils.floorScale(w/xp_w, xp_w)
   self.phials_scale = utils.floorScale((h*0.30/phials_h), phials_h)
+  self.xp_scale = math.min(self.phials_scale, utils.floorScale((w-phials_w*self.phials_scale*2)/xp_w, xp_w))
 
   local input_chat_y = h-self.font:getHeight()-2-12
   local message_height = math.floor(self.player_config.gui.dialog_height*h)
-  local chat_height = math.floor(self.player_config.gui.chat_height*h)
+  local chat_height = math.floor(self.player_config.gui.chat_height*(input_chat_y-4))
 
   if self.prompt_task then
     self.w_input_chat:setPosition(2, message_height+2)
