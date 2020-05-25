@@ -1081,7 +1081,6 @@ function Event:instructionSubstitution(str, f_input)
   if f_input then -- special: "InputString('')"
     str = utils.gsub(str, "InputString%('(.*)'%)", function(title)
       title = self:instructionSubstitution(title, f_input)
-
       return self.client:requestInputString(title)
     end)
   end
@@ -1096,7 +1095,7 @@ function Event:instructionSubstitution(str, f_input)
         args[i] = self:instructionSubstitution(args[i], f_input)
       end
       return f(self, unpack(args))
-    end
+    else print("event: client variable function \""..id.."\" not implemented") end
   end)
 
   -- server var
@@ -1121,14 +1120,16 @@ function Event:instructionSubstitution(str, f_input)
     local event = self.client.events_by_name[name]
     if event then
       local f = event_special_vars[id]
-      if f then return f(event) end
+      if f then return f(event)
+      else print("event: event special variable \""..id.."\" not implemented") end
     end
   end)
 
   -- client special var
   str = string.gsub(str, pat.client_special_var, function(id)
     local f = client_special_vars[id]
-    if f then return f(self) end
+    if f then return f(self)
+    else print("event: client special variable \""..id.."\" not implemented") end
   end)
 
   return str

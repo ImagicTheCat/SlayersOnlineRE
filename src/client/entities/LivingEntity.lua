@@ -171,7 +171,7 @@ function LivingEntity:emitSound(sound)
       source:setPosition(self.x+8, self.y+8, 0)
       source:setAttenuationDistances(16, 16*15)
       source:setRelative(false)
-    end
+    else print("failed to load sound \""..sound.."\"") end
   end)
 end
 
@@ -195,7 +195,7 @@ function LivingEntity:emitAnimation(path, x, y, w, h, duration, alpha)
       }
 
       table.insert(self.animations, anim)
-    end
+    else print("failed to load animation \""..path.."\"") end
   end)
 end
 

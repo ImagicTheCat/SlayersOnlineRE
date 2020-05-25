@@ -128,7 +128,7 @@ end
 
 function Trade:updateLock(locked)
   self.locked = locked
-  self.menu:set(0,0, Text(locked and {{0,0,0}, "Accepté"} or {{1,1,1}, "Accepter"}), not locked)
+  self.menu:set(0,0, Text(locked and {{0,1,0.5}, "Accepté"} or {{1,1,1}, "Accepter"}), not locked)
 end
 
 function Trade:updatePeerLock(locked)
