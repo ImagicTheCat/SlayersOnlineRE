@@ -296,7 +296,12 @@ end
 
 function client_special_vars:Alignement(value)
   if value then
-    self.client:setAlignment(utils.computeExpression(value) or 0)
+    value = utils.computeExpression(value) or 0
+    local delta = value-self.client.alignment
+    if delta > 0 then self.client:emitHint("+"..delta.." alignement")
+    elseif delta < 0 then self.client:emitHint(delta.." alignement") end
+
+    self.client:setAlignment(value)
   else
     return self.client.alignment
   end
@@ -304,7 +309,12 @@ end
 
 function client_special_vars:Reputation(value)
   if value then
-    self.client:setReputation(utils.computeExpression(value) or 0)
+    value = utils.computeExpression(value) or 0
+    local delta = value-self.client.alignment
+    if delta > 0 then self.client:emitHint("+"..delta.." réputation")
+    elseif delta < 0 then self.client:emitHint(delta.." réputation") end
+
+    self.client:setReputation(value)
   else
     return self.client.reputation
   end
@@ -313,7 +323,7 @@ end
 function client_special_vars:Gold(value)
   if value then
     value = utils.computeExpression(value) or 0
-    local delta = value-self.client.health
+    local delta = value-self.client.gold
     if delta > 0 then self.client:emitHint({{1,0.78,0}, "+"..delta})
     elseif delta < 0 then self.client:emitHint({{1,0.78,0}, delta}) end
 
@@ -326,7 +336,13 @@ end
 function client_special_vars:Lvl(value)
   if value then
     local xp = XPtable[utils.computeExpression(value) or 0]
-    if xp then self.client:setXP(xp) end
+    if xp then
+      local delta = xp-self.client.xp
+      if delta > 0 then self.client:emitHint({{0,0.9,1}, "+"..delta})
+      elseif delta < 0 then self.client:emitHint({{0,0.9,1}, delta}) end
+
+      self.client:setXP(xp)
+    end
   else
     return self.client.level
   end
@@ -342,6 +358,11 @@ end
 
 function client_special_vars:CurrentXP(value)
   if value then
+    value = utils.computeExpression(value) or 0
+    local delta = value-self.client.xp
+    if delta > 0 then self.client:emitHint({{0,0.9,1}, "+"..delta})
+    elseif delta < 0 then self.client:emitHint({{0,0.9,1}, delta}) end
+
     self.client:setXP(utils.computeExpression(value) or 0)
   else
     return self.client.xp
@@ -790,8 +811,11 @@ function command_functions:AddObject(state, name, amount)
   amount = utils.computeExpression(amount or "") or 1
   local id = self.client.server.project.objects_by_name[name]
   if id and amount > 0 then
-    for i=1,amount do self.client.inventory:put(id) end
-    self.client:emitHint("+ "..name..(amount > 1 and " x"..amount or ""))
+    local count = 0
+    for i=1,amount do
+      if self.client.inventory:put(id) then count = count+1 end
+    end
+    if count > 0 then self.client:emitHint("+ "..name..(count > 1 and " x"..count or "")) end
   end
 end
 
@@ -799,8 +823,11 @@ function command_functions:DelObject(state, name, amount)
   amount = utils.computeExpression(amount or "") or 1
   local id = self.client.server.project.objects_by_name[name]
   if id and amount > 0 then
-    for i=1,amount do self.client.inventory:take(id) end
-    self.client:emitHint("- "..name..(amount > 1 and " x"..amount or ""))
+    local count = 0
+    for i=1,amount do
+      if self.client.inventory:take(id) then count = count+1 end
+    end
+    if count > 0 then self.client:emitHint("- "..name..(count > 1 and " x"..count or "")) end
   end
 end
 
@@ -978,8 +1005,11 @@ function command_functions:AddMagie(state, name, amount)
   amount = utils.computeExpression(amount or "") or 1
   local id = self.client.server.project.spells_by_name[name]
   if id and amount > 0 then
-    for i=1,amount do self.client.spell_inventory:put(id) end
-    self.client:emitHint("+ "..name..(amount > 1 and " x"..amount or ""))
+    local count = 0
+    for i=1,amount do
+      if self.client.spell_inventory:put(id) then count = count+1 end
+    end
+    if count > 0 then self.client:emitHint("+ "..name..(count > 1 and " x"..count or "")) end
   end
 end
 
@@ -987,8 +1017,11 @@ function command_functions:DelMagie(state, name, amount)
   amount = utils.computeExpression(amount or "") or 1
   local id = self.client.server.project.spells_by_name[name]
   if id and amount > 0 then
-    for i=1,amount do self.client.spell_inventory:take(id) end
-    self.client:emitHint("- "..name..(amount > 1 and " x"..amount or ""))
+    local count = 0
+    for i=1,amount do
+      if self.client.spell_inventory:take(id) then count = count+1 end
+    end
+    if count > 0 then self.client:emitHint("- "..name..(count > 1 and " x"..count or "")) end
   end
 end
 
