@@ -94,6 +94,8 @@ function Client:__construct(cfg)
   self.sound_sources = {} -- list of source
   self.sounds = {} -- map of path => sound data
 
+  self.title_screen = self:loadTexture("resources/textures/title_screen.jpg")
+
   -- list of loading screen paths
   self.loading_screens = love.filesystem.getDirectoryItems("resources/textures/loadings")
   self.loading_screen_fade = 1
@@ -1015,7 +1017,14 @@ end
 function Client:draw()
   local w,h = love.graphics.getDimensions()
 
-  -- map rendering
+  -- title screen
+  if not self.id then
+    local tw, th = self.title_screen:getDimensions()
+    local factor = math.ceil(w/tw)
+    love.graphics.draw(self.title_screen, w/2-tw*factor/2, h/2-th*factor/2, 0, factor)
+  end
+
+  -- map
   if self.map then
     -- background (extend width to stay compatible with original 20x15 cells)
     if self.map.background then
@@ -1049,7 +1058,7 @@ function Client:draw()
     love.graphics.pop()
   end
 
-  -- interface rendering
+  -- interface
   self.gui_renderer:render(self.gui)
 
   -- loading screen
