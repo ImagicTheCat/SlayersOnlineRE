@@ -17,6 +17,8 @@ local GridInterface = require("gui.GridInterface")
 local Inventory = require("gui.Inventory")
 local Chest = require("gui.Chest")
 local Shop = require("gui.Shop")
+local Trade = require("gui.Trade")
+local DialogBox = require("gui.DialogBox")
 local TextureAtlas = require("TextureAtlas")
 local Phial = require("gui.Phial")
 local XPBar = require("gui.XPBar")
@@ -121,9 +123,9 @@ function Client:__construct(cfg)
   -- input chat/string valid event
   self.input_chat:listen("control-press", function(widget, id)
     if id == "return" then
-      if self.prompt_r then -- input string
-        local r = self.prompt_r
-        self.prompt_r = nil
+      if self.prompt_task then -- input string
+        local r = self.prompt_task
+        self.prompt_task = nil
 
         local text = self.input_chat.text
         self.input_chat:set("")
@@ -220,6 +222,10 @@ function Client:__construct(cfg)
     elseif cy == 2 then
       self.w_stats:setVisible(true)
       self.gui:setFocus(self.g_stats)
+    elseif cy == 3 then
+      self:sendPacket(net.TRADE_SEEK)
+      self.gui:setFocus()
+      self.menu:setVisible(false)
     elseif cy == 4 then
       love.event.quit()
     end
@@ -287,6 +293,14 @@ function Client:__construct(cfg)
   end)
   self.gui:add(self.w_stats)
 
+  self.trade = Trade()
+  self.trade:setVisible(false)
+  self.gui:add(self.trade)
+
+  self.dialog_box = DialogBox()
+  self.gui:add(self.dialog_box)
+  self.dialog_box:setVisible(false)
+
   -- trigger resize
   self:onResize(love.graphics.getDimensions())
 end
@@ -325,7 +339,7 @@ function Client:tick(dt)
     and self:isControlPressed(control))
 
   -- GUI
-  if not self.prompt_r and self.gui.focus == self.input_chat then
+  if not self.prompt_task and self.gui.focus == self.input_chat then
     self.chat_history:show()
   end
 
@@ -469,6 +483,11 @@ function Client:onPacket(protocol, data)
     if self.chest.visible then
       self.chest.content_l:updateContent()
     end
+
+    self.trade.content_inv:updateItems(data)
+    if self.trade.visible then
+      self.trade.content_inv:updateContent()
+    end
   elseif protocol == net.SPELL_INVENTORY_UPDATE_ITEMS then
     self.spell_inventory.content:updateItems(data)
     if self.spell_inventory.visible then
@@ -605,6 +624,42 @@ function Client:onPacket(protocol, data)
     else
       self:sendPacket(net.TARGET_PICK) -- end/cancel
     end
+  elseif protocol == net.TRADE_OPEN then
+    self.trade.title_l:set(data.title_l)
+    self.trade.title_r:set(data.title_r)
+    self.trade.content_inv:updateContent()
+    self.trade:setVisible(true)
+    self.gui:setFocus(self.trade.content_inv.grid)
+  elseif protocol == net.TRADE_LEFT_UPDATE_ITEMS then
+    self.trade.content_l:updateItems(data)
+    self.trade.content_l:updateContent()
+  elseif protocol == net.TRADE_RIGHT_UPDATE_ITEMS then
+    self.trade.content_r:updateItems(data)
+    self.trade.content_r:updateContent()
+  elseif protocol == net.TRADE_SET_GOLD then
+    self.trade.gold_r:set(1,0, Text(tostring(data)))
+  elseif protocol == net.TRADE_LOCK then
+    self.trade:updateLock(data)
+  elseif protocol == net.TRADE_PEER_LOCK then
+    self.trade:updatePeerLock(data)
+  elseif protocol == net.TRADE_CLOSE then
+    self.trade:setVisible(false)
+    -- clear
+    self.trade.content_l:updateItems({}, true)
+    self.trade.content_l:updateContent()
+    self.trade.content_r:updateItems({}, true)
+    self.trade.content_r:updateContent()
+    self.trade.gold_r:set(1,0, Text("0"))
+    self.trade.gold_l_input:set("0")
+    self.trade:updateLock(false)
+    self.trade:updatePeerLock(false)
+    self.gui:setFocus()
+  elseif protocol == net.DIALOG_QUERY then
+    if not self.gui.focus and not self.pick_target then -- not busy
+      async(function()
+        self:sendPacket(net.DIALOG_RESULT, self:dialog(data[1], data[2]))
+      end)
+    else self:sendPacket(net.DIALOG_RESULT) end -- busy, cancel
   end
 end
 
@@ -679,7 +734,7 @@ function Client:onResize(w, h)
   local message_height = math.floor(self.player_config.gui.dialog_height*h)
   local chat_height = math.floor(self.player_config.gui.chat_height*h)
 
-  if self.prompt_r then
+  if self.prompt_task then
     self.w_input_chat:setPosition(2, message_height+2)
     self.w_input_chat:setSize(w-4, self.font:getHeight()+12)
   else
@@ -697,7 +752,7 @@ function Client:onResize(w, h)
   self.chat_history:setSize(w-4-self.health_phial.w*2, chat_height)
 
   self.xp_bar:setSize(xp_w*self.xp_scale, xp_h*self.xp_scale)
-  self.xp_bar:setPosition(w/2-self.xp_bar.w/2, h-self.xp_bar.h)
+  self.xp_bar:setPosition(math.floor(w/2-self.xp_bar.w/2), h-self.xp_bar.h)
 
   self.message_window:setPosition(2, 2)
   self.message_window:setSize(w-4, message_height)
@@ -706,7 +761,7 @@ function Client:onResize(w, h)
 
   local w_menu = self.font:getWidth("Statistiques")+24
   local h_menu = (self.font:getHeight()+6)*5+12
-  self.menu:setPosition(2, h/2-h_menu/2)
+  self.menu:setPosition(2, math.floor(h/2-h_menu/2))
   self.menu:setSize(w_menu, h_menu)
 
   self.inventory:setPosition(self.menu.w+2, 2)
@@ -723,6 +778,12 @@ function Client:onResize(w, h)
 
   self.shop:setPosition(2,2)
   self.shop:setSize(w-4,h-4)
+
+  self.trade:setPosition(2,2)
+  self.trade:setSize(w-4,h-4)
+
+  self.dialog_box:updateLayout(math.floor(w*0.75), 0)
+  self.dialog_box:setPosition(math.floor(w/2-self.dialog_box.w/2), math.floor(h/2-self.dialog_box.h/2))
 end
 
 function Client:onSetFont()
@@ -907,7 +968,7 @@ end
 -- return entered text
 function Client:prompt(title, value)
   local r = async()
-  self.prompt_r = r
+  self.prompt_task = r
 
   self.message_window_text:set(title)
   self.message_window:setVisible(true)
@@ -918,6 +979,26 @@ function Client:prompt(title, value)
   self.gui:setFocus(self.input_chat)
 
   return r:wait()
+end
+
+-- (async) open dialog box
+-- text: formatted text
+-- options: list of formatted texts
+-- return selected option index
+function Client:dialog(text, options)
+  self.dialog_task = async()
+  self.dialog_box:set(text, options)
+  self.dialog_box:setVisible(true)
+  local prev_focus = self.gui.focus
+  self.gui:setFocus(self.dialog_box.grid)
+  self:onResize(love.graphics.getDimensions()) -- trigger GUI update
+  -- (should use the GUI as a layout widget to prevent this kind of fixes)
+
+  local index = self.dialog_task:wait()
+  self.dialog_task = nil
+  self.gui:setFocus(prev_focus)
+  self.dialog_box:setVisible(false)
+  return index
 end
 
 -- input a chat message to the remote server
@@ -1134,6 +1215,27 @@ function Client:doQuickAction(n)
       self:castSpell(q.id)
     end
   end
+end
+
+function Client:setTradeGold(gold)
+  self:sendPacket(net.TRADE_SET_GOLD, gold)
+end
+
+function Client:putTradeItem(id)
+  self:sendPacket(net.TRADE_PUT_ITEM, id)
+end
+
+function Client:takeTradeItem(id)
+  self:sendPacket(net.TRADE_TAKE_ITEM, id)
+end
+
+-- lock/accept trade
+function Client:lockTrade()
+  self:sendPacket(net.TRADE_LOCK)
+end
+
+function Client:closeTrade()
+  self:sendPacket(net.TRADE_CLOSE)
 end
 
 -- (async) load remote skin

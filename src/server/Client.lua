@@ -534,6 +534,50 @@ function Client:onPacket(protocol, data)
     elseif protocol == net.SPELL_CAST then
       local id = tonumber(data) or 0
       if self:canCast() then self:castSpell(id) end
+    elseif protocol == net.TRADE_SEEK then
+      async(function()
+        -- pick target
+        local entity = self:requestPickTarget("player", 15)
+        if entity then
+          self:sendChatMessage("Requête envoyée.")
+          -- open dialog
+          local dialog_r = entity:requestDialog({{0,1,0.5}, self.pseudo, {1,1,1}, " souhaite lancer un échange avec vous."}, {"Accepter", "Refuser"})
+          if dialog_r == 1 then
+            if not (self.map == entity.map and self:openTrade(entity)) then
+              self:sendChatMessage("Échange impossible.")
+              entity:sendChatMessage("Échange impossible.")
+            end
+          elseif dialog_r == 2 then
+            self:sendChatMessage("Échange refusé.")
+          else
+            self:sendChatMessage("Joueur occupé.")
+          end
+        else
+          self:sendChatMessage("Cible invalide.")
+        end
+      end)
+    elseif protocol == net.TRADE_SET_GOLD then
+      if self.trade and not self.trade.locked then
+        self:setTradeGold(tonumber(data) or 0)
+      end
+    elseif protocol == net.TRADE_PUT_ITEM then
+      local id = tonumber(data) or 0
+      if self.trade and not self.trade.locked and self.inventory:take(id) then
+        self.trade.inventory:put(id)
+        self.trade.peer:setTradeLock(false)
+      end
+    elseif protocol == net.TRADE_TAKE_ITEM then
+      local id = tonumber(data) or 0
+      if self.trade and not self.trade.locked and self.trade.inventory:take(id) then
+        self.inventory:put(id)
+        self.trade.peer:setTradeLock(false)
+      end
+    elseif protocol == net.TRADE_LOCK then
+      self:setTradeLock(true)
+    elseif protocol == net.TRADE_CLOSE then
+      self:cancelTrade()
+    elseif protocol == net.DIALOG_RESULT then
+      if self.dialog_task then self.dialog_task(data) end
     end
   end
 end
@@ -665,6 +709,20 @@ function Client:requestPickTarget(type, radius)
   end
 end
 
+-- (async) open dialog box
+-- text: formatted text
+-- options: list of formatted texts
+-- return option index or nothing if busy/failed
+function Client:requestDialog(text, options)
+  if not self.dialog_task then
+    self.dialog_task = async()
+    self:send(Client.makePacket(net.DIALOG_QUERY, {text, options}))
+    local r = tonumber(self.dialog_task:wait())
+    self.dialog_task = nil
+    if options[r] then return r end
+  end
+end
+
 -- (async) open chest GUI
 function Client:openChest(title)
   self.chest_task = async()
@@ -726,6 +784,112 @@ function Client:openShop(title, items)
   self.shop_task:wait()
 end
 
+-- open trade with another player
+-- return true on success
+function Client:openTrade(player)
+  if self.trade or player.trade then return end -- already trading check
+
+  -- init trading data
+  self.trade = {
+    peer = player,
+    inventory = Inventory(-1, -1, 100),
+    gold = 0,
+    locked = false
+  }
+  player.trade = {
+    peer = self,
+    inventory = Inventory(-1, -1, 100),
+    gold = 0,
+    locked = false
+  }
+
+  -- bind callbacks: update trade items for each peer
+  local function update_item(inv, id, pleft, pright)
+    local data
+    local amount = inv.items[id]
+    local object = self.server.project.objects[id]
+    if object and inv.items[id] then
+      data = {
+        amount = inv.items[id],
+        name = object.name,
+        description = object.description
+      }
+    end
+    pleft:send(Client.makePacket(net.TRADE_LEFT_UPDATE_ITEMS, {{id,data}}))
+    pright:send(Client.makePacket(net.TRADE_RIGHT_UPDATE_ITEMS, {{id,data}}))
+  end
+
+  function self.trade.inventory.onItemUpdate(inv, id)
+    update_item(inv, id, self, player)
+  end
+  function player.trade.inventory.onItemUpdate(inv, id)
+    update_item(inv, id, player, self)
+  end
+
+  self:send(Client.makePacket(net.TRADE_OPEN, {title_l = self.pseudo, title_r = player.pseudo}))
+  player:send(Client.makePacket(net.TRADE_OPEN, {title_l = player.pseudo, title_r = self.pseudo}))
+
+  return true
+end
+
+function Client:setTradeLock(locked)
+  if self.trade.locked ~= locked then
+    local peer = self.trade.peer
+    self.trade.locked = locked
+    self:send(Client.makePacket(net.TRADE_LOCK, locked))
+    peer:send(Client.makePacket(net.TRADE_PEER_LOCK, locked))
+
+    -- check both locked: complete transaction
+    if locked and peer.trade.locked then
+      -- gold
+      peer:setGold(peer.gold-peer.trade.gold)
+      self:setGold(self.gold+peer.trade.gold)
+      self:setGold(self.gold-self.trade.gold)
+      peer:setGold(peer.gold+self.trade.gold)
+      -- items
+      for id, amount in pairs(peer.trade.inventory.items) do
+        for i=1,amount do self.inventory:put(id) end
+      end
+      for id, amount in pairs(self.trade.inventory.items) do
+        for i=1,amount do peer.inventory:put(id) end
+      end
+      -- close
+      local p, msg = Client.makePacket(net.TRADE_CLOSE), "Échange effectué."
+      self:send(p); peer:send(p)
+      self:sendChatMessage(msg)
+      peer:sendChatMessage(msg)
+      self.trade, peer.trade = nil, nil
+    end
+  end
+end
+
+function Client:setTradeGold(gold)
+  if self.trade.gold ~= gold then
+    self.trade.gold = gold
+    self.trade.peer:send(Client.makePacket(net.TRADE_SET_GOLD, gold))
+    self.trade.peer:setTradeLock(false)
+  end
+end
+
+function Client:cancelTrade()
+  if self.trade then
+    local peer = self.trade.peer
+    -- replace items
+    for id, amount in pairs(self.trade.inventory.items) do
+      for i=1,amount do self.inventory:put(id) end
+    end
+    for id, amount in pairs(peer.trade.inventory.items) do
+      for i=1,amount do peer.inventory:put(id) end
+    end
+
+    local p, msg = Client.makePacket(net.TRADE_CLOSE), "Échange annulé."
+    self:send(p); peer:send(p)
+    self:sendChatMessage(msg)
+    peer:sendChatMessage(msg)
+    self.trade, peer.trade = nil, nil
+  end
+end
+
 -- (async) scroll client view to position
 function Client:scrollTo(x,y)
   self.scroll_task = async()
@@ -751,6 +915,7 @@ function Client:onDisconnect()
     end
   end
   self:setGroup(nil)
+  self:cancelTrade()
 
   self:save()
   if self.map then

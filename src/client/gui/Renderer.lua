@@ -7,6 +7,7 @@ local TextInput = require("gui.TextInput")
 local ChatHistory = require("gui.ChatHistory")
 local GridInterface = require("gui.GridInterface")
 local Inventory = require("gui.Inventory")
+local DialogBox = require("gui.DialogBox")
 local TextureAtlas = require("TextureAtlas")
 
 local Renderer = class("Renderer", Base)
@@ -148,6 +149,7 @@ widgets[ChatHistory] = function(self, widget)
 end
 
 widgets[Inventory.Content] = widgets[Window]
+widgets[DialogBox] = widgets[Window]
 
 -- METHODS
 
