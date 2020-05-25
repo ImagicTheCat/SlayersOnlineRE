@@ -512,7 +512,7 @@ function LivingEntity:spellExpressionSubstitution(caster, str)
         args[i] = self:spellExpressionSubstitution(caster, args[i])
       end
       return f(self, unpack(args))
-    end
+    else print("spell: variable function \""..id.."\" not implemented") end
   end)
 
   -- caster vars
@@ -523,14 +523,16 @@ function LivingEntity:spellExpressionSubstitution(caster, str)
       return class.is(caster, Client) and caster:getVariable("var", tonumber(v_id)) or 0
     else -- regular variable
       local f = caster_vars[id]
-      if f then return f(caster) end
+      if f then return f(caster)
+      else print("spell: caster variable \""..id.."\" not implemented") end
     end
   end)
 
   -- target vars
   str = string.gsub(str, pat.target_var, function(id)
     local f = target_vars[id]
-    if f then return f(self) end
+    if f then return f(self)
+    else print("spell: target variable \""..id.."\" not implemented") end
   end)
 
   return str
@@ -573,11 +575,13 @@ function LivingEntity:spellExecuteInstructions(caster, str)
           end
         else -- regular variable
           local f = caster_vars[id]
-          if f then f(caster, rhs) end
+          if f then f(caster, rhs)
+          else print("spell: caster variable \""..id.."\" not implemented") end
         end
       elseif lhs_type == "target" then
         local f = target_vars[lhs_id]
-        if f then f(self, rhs) end
+        if f then f(self, rhs)
+        else print("spell: target variable \""..id.."\" not implemented") end
       end
     end
   end
@@ -585,7 +589,8 @@ function LivingEntity:spellExecuteInstructions(caster, str)
   -- apply spells
   for _, name in pairs(spells) do
     local spell = server.project.spells[server.project.spells_by_name[name]]
-    if spell then self:applySpell(caster, spell) end
+    if spell then self:applySpell(caster, spell)
+    else print("spell: spell \""..name.."\" not found") end
   end
 end
 
