@@ -26,7 +26,12 @@ local function control_press(self, id)
 end
 
 local function focus_change(self, state)
-  love.keyboard.setTextInput(state)
+  if state then
+    local x,y,scale = self:computeTransform()
+    love.keyboard.setTextInput(true, x, y, math.floor(self.w*scale), math.floor(self.h*scale))
+  else
+    love.keyboard.setTextInput(false)
+  end
 end
 
 -- METHODS

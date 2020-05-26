@@ -16,6 +16,9 @@ function love.threaderror(thread, err)
 end
 
 function love.load()
+  if love.system.getOS() == "Android" then
+    love.window.setMode(800, 600, {fullscreen = true, resizable = true, usedpiscale = false})
+  end
   scheduler = Scheduler(love.timer.getTime())
   client = Client(cfg) -- global
 end
@@ -29,6 +32,7 @@ function love.draw() client:draw() end
 function love.keypressed(...) client:onKeyPressed(...) end
 function love.keyreleased(...) client:onKeyReleased(...) end
 function love.touchpressed(...) client:onTouchPressed(...) end
+function love.touchmoved(...) client:onTouchMoved(...) end
 function love.touchreleased(...) client:onTouchReleased(...) end
 function love.gamepadpressed(...) client:onGamepadPressed(...) end
 function love.gamepadreleased(...) client:onGamepadReleased(...) end

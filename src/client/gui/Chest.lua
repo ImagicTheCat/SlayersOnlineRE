@@ -118,10 +118,6 @@ function Chest:__construct()
   end)
 
   -- gold input handlers
-  local function gold_focus_change(self, state)
-    love.keyboard.setTextInput(state)
-  end
-
   local function gold_text_input(self, text)
     local widget = self:getSelected()
     widget:trigger("text-input", text)
@@ -137,12 +133,16 @@ function Chest:__construct()
     if class.is(widget, TextInput) then widget:trigger("control-press", id) end
   end
 
-  self.gold_l:listen("focus-change", gold_focus_change)
+  self.gold_l:listen("focus-change", function(grid, state)
+    self.gold_l_input:trigger("focus-change", state)
+  end)
   self.gold_l:listen("text-input", gold_text_input)
   self.gold_l:listen("key-press", gold_key_press)
   self.gold_l:listen("control-press", gold_control_press)
 
-  self.gold_r:listen("focus-change", gold_focus_change)
+  self.gold_r:listen("focus-change", function(grid, state)
+    self.gold_r_input:trigger("focus-change", state)
+  end)
   self.gold_r:listen("text-input", gold_text_input)
   self.gold_r:listen("key-press", gold_key_press)
   self.gold_r:listen("control-press", gold_control_press)
