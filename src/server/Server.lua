@@ -113,30 +113,46 @@ commands.help = {10, function(self, client, args)
   end
 end, "[command]", "lister toutes les commandes ou afficher l'aide d'une commande"}
 
-local bind_blacklist = {
+local bind_sc_blacklist = {
   ["return"] = true,
   escape = true
 }
 commands.bind = {10, function(self, client, args)
   if client then
-    local scancode, control = args[2], args[3]
-    if not scancode then return true end
+    if not args[2] then return true end
+    local control = args[3]
+    local itype, input = string.match(args[2], "(%w+):(%w+)")
 
-    if control then
-      if not bind_blacklist[scancode] then
-        client:applyConfig({scancode_controls = {[scancode] = control}})
-        client:sendChatMessage("\""..scancode.."\" assigné à \""..control.."\"")
+    if itype == "sc" then -- scancode
+      if control then
+        if not bind_sc_blacklist[input] then
+          client:applyConfig({scancode_controls = {[input] = control}})
+          client:sendChatMessage("scancode \""..input.."\" assigné à \""..control.."\"")
+        else
+          client:sendChatMessage("scancode \""..input.."\" ne peut pas être réassigné")
+        end
       else
-        client:sendChatMessage("scancode \""..scancode.."\" ne peut pas être réassigné")
+        local controls = client.player_config.scancode_controls
+        local control = (controls and controls[input] or "none")
+        client:sendChatMessage("scancode \""..input.."\" est assigné à \""..control.."\"")
+      end
+    elseif itype == "gp" then -- gamepad
+      if control then
+        client:applyConfig({gamepad_controls = {[input] = control}})
+        client:sendChatMessage("gamepad \""..input.."\" assigné à \""..control.."\"")
+      else
+        local controls = client.player_config.gamepad_controls
+        local control = (controls and controls[input] or "none")
+        client:sendChatMessage("gamepad \""..input.."\" est assigné à \""..control.."\"")
       end
     else
-      local controls = client.player_config.scancode_controls
-      local control = (controls and controls[scancode] or "none")
-      client:sendChatMessage("\""..scancode.."\" est assigné à \""..control.."\"")
+      client:sendChatMessage("type d'input invalide")
     end
   end
-end, "<scancode> [control]", [[afficher ou assigner un (LÖVE/SDL) scancode à un contrôle
-    scancodes: https://love2d.org/wiki/Scancode
+end, "<type:input> [control]", [[afficher ou assigner un (LÖVE/SDL) scancode à un contrôle
+    types: sc (scancode) / gp (gamepad)
+      scancodes: https://love2d.org/wiki/Scancode
+      gamepad: https://love2d.org/wiki/GamepadButton
     contrôles: none, up, right, down, left, interact, attack, defend, quick1, quick2, quick3, return, menu]]
 }
 

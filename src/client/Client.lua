@@ -27,9 +27,15 @@ local client_version = require("client_version")
 
 local Client = class("Client")
 
+-- STATICS
+
+local GAMEPAD_DEAD_RADIUS = 0.5 -- stick dead center radius
+
 local net = {
   PROTOCOL = 0
 }
+
+-- METHODS
 
 function Client:__construct(cfg)
   self.cfg = cfg
@@ -53,7 +59,9 @@ function Client:__construct(cfg)
   -- repeated controls, map of control id => repeat interval (seconds)
   self.controls_repeat = {
     attack = 0.25,
-    defend = 0.25
+    defend = 0.25,
+    chat_up = 0.1,
+    chat_down = 0.1
   }
 
   self.player_config = {
@@ -69,7 +77,23 @@ function Client:__construct(cfg)
       escape = "menu",
       ["1"] = "quick1",
       ["2"] = "quick2",
-      ["3"] = "quick3"
+      ["3"] = "quick3",
+      pagedown = "chat_up",
+      pageup = "chat_down"
+    },
+    gamepad_controls = {
+      dpup = "up",
+      dpright = "right",
+      dpdown = "down",
+      dpleft = "left",
+      x = "attack",
+      b = "defend",
+      a = "interact",
+      back = "return",
+      start = "menu",
+      y = "quick1",
+      rightshoulder = "quick2",
+      leftshoulder = "quick3"
     },
     gui = {
       font_size = 25,
@@ -841,6 +865,36 @@ function Client:onKeyReleased(keycode, scancode)
   end
 end
 
+function Client:onGamepadPressed(joystick, button)
+  -- control handling
+  local control = self.player_config.gamepad_controls[button]
+  if control then
+    self:pressControl(control)
+  end
+end
+
+function Client:onGamepadReleased(joystick, button)
+  local control = self.player_config.gamepad_controls[button]
+  if control then
+    self:releaseControl(control)
+  end
+end
+
+function Client:onGamepadAxis(joystick, axis, value)
+  -- simulate directionals from left stick
+  if axis == "leftx" then
+    if value <= -GAMEPAD_DEAD_RADIUS then self:pressControl("left") else self:releaseControl("left") end
+    if value >= GAMEPAD_DEAD_RADIUS then self:pressControl("right") else self:releaseControl("right") end
+  elseif axis == "lefty" then
+    if value <= -GAMEPAD_DEAD_RADIUS then self:pressControl("up") else self:releaseControl("up") end
+    if value >= GAMEPAD_DEAD_RADIUS then self:pressControl("down") else self:releaseControl("down") end
+  -- simulate chat scrolling
+  elseif axis == "righty" then
+    if value <= -GAMEPAD_DEAD_RADIUS then self:pressControl("chat_down") else self:releaseControl("chat_down") end
+    if value >= GAMEPAD_DEAD_RADIUS then self:pressControl("chat_up") else self:releaseControl("chat_up") end
+  end
+end
+
 -- touch controls handling
 function Client:onTouchPressed(id, x, y)
   local w, h = love.graphics.getDimensions()
@@ -905,6 +959,12 @@ function Client:pressControl(id)
       end)
     else
       self.controls[id] = true
+    end
+
+    -- chat scrolling
+    if self.chat_history.visible then
+      if id == "chat_up" then self.chat_history:scroll(-50)
+      elseif id == "chat_down" then self.chat_history:scroll(50) end
     end
 
     -- gameplay handling

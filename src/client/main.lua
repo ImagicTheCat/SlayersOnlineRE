@@ -25,38 +25,15 @@ function love.update(dt)
   client:tick(dt)
 end
 
-function love.draw()
-  client:draw()
-end
-
-function love.keypressed(...)
-  client:onKeyPressed(...)
-end
-
-function love.keyreleased(...)
-  client:onKeyReleased(...)
-end
-
-function love.touchpressed(...)
-  client:onTouchPressed(...)
-end
-
-function love.touchreleased(...)
-  client:onTouchReleased(...)
-end
-
-function love.textinput(data)
-  client:onTextInput(data)
-end
-
-function love.wheelmoved(x,y)
-  client:onWheelMoved(x,y)
-end
-
-function love.resize(w, h)
-  client:onResize(w, h)
-end
-
-function love.quit()
-  client:close()
-end
+function love.draw() client:draw() end
+function love.keypressed(...) client:onKeyPressed(...) end
+function love.keyreleased(...) client:onKeyReleased(...) end
+function love.touchpressed(...) client:onTouchPressed(...) end
+function love.touchreleased(...) client:onTouchReleased(...) end
+function love.gamepadpressed(...) client:onGamepadPressed(...) end
+function love.gamepadreleased(...) client:onGamepadReleased(...) end
+function love.gamepadaxis(...) client:onGamepadAxis(...) end
+function love.textinput(...) client:onTextInput(...) end
+function love.wheelmoved(...) client:onWheelMoved(...) end
+function love.resize(...) client:onResize(...) end
+function love.quit() client:close() end
