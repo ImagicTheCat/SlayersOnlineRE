@@ -35,6 +35,10 @@ function utils.randf(a, b)
   return math.random()*(b-a)+a
 end
 
+function utils.sign(x)
+  return x == 0 and 0 or (x > 0 and 1 or -1)
+end
+
 -- f_bytecode: if passed/true, will allow bytecode
 function utils.loadstring(code, f_bytecode)
   if not f_bytecode and code:byte(1) == 27 then return nil end
