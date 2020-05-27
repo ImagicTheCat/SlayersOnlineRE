@@ -290,7 +290,7 @@ end, "", "ouvrir un magasin (test)"}
 commands.pick = {1, function(self, client, args)
   if client then
     async(function()
-      local entity = client:requestPickTarget(args[2] or "mob", tonumber(args[3]) or 15)
+      local entity = client:requestPickTarget(args[2] or "mob", tonumber(args[3]) or 7)
       client:sendChatMessage("Entité selectionnée: "..tostring(entity))
     end)
   end

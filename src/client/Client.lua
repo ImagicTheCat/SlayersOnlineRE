@@ -184,12 +184,12 @@ function Client:__construct(cfg)
   -- global GUI controls
   self.gui:listen("control-press", function(gui, id)
     if id == "return" then
-      if not gui.focus then
+      if not gui.focus and not self.pick_target then
         self.w_input_chat:setVisible(true)
         gui:setFocus(self.input_chat)
       end
     elseif id == "menu" then
-      if not gui.focus then -- open menu
+      if not gui.focus and not self.pick_target then -- open menu
         self.menu:setVisible(true)
         gui:setFocus(self.menu_grid)
       elseif gui.focus == self.menu_grid then -- close menu
@@ -611,9 +611,9 @@ function Client:onPacket(protocol, data)
 
     local dx, dy = tx-ox, ty-oy
     self.scroll = {
-      x = ox, y = oy,
-      tx = tx, ty = ty,
-      ox = ox, oy = oy,
+      x = ox, y = oy, -- progress
+      tx = tx, ty = ty, -- target
+      ox = ox, oy = oy, -- origin
       duration = math.sqrt(dx*dx+dy*dy)/64, -- 4 cells/s
       time = 0
     }
