@@ -118,7 +118,7 @@ function caster_vars:Vie(value)
     value = utils.computeExpression(value) or 0
     local delta = value-self.health
     if delta > 0 then self:emitHint({{0,1,0}, delta})
-    elseif delta < 0 then self:emitHint({{1,0,0}, -delta}) end
+    elseif delta < 0 then self:broadcastPacket("damage", -delta) end
 
     self:setHealth(value)
   else
@@ -235,7 +235,7 @@ function target_vars:Vie(value)
     value = utils.computeExpression(value) or 0
     local delta = value-self.health
     if delta > 0 then self:emitHint({{0,1,0}, delta})
-    elseif delta < 0 then self:emitHint({{1,0,0}, -delta}) end
+    elseif delta < 0 then self:broadcastPacket("damage", -delta) end
 
     self:setHealth(value)
   else
