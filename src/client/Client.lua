@@ -388,8 +388,23 @@ function Client:tick(dt)
       if self.scroll.time < self.scroll.duration then
         self.scroll.time = self.scroll.time+dt
         local t = math.min(self.scroll.time/self.scroll.duration, 1)
-        self.scroll.x = math.floor(utils.lerp(self.scroll.ox, self.scroll.tx, t))
-        self.scroll.y = math.floor(utils.lerp(self.scroll.oy, self.scroll.ty, t))
+        -- move on square diagonal, then move on the rest of a single component
+        local dx, dy = self.scroll.tx-self.scroll.ox, self.scroll.ty-self.scroll.oy
+        local square = math.min(math.abs(dx), math.abs(dy))
+        local square_duration = square*math.sqrt(2)/math.sqrt(dx*dx+dy*dy)
+        if t <= square_duration then -- diagonal
+          self.scroll.x = math.floor(utils.lerp(self.scroll.ox,
+            self.scroll.ox+square*utils.sign(dx), t/square_duration))
+          self.scroll.y = math.floor(utils.lerp(self.scroll.oy,
+            self.scroll.oy+square*utils.sign(dy), t/square_duration))
+        else -- rest
+          local ox = self.scroll.ox+square*utils.sign(dx)
+          local oy = self.scroll.oy+square*utils.sign(dy)
+          self.scroll.x = (ox ~= self.scroll.tx and math.floor(utils.lerp(ox, self.scroll.tx,
+            (t-square_duration)/(1-square_duration))) or ox)
+          self.scroll.y = (oy ~= self.scroll.ty and math.floor(utils.lerp(oy, self.scroll.ty,
+            (t-square_duration)/(1-square_duration))) or oy)
+        end
       elseif not self.scroll.done then
         self.scroll.done = true
         self:sendPacket(net.SCROLL_END)
