@@ -537,7 +537,7 @@ function Client:onPacket(protocol, data)
     elseif protocol == net.TRADE_SEEK then
       async(function()
         -- pick target
-        local entity = self:requestPickTarget("player", 15)
+        local entity = self:requestPickTarget("player", 7)
         if entity then
           self:sendChatMessage("Requête envoyée.")
           -- open dialog
@@ -1024,9 +1024,9 @@ function Client:castSpell(id)
       -- acquire target
       local target
       if spell.target_type == 0 then -- player
-        target = self:requestPickTarget("player", 15)
+        target = self:requestPickTarget("player", 7)
       elseif spell.target_type == 1 then -- mob
-        target = self:requestPickTarget("mob", 15)
+        target = self:requestPickTarget("mob", 7)
       elseif spell.target_type == 2 then -- self
         target = self
       elseif spell.target_type == 3 then -- area
