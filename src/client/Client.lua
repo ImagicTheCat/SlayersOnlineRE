@@ -1113,8 +1113,8 @@ function Client:draw()
   -- title screen
   if not self.id then
     local tw, th = self.title_screen:getDimensions()
-    local factor = math.ceil(w/tw)
-    love.graphics.draw(self.title_screen, w/2-tw*factor/2, h/2-th*factor/2, 0, factor)
+    local factor = math.min(w/tw, h/th)
+    love.graphics.draw(self.title_screen, math.floor(w/2-tw*factor/2), math.floor(h/2-th*factor/2), 0, factor)
   end
 
   -- map
@@ -1158,15 +1158,18 @@ function Client:draw()
   if self.loading_screen_tex then
     local opacity = (self.loading_screen_time > 0 and self.loading_screen_time or 1)
     local tw, th = self.loading_screen_tex:getDimensions()
-    local factor = math.ceil(w/tw)
+    local factor = math.min(w/tw, h/th)
 
     love.graphics.setColor(0,0,0, opacity)
-    local miss_h = (h-th*factor)/2
-    love.graphics.rectangle("fill", 0, 0, w, miss_h)
-    love.graphics.rectangle("fill", 0, h-miss_h, w, miss_h)
+    local miss_h = math.max(0, math.floor((h-th*factor)/2))
+    local miss_w = math.max(0, math.floor((w-tw*factor)/2))
+    love.graphics.rectangle("fill", 0, 0, w, miss_h) -- top band
+    love.graphics.rectangle("fill", 0, h-miss_h, w, miss_h) -- bottom band
+    love.graphics.rectangle("fill", 0, 0, miss_w, h) -- left band
+    love.graphics.rectangle("fill", w-miss_w, 0, miss_w, h) -- right band
 
     love.graphics.setColor(1,1,1, opacity)
-    love.graphics.draw(self.loading_screen_tex, w/2-tw*factor/2, h/2-th*factor/2, 0, factor)
+    love.graphics.draw(self.loading_screen_tex, miss_w, miss_h, 0, (w-miss_w*2)/tw, (h-miss_h*2)/th)
     love.graphics.setColor(1,1,1)
   end
 
