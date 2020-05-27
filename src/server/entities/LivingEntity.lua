@@ -331,6 +331,7 @@ function LivingEntity:setMoveForward(move_forward)
       self.move_time = clock()
 
       if self.move_task then self.move_task:remove() end
+      if self.move_final_task then self.move_final_task:remove() end
 
       self.move_task = itask(1/cfg.tickrate, function()
         local dt = clock()-self.move_time
@@ -378,7 +379,11 @@ function LivingEntity:setMoveForward(move_forward)
     else
       self.move_task:remove()
       self.move_task = nil
-      self:teleport(self.x, self.y) -- end movement
+
+      -- final teleport
+      self.move_final_task = task(0.25, function()
+        self:teleport(self.x, self.y) -- end position
+      end)
     end
   end
 end
