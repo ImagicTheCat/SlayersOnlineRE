@@ -75,6 +75,7 @@ function Client:__construct(cfg)
       e = "interact",
       ["return"] = "return",
       escape = "menu",
+      acback = "menu", -- android escape key
       ["1"] = "quick1",
       ["2"] = "quick2",
       ["3"] = "quick3",
@@ -757,7 +758,7 @@ function Client:onResize(w, h)
   local phials_h = self.gui_renderer.phials_atlas.cell_h
 
   self.world_scale = math.ceil(h/16/15) -- display 15 tiles max (height)
-  self.phials_scale = utils.floorScale((h*0.30/phials_h), phials_h)
+  self.phials_scale = utils.floorScale((h/3/phials_h), phials_h)
   self.xp_scale = math.min(self.phials_scale, utils.floorScale((w-phials_w*self.phials_scale*2)/xp_w, xp_w))
 
   local input_chat_y = h-self.font:getHeight()-2-12
@@ -898,35 +899,44 @@ end
 -- touch controls handling
 function Client:onTouchPressed(id, x, y)
   local w, h = love.graphics.getDimensions()
-
-  -- detect controls
-
-  -- movement pad (left-bottom side, 50% height square)
-  if utils.pointInRect(x, y, 0, h/2, h/2, h/2) then
-    -- compute direction
-    local dx, dy = x-h/4, y-h/2-h/4 -- shift from pad center
-
-    local g_x = (math.abs(dx) > math.abs(dy))
-    dx = dx/math.abs(dx)
-    dy = dy/math.abs(dy)
-
-    local control = "down"
-    if dy < 0 and not g_x then control = "up"
-    elseif dx > 0 and g_x then control = "right"
-    elseif dx < 0 and g_x then control = "left" end
-
-    self.touches[id] = control
-    self:pressControl(control)
-  -- buttons (right side, 100% height, 4x25% height squares)
-  elseif utils.pointInRect(x, y, w-h/4, 0, h/4, h) then
-    local button = math.floor((h-y)/h*4) -- 0, 1, 2, 3 "buttons" from bottom
+  -- virtual joystick (bottom-left side, 1/3 height square)
+  local vj_size = h/3
+  if utils.pointInRect(x, y, 0, h-vj_size, vj_size, vj_size) then
+    -- compute axis
+    local dx, dy = (x-vj_size/2)/(vj_size/2), (y-h+vj_size/2)/(vj_size/2) -- [-1,1] axis
+    if dx <= -GAMEPAD_DEAD_RADIUS then self:pressControl("left") else self:releaseControl("left") end
+    if dx >= GAMEPAD_DEAD_RADIUS then self:pressControl("right") else self:releaseControl("right") end
+    if dy <= -GAMEPAD_DEAD_RADIUS then self:pressControl("up") else self:releaseControl("up") end
+    if dy >= GAMEPAD_DEAD_RADIUS then self:pressControl("down") else self:releaseControl("down") end
+    self.touches[id] = "vjoystick" -- special
+  -- return button (top-left side, 25% height, 25% height squares)
+  elseif utils.pointInRect(x, y, 0, 0, h/4, h/4) then
+    self.touches[id] = "return"
+    self:pressControl("return")
+  -- right buttons (bottom-right side, 75% height, 3x25% height squares)
+  elseif utils.pointInRect(x, y, w-h/4, h/4, h/4, 3*h/4) then
+    local button = math.floor((h-y)/(h/4))+1 -- 1, 2, 3 "buttons" from bottom
     local controls = { -- button controls
       "interact",
       "attack",
-      "return"
+      "defend"
     }
 
-    local control = controls[button+1]
+    local control = controls[button]
+    if control then
+      self.touches[id] = control
+      self:pressControl(control)
+    end
+  -- top buttons (top-right horizontal, 25% height, 3x25% height squares)
+  elseif utils.pointInRect(x, y, w-0.75*h, 0, 0.75*h, h/4) then
+    local button = math.floor((w-x)/(h/4))+1 -- 1, 2, 3 "buttons" from right
+    local controls = { -- button controls
+      "quick1",
+      "quick2",
+      "quick3"
+    }
+
+    local control = controls[button]
     if control then
       self.touches[id] = control
       self:pressControl(control)
@@ -934,10 +944,33 @@ function Client:onTouchPressed(id, x, y)
   end
 end
 
+function Client:onTouchMoved(id, x, y)
+  local w, h = love.graphics.getDimensions()
+  -- virtual joystick movements (left-bottom side, 50% height square)
+  local vj_size = h/3
+  if self.touches[id] == "vjoystick" and utils.pointInRect(x, y, 0, h-vj_size, vj_size, vj_size) then
+    -- compute axis
+    local dx, dy = (x-vj_size/2)/(vj_size/2), (y-h+vj_size/2)/(vj_size/2) -- [-1,1] axis
+    local radius = GAMEPAD_DEAD_RADIUS*h/4
+    if dx <= -GAMEPAD_DEAD_RADIUS then self:pressControl("left") else self:releaseControl("left") end
+    if dx >= GAMEPAD_DEAD_RADIUS then self:pressControl("right") else self:releaseControl("right") end
+    if dy <= -GAMEPAD_DEAD_RADIUS then self:pressControl("up") else self:releaseControl("up") end
+    if dy >= GAMEPAD_DEAD_RADIUS then self:pressControl("down") else self:releaseControl("down") end
+  end
+end
+
 function Client:onTouchReleased(id, x, y)
   local control = self.touches[id]
   if control then
-    self:releaseControl(control)
+    if control == "vjoystick" then -- special
+      self:releaseControl("left")
+      self:releaseControl("right")
+      self:releaseControl("up")
+      self:releaseControl("down")
+    else -- regular
+      self:releaseControl(control)
+    end
+    self.touches[id] = nil
   end
 end
 

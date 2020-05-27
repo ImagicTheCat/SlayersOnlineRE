@@ -71,7 +71,7 @@ function Trade:__construct()
 
   -- gold input handling
   self.gold_l:listen("focus-change", function(grid, state)
-    if not self.locked then love.keyboard.setTextInput(state) end
+    if not self.locked then self.gold_l_input:trigger("focus-change", state) end
   end)
   self.gold_l:listen("text-input", function(grid, text)
     if self.locked then return end -- cancel
