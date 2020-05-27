@@ -266,7 +266,7 @@ function client_special_vars:Vie(value)
     value = utils.computeExpression(value) or 0
     local delta = value-self.client.health
     if delta > 0 then self.client:emitHint({{0,1,0}, delta})
-    elseif delta < 0 then self.client:emitHint({{1,0,0}, -delta}) end
+    elseif delta < 0 then self.client:broadcastPacket("damage", -delta) end
 
     self.client:setHealth(value)
   else
