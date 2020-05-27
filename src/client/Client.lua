@@ -424,18 +424,19 @@ function Client:onPacket(protocol, data)
   if protocol == net.PROTOCOL then
     net = data
     self:sendPacket(net.VERSION_CHECK, client_version)
-  elseif protocol == net.MOTD_LOGIN then
-    local motd = data
-
     async(function()
-      -- login process
-      --- load remote manifest
+      -- load remote manifest
       if not self.net_manager:loadRemoteManifest() then
         print("couldn't reach remote resources repository manifest")
         self.chat_history:addMessage({{0,1,0.5}, "Impossible de joindre le dépôt distant de ressources."})
         return
       end
+    end)
+  elseif protocol == net.MOTD_LOGIN then
+    local motd = data
 
+    async(function()
+      -- login process
       local pseudo = self:prompt(motd.."\n\nPseudo: ")
       local password = self:prompt(motd.."\n\nMot de passe: ")
 
