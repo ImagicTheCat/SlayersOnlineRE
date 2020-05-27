@@ -566,7 +566,7 @@ function Client:onPacket(protocol, data)
     if stats.dexterity then self.g_stats:set(0,6, Text("Dextérité: "..stats.dexterity), true) end
     if stats.constitution then self.g_stats:set(0,7, Text("Constitution: "..stats.constitution), true) end
     if stats.magic then self.g_stats:set(0,8, Text("Magie: "..stats.magic)) end
-    if stats.points then self.g_stats:set(0,9, Text("Points restants."..stats.points)) end
+    if stats.points then self.g_stats:set(0,9, Text("Points restants: "..stats.points)) end
 
     if stats.helmet_slot then self.g_stats:set(0,11, Text("Casque: "..stats.helmet_slot.name), true) end
     if stats.armor_slot then self.g_stats:set(0,12, Text("Armure: "..stats.armor_slot.name), true) end
