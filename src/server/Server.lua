@@ -153,7 +153,7 @@ end, "<type:input> [control]", [[afficher ou assigner un (LÖVE/SDL) scancode à
     types: sc (scancode) / gp (gamepad)
       scancodes: https://love2d.org/wiki/Scancode
       gamepad: https://love2d.org/wiki/GamepadButton
-    contrôles: none, up, right, down, left, interact, attack, defend, quick1, quick2, quick3, return, menu]]
+    contrôles: none, up, right, down, left, interact, attack, defend, quick1, quick2, quick3, return, menu, chat_up, chat_down]]
 }
 
 commands.volume = {10, function(self, client, args)

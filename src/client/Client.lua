@@ -169,6 +169,11 @@ function Client:__construct(cfg)
         self.w_input_chat:setVisible(false)
         self.chat_history:hide()
       end
+    elseif id == "menu" then -- cancel chat
+      self.input_chat:set("")
+      self.gui:setFocus()
+      self.w_input_chat:setVisible(false)
+      self.chat_history:hide()
     end
   end)
 
@@ -839,7 +844,7 @@ function Client:onSetFont()
   if self.map then
     for id, entity in pairs(self.map.entities) do
       if class.is(entity, Player) then
-        entity.pseudo_text:setFont(self.font)
+        entity.name_tag:setFont(self.font)
         entity.chat_gui:trigger("font-update")
       end
     end
