@@ -447,7 +447,7 @@ function LivingEntity:act(action, duration)
       end
     end
 
-    -- TODO: defend and cast effects
+    -- TODO: defend effect
 
     -- do animation
     self:broadcastPacket("act", {self.acting, duration})

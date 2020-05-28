@@ -607,6 +607,12 @@ function Client:timerTick()
   end
 end
 
+function Client:alignmentTick()
+  if self.user_id then
+    self:setAlignment(self.alignment+1)
+  end
+end
+
 -- event handling
 function Client:eventTick()
   if self.map and not self.running_event then
@@ -1230,6 +1236,12 @@ function Client:save()
 end
 
 -- override
+function Client:setOrientation(orientation)
+  Player.setOrientation(self, orientation)
+  self:triggerSpecialVariable("Direction")
+end
+
+-- override
 function Client:setHealth(health)
   Player.setHealth(self, health)
   self:triggerSpecialVariable("Vie")
@@ -1267,6 +1279,7 @@ function Client:setXP(xp)
 
   self:triggerSpecialVariable("CurrentXP")
   self:triggerSpecialVariable("NextXP")
+  self:triggerSpecialVariable("Lvl")
 
   self:send(Client.makePacket(net.STATS_UPDATE, {
     xp = self.xp,
