@@ -348,6 +348,11 @@ end, "<pseudo> <password> [rank]", "créer un compte"}
 -- join group
 commands.join = {10, function(self, client, args)
   if client then
+    if not client:canChangeGroup() then
+      client:sendChatMessage("Changement de groupe impossible.")
+      return
+    end
+
     if not args[2] or #args[2] <= GROUP_ID_LIMIT then
       client:setGroup(args[2])
     else
