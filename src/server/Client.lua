@@ -533,7 +533,7 @@ function Client:onPacket(protocol, data)
       end
     elseif protocol == net.SPELL_CAST then
       local id = tonumber(data) or 0
-      if self:canCast() then self:castSpell(id) end
+      if self:canCast(id) then self:castSpell(id) end
     elseif protocol == net.TRADE_SEEK then
       async(function()
         -- pick target
@@ -981,6 +981,41 @@ function Client:onCellChange()
   end
 end
 
+-- override
+function Client:onAttack(attacker)
+  if self.ghost or attacker == self then return end
+
+  if class.is(attacker, Mob) then -- mob
+    self:damage(attacker:computeAttack(self))
+    return true
+  elseif class.is(attacker, Player) then -- player
+    if self.map.data.type == Map.Type.PVE then return false end -- PVE only check
+    if self.group and self.group == attacker.group then return false end -- group check
+    if self.map.data.type == Map.Type.PVE_PVP -- PVE/PVP guild/group check
+      and self.guild and self.guild == attacker.guild -- same guild
+      and self.group == attacker.group then return false end -- same group or none
+    if math.abs(self.level-attacker.level) >= 10 then return false end -- level check
+
+    self.last_attacker = attacker
+    -- alignment loss
+    local amount = attacker:computeAttack(self)
+    if amount and self.map.data.type == Map.Type.PVE_PVP then
+      attacker:setAlignment(attacker.alignment-5)
+      attacker:emitHint("-5 alignement")
+    end
+    self:damage(amount)
+    return true
+  end
+end
+
+-- override
+function Client:serializeNet()
+  local data = Player.serializeNet(self)
+  data.pseudo = self.pseudo
+  data.guild = self.guild
+  return data
+end
+
 function Client:interact()
   -- event interact check
   local entities = self:raycastEntities(2)
@@ -1424,6 +1459,7 @@ function Client:onDeath()
   end
 
   if self.last_attacker then -- killed by player
+    print(self.last_attacker)
     -- gold stealing (1%)
     local gold_amount = math.floor(self.gold*0.01)
     if gold_amount > 0 then
@@ -1432,6 +1468,16 @@ function Client:onDeath()
       self.last_attacker:emitHint({{1,0.78,0}, "+"..gold_amount})
       self:emitHint({{1,0.78,0}, -gold_amount})
     end
+
+    -- reputation
+    if self.map and self.map.data.type == Map.Type.PVP then
+      local reputation_amount = math.floor(self.level*0.1)
+      if reputation_amount > 0 then
+        self.last_attacker:setReputation(self.last_attacker.reputation+reputation_amount)
+        self.last_attacker:emitHint("+"..reputation_amount.." réputation")
+      end
+    end
+
     self.last_attacker:onPlayerKill()
   end
 
@@ -1481,8 +1527,11 @@ function Client:canDefend()
   return not self.running_event and not self.acting and not self.ghost and not self.blocked_defend
 end
 
-function Client:canCast()
-  if self.map and self.map.data.type == Map.Type.SAFE then return false end
+-- id: spell id
+function Client:canCast(id)
+  local spell = self.server.project.spells[id]
+  if not spell then return false end
+  if self.map and self.map.data.type == Map.Type.SAFE and spell.target_type ~= 2 then return false end
   return not self.running_event and not self.acting and not self.ghost and not self.blocked_cast
 end
 
@@ -1507,6 +1556,12 @@ end
 
 function Client:canChangeSkin()
   return not self.blocked_skin
+end
+
+function Client:canChangeGroup()
+  return not (self.map.data.type == Map.Type.PVP --
+    or self.map.data.type == Map.Type.PVP_NOREPUT --
+    or self.map.data.type == Map.Type.PVP_NOREPUT_POT)
 end
 
 -- variables
