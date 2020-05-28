@@ -1119,6 +1119,12 @@ function Event:__construct(client, data, page_index)
   end
 end
 
+-- override
+function Event:setOrientation(orientation)
+  LivingEntity.setOrientation(self, orientation)
+  self:triggerSpecialVariable("Direction")
+end
+
 -- (async) process the string to substitute all event language patterns
 -- f_input: if passed/true, will substitute InputString functions (async)
 -- return processed string

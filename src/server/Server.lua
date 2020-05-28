@@ -579,6 +579,12 @@ function Server:__construct(cfg)
     end
   end)
 
+  self.alignment_task = itask(60, function()
+    for peer, client in pairs(self.clients) do
+      client:alignmentTick()
+    end
+  end)
+
   -- DB
   local cfg_db = self.cfg.db
   self.db = DBManager(cfg_db.name, cfg_db.user, cfg_db.password, cfg_db.host, cfg_db.port)
@@ -632,6 +638,7 @@ function Server:close()
   self.task_close = async()
 
   self.timer_task:remove()
+  self.alignment_task:remove()
   self.console_flags.running = false
   self.save_task:remove()
 
