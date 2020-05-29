@@ -584,9 +584,9 @@ function Server:__construct(cfg)
     end
   end)
 
-  self.alignment_task = itask(60, function()
+  self.minute_task = itask(60, function()
     for peer, client in pairs(self.clients) do
-      client:alignmentTick()
+      client:minuteTick()
     end
   end)
 
@@ -643,7 +643,7 @@ function Server:close()
   self.task_close = async()
 
   self.timer_task:remove()
-  self.alignment_task:remove()
+  self.minute_task:remove()
   self.console_flags.running = false
   self.save_task:remove()
 
@@ -682,8 +682,12 @@ function Server:tick(dt)
   while event do
     if event.type == "receive" then
       local client = self.clients[event.peer]
-      local packet = msgpack.unpack(event.data)
-      client:onPacket(packet[1], packet[2])
+      -- quotas
+      client.packet_quota:add(1)
+      client.data_quota:add(#event.data)
+      -- packet
+      local ok, packet = pcall(msgpack.unpack, event.data)
+      if ok then client:onPacket(packet[1], packet[2]) end
     elseif event.type == "connect" then
       -- disable throttle deceleration (issue with unsequenced packets not sent)
       event.peer:throttle_configure(5000, 1, 0)
