@@ -1,5 +1,6 @@
 local msgpack = require("MessagePack")
 local net = require("protocol")
+local Quota = require("lib.Quota")
 local Player = require("entities.Player")
 local Event = require("entities.Event")
 local Mob = require("entities.Mob")
@@ -59,6 +60,14 @@ function Client:__construct(server, peer)
   self.server = server
   self.peer = peer
   self.valid = false
+  self.packet_quota = Quota(500, function(quota)
+    print("client spam kick "..tostring(self.peer))
+    self:kick("Spam.")
+  end)
+  self.data_quota = Quota(10000, function(quota)
+    print("client spam kick "..tostring(self.peer))
+    self:kick("Spam.")
+  end)
 
   self.entities = {} -- bound map entities, map of entity
   self.events_by_name = {} -- map of name => event entity
@@ -607,7 +616,10 @@ function Client:timerTick()
   end
 end
 
-function Client:alignmentTick()
+function Client:minuteTick()
+  self.packet_quota:set(0)
+  self.data_quota:set(0)
+
   if self.user_id then
     self:setAlignment(self.alignment+1)
   end
