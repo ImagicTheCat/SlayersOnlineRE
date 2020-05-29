@@ -53,6 +53,7 @@ function Map:__construct(server, id, data)
       self:mobAreaSpawnTask(i)
     end
   end
+  self.generated_mobs = {} -- map of mobs
 end
 
 -- return cell (map of entity) or nil if invalid or empty
@@ -144,6 +145,7 @@ function Map:removeEntity(entity)
     self.entities[entity] = nil
     self.entities_by_id[id] = nil
     self:removeFromCell(entity, entity.cx, entity.cy)
+    self.generated_mobs[entity] = nil
 
     -- unreference client bound entity
     if entity.client then
@@ -319,6 +321,16 @@ function Map:mobAreaSpawnTask(index)
       self:mobAreaSpawnTask(index)
     end)
   end
+end
+
+function Map:bindGeneratedMob(mob)
+  self.generated_mobs[mob] = true
+end
+
+function Map:killGeneratedMobs()
+  local generated_mobs = self.generated_mobs
+  self.generated_mobs = {} -- clear
+  for mob in pairs(generated_mobs) do mob:setHealth(0) end -- kill them all
 end
 
 return Map

@@ -992,13 +992,14 @@ function command_functions:GenereMonstre(state, name, x, y, amount)
         local mob = Mob(mob_data)
         self.map:addEntity(mob)
         mob:teleport(x*16, y*16)
+        self.map:bindGeneratedMob(mob)
       end
     end
   end
 end
 
 function command_functions:TueMonstre(state)
-  -- TODO
+  self.map:killGeneratedMobs()
 end
 
 function command_functions:AddMagie(state, name, amount)
