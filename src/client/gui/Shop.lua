@@ -3,30 +3,44 @@ local Window = require("gui.Window")
 local GridInterface = require("gui.GridInterface")
 local Text = require("gui.Text")
 local TextInput = require("gui.TextInput")
+local Inventory = require("gui.Inventory")
 
 local Shop = class("Shop", Widget)
 
 -- STATICS
 
-function Shop.formatBuyItem(item)
-  return "+/- "..(item.amount or 0).." "..item.name
+function Shop.formatBuyItem(data)
+  local color = {1,1,1}
+  if data.req_class and data.req_class ~= client.stats.class then
+    color = {0,0,0} -- wrong class
+  elseif data.req_level and client.stats.level < data.req_level --
+    or data.req_strength and client.stats.strength < data.req_strength --
+    or data.req_dexterity and client.stats.dexterity < data.req_dexterity --
+    or data.req_constitution and client.stats.constitution < data.req_constitution --
+    or data.req_magic and client.stats.magic < data.req_magic then
+    color = {1,0,0} -- wrong requirements
+  end
+
+  return {"+/- "..(data.amount or 0).." ", color, data.name}
 end
 
-function Shop.formatBuyItemInfo(item)
-  return item.description.."\nPrix: "..item.price.."\nTotal: "..(item.price*(item.amount or 0))
+function Shop.formatBuyItemInfo(data)
+  local desc = Inventory.formatItemDescription("item", data)
+  desc = desc.."\n\nPrix: "..data.price.."\nTotal: "..(data.price*(data.amount or 0))
+  return desc
 end
 
-function Shop.formatSellItem(item)
-  if item.amount > 0 then
-    return "("..item.amount..") "..item.name
+function Shop.formatSellItem(data)
+  if data.amount > 0 then
+    return Inventory.formatItem("item", data, "")
   else
     return "--"
   end
 end
 
-function Shop.formatSellItemInfo(item)
-  if item.amount > 0 then
-    return item.description.."\nPrix de vente: "..math.ceil(item.price*0.1)
+function Shop.formatSellItemInfo(data)
+  if data.amount > 0 then
+    return Inventory.formatItemDescription("item", data).."\n\nPrix de vente: "..math.ceil(data.price*0.1)
   else
     return ""
   end

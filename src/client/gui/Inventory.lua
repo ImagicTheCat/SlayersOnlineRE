@@ -9,12 +9,38 @@ Inventory.Content = class("Inventory.Content", Window)
 
 -- STATICS
 
-function Inventory.formatItem(itype, item_data)
-  return "("..item_data.amount..") "..item_data.name
+function Inventory.formatItem(itype, data, prefix)
+  local color = {1,1,1}
+  if itype == "item" then
+    if data.req_class and data.req_class ~= client.stats.class then
+      color = {0,0,0} -- wrong class
+    elseif data.req_level and client.stats.level < data.req_level --
+      or data.req_strength and client.stats.strength < data.req_strength --
+      or data.req_dexterity and client.stats.dexterity < data.req_dexterity --
+      or data.req_constitution and client.stats.constitution < data.req_constitution --
+      or data.req_magic and client.stats.magic < data.req_magic then
+      color = {1,0,0} -- wrong requirements
+    end
+  end
+  return {color, prefix.." ("..data.amount..") "..data.name}
 end
 
-function Inventory.formatItemDescription(itype, item_data)
-  return item_data.description
+function Inventory.formatItemDescription(itype, data)
+  local desc = data.description
+
+  if itype == "item" then
+    -- requirements
+    local reqs = {"\nRequis:"}
+    if data.req_level then table.insert(reqs, "Niveau "..data.req_level) end
+    if data.req_strength then table.insert(reqs, "Force "..data.req_strength) end
+    if data.req_dexterity then table.insert(reqs, "Dextérité "..data.req_dexterity) end
+    if data.req_constitution then table.insert(reqs, "Constitution "..data.req_constitution) end
+    if data.req_magic then table.insert(reqs, "Magie "..data.req_magic) end
+    if #reqs > 1 then desc = desc..table.concat(reqs, " ") end
+    if data.req_class then desc = desc.."\n"..data.req_class.." uniquement." end
+  end
+
+  return desc
 end
 
 -- SUBCLASS
@@ -73,7 +99,7 @@ function Inventory.Content:updateContent()
       if client:isQuickAction(3, self.itype, id) then prefix = prefix.."[Q3]" end
 
       local cx, cy = (i-1)%self.columns, math.floor((i-1)/self.columns)
-      self.grid:set(cx, cy, Text(prefix.." "..Inventory.formatItem(self.itype, data)), true)
+      self.grid:set(cx, cy, Text(Inventory.formatItem(self.itype, data, prefix)), true)
     end
 
     self:trigger("selection-update")
@@ -104,7 +130,7 @@ function Inventory:__construct(itype)
   self.menu = GridInterface(3,1,"vertical")
   if self.itype == "item" then
     self.menu:set(0,0, Text("Utiliser"), true)
-    self.menu:set(1,0, Text("Equiper"), true)
+    self.menu:set(1,0, Text("Équiper"), true)
     self.menu:set(2,0, Text("Jeter"), true)
   end
   self.w_menu.content:add(self.description)
@@ -132,6 +158,10 @@ function Inventory:__construct(itype)
   self.content:listen("selection-update", function(content)
     local item = content:getSelection()
     self.description:set(item and Inventory.formatItemDescription(self.itype, item[2]) or "")
+    if self.itype == "item" then
+      self.menu:set(0,0, Text({item[2].usable and {1,1,1} or {0,0,0}, "Utiliser"}), true)
+      self.menu:set(1,0, Text({item[2].equipable and {1,1,1} or {0,0,0}, "Équiper"}), true)
+    end
   end)
 
   self.menu:listen("control-press", function(grid, id)

@@ -51,6 +51,45 @@ function Client.makePacket(protocol, data)
   return msgpack.pack({protocol, data})
 end
 
+-- serialize inventory item data
+function Client.serializeItem(server, item, amount)
+  local data = {
+    amount = amount,
+    name = item.name,
+    description = item.description,
+    req_level = (item.req_level > 0 and item.req_level or nil),
+    req_strength = (item.req_strength > 0 and item.req_strength or nil),
+    req_dexterity = (item.req_dexterity > 0 and item.req_dexterity or nil),
+    req_constitution = (item.req_constitution > 0 and item.req_constitution or nil),
+    req_magic = (item.req_magic > 0 and item.req_magic or nil),
+    mod_strength = (item.mod_strength ~= 0 and item.mod_strength or nil),
+    mod_dexterity = (item.mod_dexterity ~= 0 and item.mod_dexterity or nil),
+    mod_constitution = (item.mod_constitution ~= 0 and item.mod_constitution or nil),
+    mod_magic = (item.mod_magic ~= 0 and item.mod_magic or nil),
+    mod_defense = (item.mod_defense ~= 0 and item.mod_defense or nil),
+    mod_hp = (item.mod_hp ~= 0 and item.mod_hp or nil),
+    mod_mp = (item.mod_mp ~= 0 and item.mod_mp or nil),
+    mod_attack_a = (item.mod_attack_a ~= 0 and item.mod_attack_a or nil),
+    mod_attack_b = (item.mod_attack_b ~= 0 and item.mod_attack_b or nil)
+  }
+
+  if item.type == 0 then data.usable = true end
+  if item.type >= 1 and item.type <= 5 then data.equipable = true end
+  local class_data = server.project.classes[item.usable_class]
+  if class_data then data.req_class = class_data.name end
+
+  return data
+end
+
+-- serialize inventory spell data
+function Client.serializeSpell(server, spell, amount)
+  return {
+    amount = amount,
+    name = spell.name,
+    description = spell.description
+  }
+end
+
 -- METHODS
 
 function Client:__construct(server, peer)
@@ -193,12 +232,8 @@ function Client:onPacket(protocol, data)
               local data
               local amount = inv.items[id]
               local object = self.server.project.objects[id]
-              if object and inv.items[id] then
-                data = {
-                  amount = inv.items[id],
-                  name = object.name,
-                  description = object.description
-                }
+              if object and amount then
+                data = Client.serializeItem(self.server, object, amount)
               end
               self:send(Client.makePacket(net.INVENTORY_UPDATE_ITEMS, {{id,data}}))
             end
@@ -210,11 +245,7 @@ function Client:onPacket(protocol, data)
               for id, amount in pairs(self.inventory.items) do
                 local object = objects[id]
                 if object then
-                  table.insert(items, {id, {
-                    amount = amount,
-                    name = object.name,
-                    description = object.description
-                  }})
+                  table.insert(items, {id, Client.serializeItem(self.server, object, amount)})
                 end
               end
 
@@ -228,12 +259,8 @@ function Client:onPacket(protocol, data)
               local data
               local amount = inv.items[id]
               local object = self.server.project.objects[id]
-              if object and inv.items[id] then
-                data = {
-                  amount = inv.items[id],
-                  name = object.name,
-                  description = object.description
-                }
+              if object and amount then
+                data = Client.serializeItem(self.server, object, amount)
               end
               self:send(Client.makePacket(net.CHEST_UPDATE_ITEMS, {{id,data}}))
             end
@@ -243,12 +270,8 @@ function Client:onPacket(protocol, data)
               local data
               local amount = inv.items[id]
               local spell = self.server.project.spells[id]
-              if spell and inv.items[id] then
-                data = {
-                  amount = inv.items[id],
-                  name = spell.name,
-                  description = spell.description
-                }
+              if spell and amount then
+                data = Client.serializeSpell(self.server, spell, amount)
               end
               self:send(Client.makePacket(net.SPELL_INVENTORY_UPDATE_ITEMS, {{id,data}}))
             end
@@ -260,11 +283,7 @@ function Client:onPacket(protocol, data)
               for id, amount in pairs(self.spell_inventory.items) do
                 local spell = spells[id]
                 if spell then
-                  table.insert(items, {id, {
-                    amount = amount,
-                    name = spell.name,
-                    description = spell.description
-                  }})
+                  table.insert(items, {id, Client.serializeSpell(self.server, spell, amount)})
                 end
               end
 
@@ -787,12 +806,10 @@ function Client:openShop(title, items)
   for _, id in ipairs(items) do
     local object = objects[id]
     if object then
-      table.insert(buy_items, {
-        id = id,
-        name = object.name,
-        description = object.description,
-        price = object.price
-      })
+      local data = Client.serializeItem(self.server, object, 0)
+      data.price = object.price
+      data.id = id
+      table.insert(buy_items, data)
     end
   end
 
@@ -800,13 +817,10 @@ function Client:openShop(title, items)
   for id, amount in pairs(self.inventory.items) do
     local object = objects[id]
     if object then
-      table.insert(sell_items, {
-        id = id,
-        name = object.name,
-        amount = amount,
-        description = object.description,
-        price = object.price
-      })
+      local data = Client.serializeItem(self.server, object, amount)
+      data.id = id
+      data.price = object.price
+      table.insert(sell_items, data)
     end
   end
 
@@ -839,13 +853,7 @@ function Client:openTrade(player)
     local data
     local amount = inv.items[id]
     local object = self.server.project.objects[id]
-    if object and inv.items[id] then
-      data = {
-        amount = inv.items[id],
-        name = object.name,
-        description = object.description
-      }
-    end
+    if object and amount then data = Client.serializeItem(self.server, object, amount) end
     pleft:send(Client.makePacket(net.TRADE_LEFT_UPDATE_ITEMS, {{id,data}}))
     pright:send(Client.makePacket(net.TRADE_RIGHT_UPDATE_ITEMS, {{id,data}}))
   end
