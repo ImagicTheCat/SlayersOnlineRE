@@ -170,10 +170,12 @@ function Client:__construct(cfg)
         self.chat_history:hide()
       end
     elseif id == "menu" then -- cancel chat
-      self.input_chat:set("")
-      self.gui:setFocus()
-      self.w_input_chat:setVisible(false)
-      self.chat_history:hide()
+      if not self.prompt_task then
+        self.input_chat:set("")
+        self.gui:setFocus()
+        self.w_input_chat:setVisible(false)
+        self.chat_history:hide()
+      end
     end
   end)
 
@@ -585,7 +587,7 @@ function Client:onPacket(protocol, data)
     if stats.strength then self.g_stats:set(0,5, Text("Force: "..stats.strength), true) end
     if stats.dexterity then self.g_stats:set(0,6, Text("Dextérité: "..stats.dexterity), true) end
     if stats.constitution then self.g_stats:set(0,7, Text("Constitution: "..stats.constitution), true) end
-    if stats.magic then self.g_stats:set(0,8, Text("Magie: "..stats.magic)) end
+    if stats.magic then self.g_stats:set(0,8, Text({{0,0,0}, "Magie: "..stats.magic})) end
     if stats.points then self.g_stats:set(0,9, Text("Points restants: "..stats.points)) end
 
     if stats.helmet_slot then self.g_stats:set(0,11, Text("Casque: "..stats.helmet_slot.name), true) end
