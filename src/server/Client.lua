@@ -99,6 +99,17 @@ function Client:__construct(server, peer)
   self.player_config = {} -- stored player config
   self.player_config_changed = false
 
+  self.ignores = {
+    all = false,
+    msg = false,
+    msg_players = {}, -- map of pseudo
+    trade = false,
+    all_chan = false,
+    announce_chan = false,
+    guild_chan = false,
+    group_chan = false
+  }
+
   self:send(Client.makePacket(net.PROTOCOL, net)) -- send protocol
 end
 
@@ -548,19 +559,21 @@ function Client:onPacket(protocol, data)
         -- pick target
         local entity = self:requestPickTarget("player", 7)
         if entity then
-          self:sendChatMessage("Requête envoyée.")
-          -- open dialog
-          local dialog_r = entity:requestDialog({{0,1,0.5}, self.pseudo, {1,1,1}, " souhaite lancer un échange avec vous."}, {"Accepter", "Refuser"})
-          if dialog_r == 1 then
-            if not (self.map == entity.map and self:openTrade(entity)) then
-              self:sendChatMessage("Échange impossible.")
-              entity:sendChatMessage("Échange impossible.")
+          if not entity.ignores.trade then
+            self:sendChatMessage("Requête envoyée.")
+            -- open dialog
+            local dialog_r = entity:requestDialog({{0,1,0.5}, self.pseudo, {1,1,1}, " souhaite lancer un échange avec vous."}, {"Accepter", "Refuser"})
+            if dialog_r == 1 then
+              if not (self.map == entity.map and self:openTrade(entity)) then
+                self:sendChatMessage("Échange impossible.")
+                entity:sendChatMessage("Échange impossible.")
+              end
+            elseif dialog_r == 2 then
+              self:sendChatMessage("Échange refusé.")
+            else
+              self:sendChatMessage("Joueur occupé.")
             end
-          elseif dialog_r == 2 then
-            self:sendChatMessage("Échange refusé.")
-          else
-            self:sendChatMessage("Joueur occupé.")
-          end
+          else self:sendChatMessage("Joueur occupé.") end
         else
           self:sendChatMessage("Cible invalide.")
         end

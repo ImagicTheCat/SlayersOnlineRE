@@ -311,7 +311,9 @@ commands.all = {10, function(self, client, args)
 
     -- broadcast to all logged clients
     for id, client in pairs(self.clients_by_id) do
-      client:send(packet)
+      if not client.ignores.all and not client.ignores.all_chan then
+        client:send(packet)
+      end
     end
   end
 end, "", "chat global"}
@@ -373,7 +375,9 @@ commands.party = {10, function(self, client, args)
 
       -- broadcast to all group members
       for client in pairs(group) do
-        client:send(packet)
+        if not client.ignores.all and not client.ignores.group then
+          client:send(packet)
+        end
       end
     else client:sendChatMessage("Pas dans un groupe.") end
   end
@@ -428,7 +432,8 @@ commands.guild = {10, function(self, client, args)
 
       -- broadcast to all guild members
       for id, tclient in pairs(self.clients_by_id) do
-        if tclient.guild == client.guild then tclient:send(packet) end
+        if tclient.guild == client.guild and not tclient.ignores.all --
+          and not tclient.ignores.guild then tclient:send(packet) end
       end
     else client:sendChatMessage("Pas dans une guilde.") end
   end
@@ -460,7 +465,9 @@ commands.msg = {10, function(self, client, args)
         })
 
         client:send(packet)
-        tclient:send(packet)
+        if not tclient.ignores.msg and not tclient.ignores.msg_players[client.pseudo] then
+          tclient:send(packet)
+        end
       end
     else client:sendChatMessage("Joueur introuvable.") end
   end
@@ -515,6 +522,65 @@ local function console_main(flags, channel)
     channel:push(line)
   end
 end
+
+commands.time = {10, function(self, client, args)
+  local formatted = os.date("%d/%m/%Y %H:%M")
+  if client then client:sendChatMessage(formatted)
+  else print(formatted) end
+end, "", "afficher la date et l'heure"}
+
+commands.reput = {10, function(self, client, args)
+  if #args < 2 then return true end
+  if client then
+    local target = self.clients_by_pseudo[args[2]]
+    if target then client:sendChatMessage(args[2].." a "..target.reputation.." de réputation.")
+    else client:sendChatMessage("Joueur introuvable.") end
+  end
+end, "<pseudo>", "afficher la réputation d'un joueur connecté"}
+
+commands.lvl = {10, function(self, client, args)
+  if #args < 2 then return true end
+  if client then
+    local target = self.clients_by_pseudo[args[2]]
+    if target then client:sendChatMessage(args[2].." est niveau "..target.level..".")
+    else client:sendChatMessage("Joueur introuvable.") end
+  end
+end, "<pseudo>", "afficher le niveau d'un joueur connecté"}
+
+commands.ignore = {10, function(self, client, args)
+  if client then
+    local itype = args[2]
+    if not itype then
+      client.ignores.all = not client.ignores.all
+      client:sendChatMessage("Tous canaux: "..(client.ignores.all and "ignorés" or "visibles"))
+    elseif itype == "all" then
+      client.ignores.all_chan = not client.ignores.all_chan
+      client:sendChatMessage("Canal public: "..(client.ignores.all_chan and "ignoré" or "visible"))
+    elseif itype == "guild" then
+      client.ignores.guild_chan = not client.ignores.guild_chan
+      client:sendChatMessage("Canal de guilde: "..(client.ignores.guild_chan and "ignoré" or "visible"))
+    elseif itype == "group" then
+      client.ignores.group_chan = not client.ignores.group_chan
+      client:sendChatMessage("Canal de groupe: "..(client.ignores.group_chan and "ignoré" or "visible"))
+    elseif itype == "announce" then
+      client.ignores.announce_chan = not client.ignores.announce_chan
+      client:sendChatMessage("Canal d'annonce: "..(client.ignores.announce_chan and "ignoré" or "visible"))
+    elseif itype == "msg" then
+      client.ignores.msg = not client.ignores.msg
+      client:sendChatMessage("Messages privés: "..(client.ignores.msg and "ignorés" or "visibles"))
+    elseif itype == "player" then
+      if not args[3] then return true end
+      local target = self.clients_by_pseudo[args[3]]
+      if target then
+        client.ignores.msg_players[args[3]] = not client.ignores.msg_players[args[3]]
+        client:sendChatMessage("Messages privés ("..args[3].."): "..(client.ignores.msg_players[args[3]] and "ignorés" or "visibles"))
+      else client:sendChatMessage("Joueur introuvable.") end
+    elseif itype == "trade" then
+      client.ignores.trade = not client.ignores.trade
+      client:sendChatMessage("Échanges: "..(client.ignores.trade and "ignorés" or "acceptés"))
+    else return true end
+  end
+end, "<all|guild|group|announce|msg|player|trade> [pseudo]", "ignorer/dé-ignorer"}
 
 -- STATICS
 
