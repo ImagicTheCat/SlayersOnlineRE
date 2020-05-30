@@ -66,7 +66,9 @@ function Player:drawUnder()
     -- draw health (group)
     if self.group_data and self.id ~= client.id then
       local p = self.group_data.health/self.group_data.max_health
-      love.graphics.rectangle("fill", (self.x+8)-16, self.y+16+self.name_tag:getHeight()*inv_scale, math.floor(p*32), 4)
+      local quad = client.gui_renderer.system.health_qs[math.floor(p*4)+1] or client.gui_renderer.system.health_qs[4]
+      love.graphics.draw(client.gui_renderer.system.tex, quad, --
+        (self.x+8)-16, self.y+16+self.name_tag:getHeight()*inv_scale, 0, math.floor(p*32)/16, 3/16)
     end
   end
 end
