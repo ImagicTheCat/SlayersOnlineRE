@@ -52,6 +52,16 @@ function Renderer.loadSystem(client)
   system.window_borders = Renderer.loadSystemBorders(32, 0, 32, 32, 5)
   system.select_borders = Renderer.loadSystemBorders(64, 0, 32, 32, 5)
 
+  system.xp = love.graphics.newQuad(4*16,48,16,16,160,80)
+
+  -- health bar quarters (group)
+  system.health_qs = {
+    love.graphics.newQuad(16,64,16,16,160,80),
+    love.graphics.newQuad(4*16,48,16,16,160,80),
+    love.graphics.newQuad(0,64,16,16,160,80),
+    love.graphics.newQuad(9*16,48,16,16,160,80)
+  }
+
   return system
 end
 
@@ -62,7 +72,8 @@ local widgets = {}
 widgets[XPBar] = function(self, widget)
   local w, h = self.xp_tex:getDimensions()
   local sx, sy = widget.w/w, widget.h/h
-  love.graphics.rectangle("fill", 10*sx, 5*sy, (w-20)*sx*widget.factor, 6*sy)
+  love.graphics.draw(self.system.tex, self.system.xp, 10*sx, 5*sy, 0, (w-20)*sx*widget.factor/16, 6*sy/16)
+-- 10*sx, 5*sy, 0, (w-20)*sx*widget.factor, 6*sy)
   love.graphics.draw(self.xp_tex, 0, 0, 0, sx, sy)
 end
 
