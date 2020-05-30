@@ -148,10 +148,13 @@ function Inventory:__construct(itype)
   self.content.grid:listen("control-press", function(grid, id)
     -- quick action binding
     local item = self.content:getSelection()
-    if item then
-      if id == "quick1" then client:bindQuickAction(1, self.itype, item[1])
-      elseif id == "quick2" then client:bindQuickAction(2, self.itype, item[1])
-      elseif id == "quick3" then client:bindQuickAction(3, self.itype, item[1]) end
+    local q_id = tonumber(string.match(id, "quick(%d+)"))
+    if item and q_id then
+      if client:isQuickAction(q_id, self.itype, item[1]) then -- unbind
+        client:bindQuickAction(q_id, self.itype, nil)
+      else -- bind
+        client:bindQuickAction(q_id, self.itype, item[1])
+      end
     end
   end)
 
