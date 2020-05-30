@@ -568,7 +568,7 @@ function Client:onPacket(protocol, data)
     if stats.class then self.g_stats:set(0,1, Text("Classe: "..stats.class)) end
     if stats.level then self.g_stats:set(0,2, Text("Niveau: "..stats.level)) end
     if stats.gold then
-      self.g_stats:set(0,3, Text("Or: "..stats.gold))
+      self.g_stats:set(0,3, Text("Or: "..utils.fn(stats.gold)))
       self.chest.gold_l_display:set(stats.gold)
       self.shop.content:moveSelect(0,0) -- actualize
     end
@@ -583,30 +583,30 @@ function Client:onPacket(protocol, data)
 
     if stats.health or stats.max_health then
       self.health_phial.factor = self.stats.health/self.stats.max_health
-      self.g_stats:set(1,1, Text("Vie: "..self.stats.health.." / "..self.stats.max_health))
+      self.g_stats:set(1,1, Text("Vie: "..utils.fn(self.stats.health).." / "..utils.fn(self.stats.max_health)))
     end
     if stats.mana or stats.max_mana then
       self.mana_phial.factor = self.stats.mana/self.stats.max_mana
-      self.g_stats:set(1,2, Text("Mana: "..self.stats.mana.." / "..self.stats.max_mana))
+      self.g_stats:set(1,2, Text("Mana: "..utils.fn(self.stats.mana).." / "..utils.fn(self.stats.max_mana)))
     end
 
-    if stats.strength then self.g_stats:set(0,5, Text("Force: "..stats.strength), true) end
-    if stats.dexterity then self.g_stats:set(0,6, Text("Dextérité: "..stats.dexterity), true) end
-    if stats.constitution then self.g_stats:set(0,7, Text("Constitution: "..stats.constitution), true) end
-    if stats.magic then self.g_stats:set(0,8, Text({{0,0,0}, "Magie: "..stats.magic})) end
-    if stats.points then self.g_stats:set(0,9, Text("Points restants: "..stats.points)) end
+    if stats.strength then self.g_stats:set(0,5, Text("Force: "..utils.fn(stats.strength)), true) end
+    if stats.dexterity then self.g_stats:set(0,6, Text("Dextérité: "..utils.fn(stats.dexterity)), true) end
+    if stats.constitution then self.g_stats:set(0,7, Text("Constitution: "..utils.fn(stats.constitution)), true) end
+    if stats.magic then self.g_stats:set(0,8, Text({{0,0,0}, "Magie: "..utils.fn(stats.magic)})) end
+    if stats.points then self.g_stats:set(0,9, Text("Points restants: "..utils.fn(stats.points))) end
 
     if stats.helmet_slot then self.g_stats:set(0,11, Text("Casque: "..stats.helmet_slot.name), true) end
     if stats.armor_slot then self.g_stats:set(0,12, Text("Armure: "..stats.armor_slot.name), true) end
     if stats.weapon_slot then self.g_stats:set(0,13, Text("Arme: "..stats.weapon_slot.name), true) end
     if stats.shield_slot then self.g_stats:set(0,14, Text("Bouclier: "..stats.shield_slot.name), true) end
 
-    if stats.attack then self.g_stats:set(1,5, Text("Attaque: "..stats.attack)) end
-    if stats.defense then self.g_stats:set(1,6, Text("Défense: "..stats.defense)) end
-    if stats.reputation then self.g_stats:set(1,7, Text("Réputation: "..stats.reputation)) end
+    if stats.attack then self.g_stats:set(1,5, Text("Attaque: "..utils.fn(stats.attack))) end
+    if stats.defense then self.g_stats:set(1,6, Text("Défense: "..utils.fn(stats.defense))) end
+    if stats.reputation then self.g_stats:set(1,7, Text("Réputation: "..utils.fn(stats.reputation))) end
     if stats.xp or stats.next_xp or stats.current_xp then
       self.xp_bar.factor = (stats.xp-stats.current_xp)/(stats.next_xp-stats.current_xp)
-      self.g_stats:set(1,8, Text("XP: "..stats.xp.." / "..stats.next_xp))
+      self.g_stats:set(1,8, Text("XP: "..utils.fn(stats.xp).." / "..utils.fn(stats.next_xp)))
     end
   elseif protocol == net.PLAY_MUSIC then
     if data then
@@ -715,9 +715,9 @@ function Client:onPacket(protocol, data)
     self.trade:updatePeerLock(false)
     self.gui:setFocus()
   elseif protocol == net.DIALOG_QUERY then
-    if not self.gui.focus and not self.pick_target then -- not busy
+    if data.no_busy or (not self.gui.focus and not self.pick_target) then -- not busy
       async(function()
-        self:sendPacket(net.DIALOG_RESULT, self:dialog(data[1], data[2]))
+        self:sendPacket(net.DIALOG_RESULT, self:dialog(data.ftext, data.options))
       end)
     else self:sendPacket(net.DIALOG_RESULT) end -- busy, cancel
   end

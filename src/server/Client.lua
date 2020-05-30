@@ -486,36 +486,119 @@ function Client:onPacket(protocol, data)
     elseif protocol == net.ITEM_EQUIP then
       local id = tonumber(data) or 0
       local item = self.server.project.objects[id]
-      if item and self:checkItemRequirements(item) and self.inventory:take(id,true) then
-        local done = true
+      if item and self:checkItemRequirements(item) then
+        -- compute preview delta
+        local old_ch = {
+          strength = self.strength,
+          dexterity = self.dexterity,
+          constitution = self.constitution,
+          magic = self.magic,
+          attack = self.ch_attack,
+          defense = self.ch_defense,
+          min_damage = self.min_damage,
+          max_damage = self.max_damage
+        }
+
+        local old_weapon = self.weapon_slot
+        local old_shield = self.shield_slot
+        local old_helmet = self.helmet_slot
+        local old_armor = self.armor_slot
+
+        --- update slots
         if item.type == 1 then -- one-handed weapon
-          if self.weapon_slot > 0 then self.inventory:put(self.weapon_slot) end
           self.weapon_slot = id
         elseif item.type == 2 then -- two-handed weapon
-          if self.weapon_slot > 0 then self.inventory:put(self.weapon_slot) end
-          if self.shield_slot > 0 then self.inventory:put(self.shield_slot) end
           self.weapon_slot = id
+          self.shield_slot = 0
         elseif item.type == 3 then -- helmet
-          if self.helmet_slot > 0 then self.inventory:put(self.helmet_slot) end
           self.helmet_slot = id
         elseif item.type == 4 then -- armor
-          if self.armor_slot > 0 then self.inventory:put(self.armor_slot) end
           self.armor_slot = id
         elseif item.type == 5 then -- shield
-          if self.shield_slot > 0 then self.inventory:put(self.shield_slot) end
           self.shield_slot = id
           -- check for two-handed weapon
           local weapon = self.server.project.objects[self.weapon_slot]
           if weapon and weapon.type == 2 then
-            self.inventory:put(self.weapon_slot)
             self.weapon_slot = 0
           end
-        else done = false end
-
-        if done then
-          self.inventory:take(id)
-          self:updateCharacteristics()
         end
+
+        --- get new characteristics
+        self:updateCharacteristics(true) -- dry
+        local new_ch = {
+          strength = self.strength,
+          dexterity = self.dexterity,
+          constitution = self.constitution,
+          magic = self.magic,
+          attack = self.ch_attack,
+          defense = self.ch_defense,
+          min_damage = self.min_damage,
+          max_damage = self.max_damage
+        }
+
+        --- revert slots
+        self.weapon_slot = old_weapon
+        self.shield_slot = old_shield
+        self.helmet_slot = old_helmet
+        self.armor_slot = old_armor
+        self:updateCharacteristics(true) -- dry revert
+
+        --- compute
+        local deltas = {}
+        for k,v in pairs(old_ch) do deltas[k] = new_ch[k]-old_ch[k] end
+
+        -- show delta / request
+        async(function()
+          local fdeltas = {} -- formatted
+          local append = function(new_ch, deltas, prop, title) -- format prop
+            if deltas[prop] ~= 0 then
+              table.insert(fdeltas, "  "..title..": "..utils.fn(deltas[prop], true).." ("..utils.fn(new_ch[prop])..")")
+            end
+          end
+          append(new_ch, deltas, "strength", "Force")
+          append(new_ch, deltas, "dexterity", "Dextérité")
+          append(new_ch, deltas, "constitution", "Constitution")
+          append(new_ch, deltas, "magic", "Magie")
+          append(new_ch, deltas, "attack", "Attaque")
+          append(new_ch, deltas, "defense", "Défense")
+          append(new_ch, deltas, "min_damage", "Dégâts min")
+          append(new_ch, deltas, "max_damage", "Dégâts max")
+
+          local dialog_r = self:requestDialog({"Équiper ", {0,1,0.5} , item.name, {1,1,1}, " ?\n"..table.concat(fdeltas, "\n")}, {"Accepter", "Annuler"}, true)
+          -- equip item
+          if dialog_r == 1 and self:checkItemRequirements(item) and self.inventory:take(id,true) then
+            local done = true
+            if item.type == 1 then -- one-handed weapon
+              if self.weapon_slot > 0 then self.inventory:put(self.weapon_slot) end
+              self.weapon_slot = id
+            elseif item.type == 2 then -- two-handed weapon
+              if self.weapon_slot > 0 then self.inventory:put(self.weapon_slot) end
+              if self.shield_slot > 0 then self.inventory:put(self.shield_slot) end
+              self.weapon_slot = id
+              self.shield_slot = 0
+            elseif item.type == 3 then -- helmet
+              if self.helmet_slot > 0 then self.inventory:put(self.helmet_slot) end
+              self.helmet_slot = id
+            elseif item.type == 4 then -- armor
+              if self.armor_slot > 0 then self.inventory:put(self.armor_slot) end
+              self.armor_slot = id
+            elseif item.type == 5 then -- shield
+              if self.shield_slot > 0 then self.inventory:put(self.shield_slot) end
+              self.shield_slot = id
+              -- check for two-handed weapon
+              local weapon = self.server.project.objects[self.weapon_slot]
+              if weapon and weapon.type == 2 then
+                self.inventory:put(self.weapon_slot)
+                self.weapon_slot = 0
+              end
+            else done = false end
+
+            if done then
+              self.inventory:take(id)
+              self:updateCharacteristics()
+            end
+          end
+        end)
       end
     elseif protocol == net.SLOT_UNEQUIP then
       local done = true
@@ -623,7 +706,7 @@ function Client:onPacket(protocol, data)
     elseif protocol == net.TRADE_CLOSE then
       self:cancelTrade()
     elseif protocol == net.DIALOG_RESULT then
-      if self.dialog_task then self.dialog_task(data) end
+      if self.dialog_task then self.dialog_task(tonumber(data)) end
     end
   end
 end
@@ -767,11 +850,12 @@ end
 -- (async) open dialog box
 -- text: formatted text
 -- options: list of formatted texts
+-- no_busy: (optional) if passed/truthy, will show the dialog even if the player is busy
 -- return option index or nothing if busy/failed
-function Client:requestDialog(text, options)
+function Client:requestDialog(text, options, no_busy)
   if not self.dialog_task then
     self.dialog_task = async()
-    self:send(Client.makePacket(net.DIALOG_QUERY, {text, options}))
+    self:send(Client.makePacket(net.DIALOG_QUERY, {ftext = text, options = options, no_busy = no_busy}))
     local r = tonumber(self.dialog_task:wait())
     self.dialog_task = nil
     if options[r] then return r end
@@ -1080,7 +1164,7 @@ function Client:useItem(id)
     if item.mod_hp > 0 then
       self:emitSound("Holy2.wav")
       self:emitAnimation("heal.png", 0, 0, 48, 56, 0.75)
-      self:emitHint({{0,1,0}, item.mod_hp})
+      self:emitHint({{0,1,0}, utils.fn(item.mod_hp)})
     else -- damage
       self:broadcastPacket("damage", -item.mod_hp)
     end
@@ -1156,7 +1240,9 @@ function Client:applyConfig(config, no_save)
 end
 
 -- update characteristics/gears based on gears/effects/etc
-function Client:updateCharacteristics()
+-- dry: (optional) if passed/truthy, will not trigger any update (but affects properties)
+--- used for temporary characteristics modulation
+function Client:updateCharacteristics(dry)
   local class_data = self.server.project.classes[self.class]
 
   self.strength = self.strength_pts+class_data.strength
@@ -1193,28 +1279,30 @@ function Client:updateCharacteristics()
   self.min_damage = (weapon and weapon.mod_attack_a or 0)
   self.max_damage = (weapon and weapon.mod_attack_b or 0)+math.floor((self.level*20+self.strength*2+self.dexterity*1.5)*class_data.pow_index/10)
 
-  -- update health/mana
-  self:setHealth(self.health)
-  self:setMana(self.mana)
+  if not dry then
+    -- update health/mana
+    self:setHealth(self.health)
+    self:setMana(self.mana)
 
-  -- trigger vars
-  self:triggerSpecialVariable("Attaque")
-  self:triggerSpecialVariable("Defense")
-  self:triggerSpecialVariable("VieMax")
-  self:triggerSpecialVariable("MagMax")
+    -- trigger vars
+    self:triggerSpecialVariable("Attaque")
+    self:triggerSpecialVariable("Defense")
+    self:triggerSpecialVariable("VieMax")
+    self:triggerSpecialVariable("MagMax")
 
-  self:send(Client.makePacket(net.STATS_UPDATE, {
-    strength = self.strength,
-    dexterity = self.dexterity,
-    constitution = self.constitution,
-    magic = self.magic,
-    attack = self.ch_attack,
-    defense = self.ch_defense,
-    helmet_slot = {name = helmet and helmet.name or ""},
-    armor_slot = {name = armor and armor.name or ""},
-    weapon_slot = {name = weapon and weapon.name or ""},
-    shield_slot = {name = shield and shield.name or ""}
-  }))
+    self:send(Client.makePacket(net.STATS_UPDATE, {
+      strength = self.strength,
+      dexterity = self.dexterity,
+      constitution = self.constitution,
+      magic = self.magic,
+      attack = self.ch_attack,
+      defense = self.ch_defense,
+      helmet_slot = {name = helmet and helmet.name or ""},
+      armor_slot = {name = armor and armor.name or ""},
+      weapon_slot = {name = weapon and weapon.name or ""},
+      shield_slot = {name = shield and shield.name or ""}
+    }))
+  end
 end
 
 function Client:checkItemRequirements(item)
@@ -1494,7 +1582,7 @@ function Client:onDeath()
   if self.map and self.map.data.type == Map.Type.PVE or self.map.data.type == Map.Type.PVE_PVP then
     local new_xp = math.floor(self.xp*0.99)
     local delta = new_xp-self.xp
-    if delta < 0 then self:emitHint({{0,0.9,1}, delta}) end
+    if delta < 0 then self:emitHint({{0,0.9,1}, utils.fn(delta, true)}) end
     self:setXP(new_xp)
   end
 
@@ -1505,8 +1593,8 @@ function Client:onDeath()
     if gold_amount > 0 then
       self.last_attacker:setGold(self.last_attacker.gold+gold_amount)
       self:setGold(self.gold-gold_amount)
-      self.last_attacker:emitHint({{1,0.78,0}, "+"..gold_amount})
-      self:emitHint({{1,0.78,0}, -gold_amount})
+      self.last_attacker:emitHint({{1,0.78,0}, utils.fn(gold_amount, true)})
+      self:emitHint({{1,0.78,0}, utils.fn(-gold_amount, true)})
     end
 
     -- reputation
@@ -1514,7 +1602,7 @@ function Client:onDeath()
       local reputation_amount = math.floor(self.level*0.1)
       if reputation_amount > 0 then
         self.last_attacker:setReputation(self.last_attacker.reputation+reputation_amount)
-        self.last_attacker:emitHint("+"..reputation_amount.." réputation")
+        self.last_attacker:emitHint(utils.fn(reputation_amount, true).." réputation")
       end
     end
 

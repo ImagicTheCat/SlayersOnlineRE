@@ -157,4 +157,16 @@ function utils.computeExpression(str)
   end
 end
 
+-- format number (with 3 digits separation)
+-- sign: if passed/truthy, keep positive sign symbol
+-- return string
+function utils.fn(n, sign)
+  local formatted = n, k
+  repeat
+    formatted, k = string.gsub(formatted, "^(-?%d+)(%d%d%d)", '%1 %2')
+  until k == 0
+  if sign and n > 0 then return "+"..formatted
+  else return formatted end
+end
+
 return utils

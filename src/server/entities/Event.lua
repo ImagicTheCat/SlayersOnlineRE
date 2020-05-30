@@ -265,8 +265,8 @@ function client_special_vars:Vie(value)
   if value then
     value = utils.computeExpression(value) or 0
     local delta = value-self.client.health
-    if delta > 0 then self.client:emitHint({{0,1,0}, delta})
-    elseif delta < 0 then self.client:broadcastPacket("damage", -delta) end
+    if delta > 0 then self.client:emitHint({{0,1,0}, utils.fn(delta)})
+    elseif delta < 0 then self.client:broadcastPacket("damage", delta) end
 
     self.client:setHealth(value)
   else
@@ -298,9 +298,7 @@ function client_special_vars:Alignement(value)
   if value then
     value = utils.computeExpression(value) or 0
     local delta = value-self.client.alignment
-    if delta > 0 then self.client:emitHint("+"..delta.." alignement")
-    elseif delta < 0 then self.client:emitHint(delta.." alignement") end
-
+    self.client:emitHint(utils.fn(delta, true).." alignement")
     self.client:setAlignment(value)
   else
     return self.client.alignment
@@ -311,9 +309,7 @@ function client_special_vars:Reputation(value)
   if value then
     value = utils.computeExpression(value) or 0
     local delta = value-self.client.alignment
-    if delta > 0 then self.client:emitHint("+"..delta.." réputation")
-    elseif delta < 0 then self.client:emitHint(delta.." réputation") end
-
+    self.client:emitHint(utils.fn(delta, true).." réputation")
     self.client:setReputation(value)
   else
     return self.client.reputation
@@ -324,9 +320,7 @@ function client_special_vars:Gold(value)
   if value then
     value = utils.computeExpression(value) or 0
     local delta = value-self.client.gold
-    if delta > 0 then self.client:emitHint({{1,0.78,0}, "+"..delta})
-    elseif delta < 0 then self.client:emitHint({{1,0.78,0}, delta}) end
-
+    self.client:emitHint({{1,0.78,0}, utils.fn(delta, true)})
     self.client:setGold(value)
   else
     return self.client.gold
@@ -338,9 +332,7 @@ function client_special_vars:Lvl(value)
     local xp = XPtable[utils.computeExpression(value) or 0]
     if xp then
       local delta = xp-self.client.xp
-      if delta > 0 then self.client:emitHint({{0,0.9,1}, "+"..delta})
-      elseif delta < 0 then self.client:emitHint({{0,0.9,1}, delta}) end
-
+      self.client:emitHint({{0,0.9,1}, utils.fn(delta, true)})
       self.client:setXP(xp)
     end
   else
@@ -360,9 +352,7 @@ function client_special_vars:CurrentXP(value)
   if value then
     value = utils.computeExpression(value) or 0
     local delta = value-self.client.xp
-    if delta > 0 then self.client:emitHint({{0,0.9,1}, "+"..delta})
-    elseif delta < 0 then self.client:emitHint({{0,0.9,1}, delta}) end
-
+    self.client:emitHint({{0,0.9,1}, utils.fn(delta, true)})
     self.client:setXP(utils.computeExpression(value) or 0)
   else
     return self.client.xp
