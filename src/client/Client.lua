@@ -128,6 +128,8 @@ function Client:__construct(cfg)
   self.font = love.graphics.newFont("resources/font.ttf", self.player_config.gui.font_size)
   love.graphics.setFont(self.font)
 
+  self.info_overlay = love.graphics.newText(self.font)
+
   self.gui = GUI(self)
   self.gui_renderer = GUI_Renderer(self)
 
@@ -528,21 +530,21 @@ function Client:onPacket(protocol, data)
     if self.inventory.visible then
       self.inventory.content:updateContent()
     end
-
     self.chest.content_l:updateItems(data)
     if self.chest.visible then
       self.chest.content_l:updateContent()
     end
-
     self.trade.content_inv:updateItems(data)
     if self.trade.visible then
       self.trade.content_inv:updateContent()
     end
+    self:updateInfoOverlay()
   elseif protocol == net.SPELL_INVENTORY_UPDATE_ITEMS then
     self.spell_inventory.content:updateItems(data)
     if self.spell_inventory.visible then
       self.spell_inventory.content:updateContent()
     end
+    self:updateInfoOverlay()
   elseif protocol == net.CHEST_OPEN then
     self.chest.title:set(data[1])
     self.chest.content_r:updateItems(data[2], true)
@@ -574,7 +576,11 @@ function Client:onPacket(protocol, data)
       self.chest.gold_r_display:set(stats.chest_gold)
     end
 
-    if stats.alignment then self.g_stats:set(1,0, Text("Alignement: "..stats.alignment)) end
+    if stats.alignment then
+      self.g_stats:set(1,0, Text("Alignement: "..stats.alignment))
+      self:updateInfoOverlay()
+    end
+
     if stats.health or stats.max_health then
       self.health_phial.factor = self.stats.health/self.stats.max_health
       self.g_stats:set(1,1, Text("Vie: "..self.stats.health.." / "..self.stats.max_health))
@@ -769,7 +775,30 @@ function Client:onApplyConfig(config)
     if self.spell_inventory.visible then
       self.spell_inventory.content:updateContent()
     end
+    self:updateInfoOverlay()
   end
+end
+
+-- update info overlay content
+function Client:updateInfoOverlay()
+  local ftext = {}
+  if self.stats.alignment then table.insert(ftext, "Align: "..self.stats.alignment) end
+  for i, quick in ipairs(self.player_config.quick_actions) do
+    if quick.type == "item" then
+      local item = self.inventory.content.items[quick.id]
+      if item then
+        table.insert(ftext, item.amount <= 5 and {1,0,0} or {1,1,1})
+        table.insert(ftext, "\nQ"..i..": "..item.name.." ("..item.amount..")")
+      end
+    elseif quick.type == "spell" then
+      local spell = self.spell_inventory.content.items[quick.id]
+      if spell then
+        table.insert(ftext, {1,1,1})
+        table.insert(ftext, "\nQ"..i..": "..spell.name)
+      end
+    end
+  end
+  self.info_overlay:set(ftext)
 end
 
 function Client:onResize(w, h)
@@ -851,6 +880,8 @@ function Client:onSetFont()
       end
     end
   end
+
+  self.info_overlay:setFont(self.font)
 end
 
 function Client:onTextInput(data)
@@ -1174,6 +1205,13 @@ function Client:draw()
     love.graphics.pop()
   end
 
+  -- info overlay
+  --- shadow
+  love.graphics.setColor(0,0,0,0.50)
+  love.graphics.draw(self.info_overlay, w-self.info_overlay:getWidth()-2, 6)
+  love.graphics.setColor(1,1,1)
+  love.graphics.draw(self.info_overlay, w-self.info_overlay:getWidth()-4, 4)
+
   -- interface
   self.gui_renderer:render(self.gui)
 
@@ -1327,7 +1365,7 @@ end
 
 -- n: quick action index (1-3)
 -- type: "item" or "spell"
--- id: item/spell id
+-- id: item/spell id (nil to unbind)
 function Client:bindQuickAction(n, type, id)
   self:sendPacket(net.QUICK_ACTION_BIND, {n = n, type = type, id = id})
 end

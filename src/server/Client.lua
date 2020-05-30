@@ -545,18 +545,23 @@ function Client:onPacket(protocol, data)
         r()
       end
     elseif protocol == net.QUICK_ACTION_BIND then
-      if type(data) == "table" and type(data.n) == "number" and data.n >= 1 and data.n <= 3 then
-        local id = tonumber(data.id) or 0
-        local ok = false
-        if data.type == "item" then -- check item bind
-          local item = self.server.project.objects[id]
-          if item and item.type == 0 then ok = true end
-        elseif data.type == "spell" then -- check spell bind
-          local spell = self.server.project.spells[id]
-          if spell then ok = true end
-        end
-        if ok then
-          self:applyConfig({quick_actions = {[data.n] = {type = data.type, id = id}}})
+      if type(data) == "table" and type(data.type) == "string" --
+          and type(data.n) == "number" and data.n >= 1 and data.n <= 3 then
+        local id = tonumber(data.id)
+        if id then -- bind
+          local ok = false
+          if data.type == "item" then -- check item bind
+            local item = self.server.project.objects[id]
+            if item and item.type == 0 then ok = true end
+          elseif data.type == "spell" then -- check spell bind
+            local spell = self.server.project.spells[id]
+            if spell then ok = true end
+          end
+          if ok then
+            self:applyConfig({quick_actions = {[data.n] = {type = data.type, id = id}}})
+          end
+        else -- unbind
+          self:applyConfig({quick_actions = {[data.n] = {type = "item", id = 0}}})
         end
       end
     elseif protocol == net.TARGET_PICK then
