@@ -117,14 +117,33 @@ local bind_sc_blacklist = {
   ["return"] = true,
   escape = true
 }
+
+local control_whitelist = {
+  none = true,
+  up = true,
+  right = true,
+  down = true,
+  left = true,
+  interact = true,
+  attack = true,
+  defend = true,
+  quick1 = true,
+  quick2 = true,
+  quick3 = true,
+  ["return"] = true,
+  menu = true,
+  chat_up = true,
+  chat_down = true
+}
 commands.bind = {10, function(self, client, args)
   if client then
-    if not args[2] then return true end
+    if not args[2] or #args[2] >= 50 then return true end
     local control = args[3]
     local itype, input = string.match(args[2], "(%w+):(%w+)")
 
     if itype == "sc" then -- scancode
       if control then
+        if not control_whitelist[control] then return true end
         if not bind_sc_blacklist[input] then
           client:applyConfig({scancode_controls = {[input] = control}})
           client:sendChatMessage("scancode \""..input.."\" assigné à \""..control.."\"")
@@ -138,6 +157,7 @@ commands.bind = {10, function(self, client, args)
       end
     elseif itype == "gp" then -- gamepad
       if control then
+        if not control_whitelist[control] then return true end
         client:applyConfig({gamepad_controls = {[input] = control}})
         client:sendChatMessage("gamepad \""..input.."\" assigné à \""..control.."\"")
       else
@@ -156,10 +176,14 @@ end, "<type:input> [control]", [[afficher ou assigner un (LÖVE/SDL) scancode à
     contrôles: none, up, right, down, left, interact, attack, defend, quick1, quick2, quick3, return, menu, chat_up, chat_down]]
 }
 
+local volume_types = {
+  master = true,
+  music = true
+}
 commands.volume = {10, function(self, client, args)
   if client then
     local vtype, volume = args[2], tonumber(args[3])
-    if vtype and volume then
+    if vtype and volume_types[vtype] and volume then
       client:applyConfig({volume = {[vtype] = volume}})
     else
       return true
