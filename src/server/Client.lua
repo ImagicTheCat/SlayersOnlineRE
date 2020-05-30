@@ -1066,6 +1066,7 @@ function Client:onMapChange()
 
     -- send map
     self:send(Client.makePacket(net.MAP, {map = self.map:serializeNet(self), id = self.id}))
+    self:setMapEffect(self.map.data.effect)
 
     -- build events
     for _, event_data in ipairs(self.map.data.events) do
@@ -1641,6 +1642,19 @@ function Client:respawn()
       end
     end
   end
+end
+
+-- effect: int
+--- 0: none
+--- 1: dark cave
+--- 2: night
+--- 3: heat
+--- 4: rain
+--- 5: snow
+--- 6: fog
+function Client:setMapEffect(effect)
+  self.map_effect = effect
+  self:send(Client.makePacket(net.MAP_EFFECT, effect))
 end
 
 -- restriction checks
