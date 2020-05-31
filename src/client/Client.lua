@@ -390,7 +390,7 @@ function Client:tick(dt)
   if self.map then
     -- compute camera position
     if self.scroll then -- scrolling
-      self.camera = {self.scroll.x+8, self.scroll.y+8}
+      self.camera = {self.scroll.x+8+self.view_shift[1], self.scroll.y+8+self.view_shift[2]}
     else -- center on player
       local player = self.map.entities[self.id]
       if player then
