@@ -577,11 +577,11 @@ function Client:onPacket(protocol, data)
     if stats.level then self.g_stats:set(0,2, Text("Niveau: "..stats.level)) end
     if stats.gold then
       self.g_stats:set(0,3, Text("Or: "..utils.fn(stats.gold)))
-      self.chest.gold_l_display:set(stats.gold)
+      self.chest.gold_l_display:set(utils.fn(stats.gold))
       self.shop.content:moveSelect(0,0) -- actualize
     end
     if stats.chest_gold then
-      self.chest.gold_r_display:set(stats.chest_gold)
+      self.chest.gold_r_display:set(utils.fn(stats.chest_gold))
     end
 
     if stats.alignment then
@@ -705,7 +705,7 @@ function Client:onPacket(protocol, data)
     self.trade.content_r:updateItems(data)
     self.trade.content_r:updateContent()
   elseif protocol == net.TRADE_SET_GOLD then
-    self.trade.gold_r:set(1,0, Text(tostring(data)))
+    self.trade.gold_r:set(1,0, Text(utils.fn(data)))
   elseif protocol == net.TRADE_LOCK then
     self.trade:updateLock(data)
   elseif protocol == net.TRADE_PEER_LOCK then
