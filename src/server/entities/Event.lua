@@ -424,7 +424,7 @@ end
 
 function client_special_vars:CaseY(value)
   if value then
-    self:moveToCell(self.client.cx, utils.computeExpression(value) or self.client.cy, true)
+    self.client:moveToCell(self.client.cx, utils.computeExpression(value) or self.client.cy, true)
   else
     return self.client.cy
   end
