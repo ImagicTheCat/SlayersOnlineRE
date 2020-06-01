@@ -1443,37 +1443,39 @@ end
 function Event:moveAI()
   if self.map and not self.move_ai_task
     and (self.animation_type == Event.Animation.CHARACTER_RANDOM or self.animation_type == Event.Animation.CHARACTER_FOLLOW) then
-    self.move_ai_task = task(utils.randf(1, 5)/self.speed*2, function()
-      local ok
-      local ncx, ncy
-
-      if not self.client.running_event then -- prevent movement when an event is in execution
-        -- search for a passable cell
-        local i = 1
-        while not ok and i <= 10 do
-          -- random/follow orientation
-          local orientation
-          if self.animation_type == Event.Animation.CHARACTER_FOLLOW then
-            orientation = LivingEntity.vectorOrientation(self.client.x-self.x, self.client.y-self.y)
-          else
-            orientation = math.random(0,3)
+    self.move_ai_task = task(utils.randf(1, 5)/self.speed*(self.animation_type == Event.Animation.CHARACTER_FOLLOW and 0.25 or 1.5), function()
+      if not self.client.running_event and self.map then -- prevent movement when an event is in execution
+        if self.animation_type == Event.Animation.CHARACTER_FOLLOW then -- follow mode
+          local dcx, dcy = self.client.cx-self.cx, self.client.cy-self.cy
+          if math.abs(dcx)+math.abs(dcy) > 1 then -- too far, move to target
+            local dx, dy = utils.sign(dcx), utils.sign(dcy)
+            if dx ~= 0 and math.abs(dcx) > math.abs(dy) and self.map:isCellPassable(self, self.cx+dx, self.cy) then
+              self:moveToCell(self.cx+dx, self.cy)
+            elseif dy ~= 0 and self.map:isCellPassable(self, self.cx, self.cy+dy) then
+              self:moveToCell(self.cx, self.cy+dy)
+            end
           end
-
-          local dx, dy = LivingEntity.orientationVector(orientation)
-          ncx, ncy = self.cx+dx, self.cy+dy
-
-          ok = (self.map and self.map:isCellPassable(self, ncx, ncy))
-
-          i = i+1
+        else -- idle mode
+          -- random movement
+          local ok
+          local ncx, ncy
+          -- search for a passable cell
+          local i = 1
+          while not ok and i <= 10 do
+            local orientation = math.random(0,3)
+            local dx, dy = LivingEntity.orientationVector(orientation)
+            ncx, ncy = self.cx+dx, self.cy+dy
+            ok = self.map:isCellPassable(self, ncx, ncy)
+            i = i+1
+          end
+          if ok then
+            self:moveToCell(ncx, ncy)
+          end
         end
       end
 
-      if ok then
-        self:moveToCell(ncx, ncy)
-      end
-
+      -- next AI tick
       self.move_ai_task = nil
-
       self:moveAI()
     end)
   end
