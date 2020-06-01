@@ -564,7 +564,7 @@ function Client:onPacket(protocol, data)
           append(new_ch, deltas, "min_damage", "Dégâts min")
           append(new_ch, deltas, "max_damage", "Dégâts max")
 
-          local dialog_r = self:requestDialog({"Équiper ", {0,1,0.5} , item.name, {1,1,1}, " ?\n"..table.concat(fdeltas, "\n")}, {"Accepter", "Annuler"}, true)
+          local dialog_r = self:requestDialog({"Équiper ", {0,1,0.5} , item.name, {1,1,1}, " ?\n"..table.concat(fdeltas, "\n")}, {"Équiper"}, true)
           -- equip item
           if dialog_r == 1 and self:checkItemRequirements(item) and self.inventory:take(id,true) then
             local done = true
@@ -669,16 +669,14 @@ function Client:onPacket(protocol, data)
           if not entity.ignores.trade then
             self:sendChatMessage("Requête envoyée.")
             -- open dialog
-            local dialog_r = entity:requestDialog({{0,1,0.5}, self.pseudo, {1,1,1}, " souhaite lancer un échange avec vous."}, {"Accepter", "Refuser"})
+            local dialog_r = entity:requestDialog({{0,1,0.5}, self.pseudo, {1,1,1}, " souhaite lancer un échange avec vous."}, {"Accepter"})
             if dialog_r == 1 then
               if not (self.map == entity.map and self:openTrade(entity)) then
                 self:sendChatMessage("Échange impossible.")
                 entity:sendChatMessage("Échange impossible.")
               end
-            elseif dialog_r == 2 then
-              self:sendChatMessage("Échange refusé.")
             else
-              self:sendChatMessage("Joueur occupé.")
+              self:sendChatMessage("Joueur occupé / échange refusé.")
             end
           else self:sendChatMessage("Joueur occupé.") end
         else
@@ -851,14 +849,14 @@ end
 -- text: formatted text
 -- options: list of formatted texts
 -- no_busy: (optional) if passed/truthy, will show the dialog even if the player is busy
--- return option index or nothing if busy/failed
+-- return option index or nil/nothing if busy/cancelled
 function Client:requestDialog(text, options, no_busy)
   if not self.dialog_task then
     self.dialog_task = async()
     self:send(Client.makePacket(net.DIALOG_QUERY, {ftext = text, options = options, no_busy = no_busy}))
     local r = tonumber(self.dialog_task:wait())
     self.dialog_task = nil
-    if options[r] then return r end
+    if r == nil or options[r] then return r end
   end
 end
 

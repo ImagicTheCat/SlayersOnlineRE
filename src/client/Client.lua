@@ -1195,7 +1195,7 @@ end
 -- (async) open dialog box
 -- text: formatted text
 -- options: list of formatted texts
--- return selected option index
+-- return selected option index or nil if cancelled
 function Client:dialog(text, options)
   self.dialog_task = async()
   self.dialog_box:set(text, options)
@@ -1205,11 +1205,11 @@ function Client:dialog(text, options)
   self:onResize(love.graphics.getDimensions()) -- trigger GUI update
   -- (should use the GUI as a layout widget to prevent this kind of fixes)
 
-  local index = self.dialog_task:wait()
+  local r = self.dialog_task:wait()
   self.dialog_task = nil
   self.gui:setFocus(prev_focus)
   self.dialog_box:setVisible(false)
-  return index
+  return r
 end
 
 -- input a chat message to the remote server

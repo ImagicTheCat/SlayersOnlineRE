@@ -85,6 +85,19 @@ function GridInterface:set(x, y, widget, selectable)
   end
 end
 
+-- get cell or nil
+function GridInterface:get(x, y)
+  if x >= 0 and y >= 0 and x < self.wc and y < self.hc then
+    return self.cells[self:getIndex(x,y)]
+  end
+end
+
+-- check if a cell is selectable
+function GridInterface:isSelectable(x, y)
+  local cell = self:get(x,y)
+  return cell and cell[2]
+end
+
 function GridInterface:moveSelect(dx, dy)
   self:trigger("move-select", dx, dy)
 
@@ -101,8 +114,7 @@ function GridInterface:moveSelect(dx, dy)
     self.cx = (self.cx < 0 and (self.wc-(-self.cx)%self.wc)%self.wc or self.cx%self.wc)
 
     -- step on selectable
-    local cell = self.cells[self:getIndex(self.cx, self.cy)]
-    if cell and cell[2] then dx = dx-sdx end
+    if self:isSelectable(self.cx, self.cy) then dx = dx-sdx end
     its = its+1
   end
 
@@ -114,14 +126,11 @@ function GridInterface:moveSelect(dx, dy)
     self.cy = (self.cy < 0 and (self.hc-(-self.cy)%self.hc)%self.hc or self.cy%self.hc)
 
     -- step on selectable
-    local cell = self.cells[self:getIndex(self.cx, self.cy)]
-    if cell and cell[2] then dy = dy-sdy end
+    if self:isSelectable(self.cx, self.cy) then dy = dy-sdy end
     its = its+1
   end
 
-  local idx = self:getIndex(self.cx, self.cy)
-  local cell = self.cells[idx]
-  if cell and cell[2] then -- valid selectable cell
+  if self:isSelectable(self.cx, self.cy) then -- valid selectable cell
     self:trigger("cell-focus", self.cx, self.cy)
   end
 
@@ -152,9 +161,7 @@ function GridInterface:select()
   local cx, cy = self.cx, self.cy
 
   if cx >= 0 and cy >= 0 and cx < self.wc and cy < self.hc then
-    local idx = self:getIndex(cx, cy)
-    local cell = self.cells[idx]
-    if cell and cell[2] then -- valid selectable cell
+    if self:isSelectable(self.cx, self.cy) then -- valid selectable cell
       -- sound effect
       self.gui:playSound("resources/audio/Item1.wav")
       self:trigger("cell-select", cx, cy)

@@ -12,6 +12,9 @@ function DialogBox:__construct()
   self.grid:listen("cell-select", function(grid, cx, cy)
     if client.dialog_task then client.dialog_task(cx+1) end
   end)
+  self.grid:listen("control-press", function(grid, id)
+    if id == "menu" and client.dialog_task then client.dialog_task() end -- cancel
+  end)
   self.content:add(self.text)
   self.content:add(self.grid)
 end

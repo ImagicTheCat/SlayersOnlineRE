@@ -57,7 +57,7 @@ function Trade:__construct()
   end)
   self.content_l.grid:listen("move-select", function(grid, dx, dy)
     if dx == -1 then self.gui:setFocus(self.content_inv.grid)
-    elseif dy == 1 and (grid.hc == 0 or grid.cy == grid.hc-1) then self.gui:setFocus(self.gold_l) end
+    elseif dy == 1 and not grid:isSelectable(grid.cx, grid.cy+1) then self.gui:setFocus(self.gold_l) end
   end)
   self.gold_l:listen("move-select", function(grid, dx, dy)
     if dx == -1 then self.gui:setFocus(self.content_inv.grid)
