@@ -276,6 +276,8 @@ function LivingEntity:tick(dt)
       table.remove(self.animations, i)
     end
   end
+
+  self.top = self.y+16-self.atlas.cell_h
 end
 
 -- override

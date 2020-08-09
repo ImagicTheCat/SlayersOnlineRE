@@ -5,7 +5,7 @@ local LivingEntity = require("entities.LivingEntity")
 local Map = class("Map")
 
 local function sort_entities(a, b)
-  return a.y < b.y
+  return a.top < b.top
 end
 
 -- METHODS
@@ -138,8 +138,10 @@ function Map:tick(dt)
     end
   end
 
-  -- sort dynamic entities by Y (top-down sorting)
+  -- sort entities by Y-top position (top-down sorting)
+  table.sort(self.back_draw_list, sort_entities)
   table.sort(self.dynamic_draw_list, sort_entities)
+  table.sort(self.front_draw_list, sort_entities)
 end
 
 function Map:draw()
