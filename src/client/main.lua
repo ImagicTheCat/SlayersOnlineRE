@@ -40,4 +40,5 @@ function love.gamepadaxis(...) client:onGamepadAxis(...) end
 function love.textinput(...) client:onTextInput(...) end
 function love.wheelmoved(...) client:onWheelMoved(...) end
 function love.resize(...) client:onResize(...) end
+function love.threaderror(thread, err) error("thread: "..err) end
 function love.quit() client:close() end

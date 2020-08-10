@@ -139,7 +139,7 @@ function LivingEntity:setCharaset(charaset)
     if charaset.is_skin then -- skin
       texture = client:loadSkin(charaset.path)
     else -- resource
-      if client.net_manager:requestResource("textures/sets/"..charaset.path) then
+      if client.rsc_manager:requestResource("textures/sets/"..charaset.path) then
         texture = client:loadTexture("resources/textures/sets/"..charaset.path)
       end
     end
@@ -168,7 +168,7 @@ end
 -- sound: path (will request resource)
 function LivingEntity:emitSound(sound)
   async(function()
-    if client.net_manager:requestResource("audio/"..sound) then
+    if client.rsc_manager:requestResource("audio/"..sound) then
       local source = client:playSound("resources/audio/"..sound)
       source:setPosition(self.x+8, self.y+8, 0)
       source:setAttenuationDistances(16, 16*15)
@@ -184,7 +184,7 @@ end
 -- alpha: (optional) 0-1
 function LivingEntity:emitAnimation(path, x, y, w, h, duration, alpha)
   async(function()
-    if client.net_manager:requestResource("textures/sets/"..path) then
+    if client.rsc_manager:requestResource("textures/sets/"..path) then
       local texture = client:loadTexture("resources/textures/sets/"..path)
       local anim = {
         texture = texture,
