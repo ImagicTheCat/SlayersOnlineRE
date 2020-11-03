@@ -1166,7 +1166,7 @@ function Client:useItem(id)
       self:emitSound("Holy2.wav")
       self:emitAnimation("heal.png", 0, 0, 48, 56, 0.75)
       self:emitHint({{0,1,0}, utils.fn(item.mod_hp)})
-    else -- damage
+    elseif item.mod_hp < 0 then -- damage
       self:broadcastPacket("damage", -item.mod_hp)
     end
 
