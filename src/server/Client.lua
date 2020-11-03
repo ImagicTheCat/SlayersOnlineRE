@@ -486,7 +486,8 @@ function Client:onPacket(protocol, data)
     elseif protocol == net.ITEM_EQUIP then
       local id = tonumber(data) or 0
       local item = self.server.project.objects[id]
-      if item and self:checkItemRequirements(item) then
+      -- valid and equipable
+      if item and item.type >= 1 and item.type <= 5 and self:checkItemRequirements(item) then
         -- compute preview delta
         local old_ch = {
           strength = self.strength,
