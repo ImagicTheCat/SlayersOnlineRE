@@ -102,7 +102,7 @@ function LivingEntity:onPacket(action, data)
     if not amount then
       self:emitHint({color, "Miss"})
     else
-      self:emitHint({color, amount..""})
+      self:emitHint({color, utils.fn(amount)})
     end
   elseif action == "ch_charaset" then
     self:setCharaset(data)
