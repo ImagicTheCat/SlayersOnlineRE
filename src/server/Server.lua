@@ -630,6 +630,9 @@ commands.profiler = {0, function(self, client, args)
     elseif args[2] == "stop" then
       if profiling then
         profiler.stop()
+        -- force close output file
+        collectgarbage("collect")
+        collectgarbage("collect")
         print("profiler stopped")
         profiling = false
       else
