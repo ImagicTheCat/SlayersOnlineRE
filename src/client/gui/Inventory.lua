@@ -161,7 +161,7 @@ function Inventory:__construct(itype)
   self.content:listen("selection-update", function(content)
     local item = content:getSelection()
     self.description:set(item and Inventory.formatItemDescription(self.itype, item[2]) or "")
-    if self.itype == "item" then
+    if item and self.itype == "item" then
       self.menu:set(0,0, Text({item[2].usable and {1,1,1} or {0,0,0}, "Utiliser"}), true)
       self.menu:set(1,0, Text({item[2].equipable and {1,1,1} or {0,0,0}, "Équiper"}), true)
     end

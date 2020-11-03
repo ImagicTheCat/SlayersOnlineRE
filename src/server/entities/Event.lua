@@ -1182,9 +1182,11 @@ function Event:instructionSubstitution(str, f_input)
 
   -- client special var
   str = string.gsub(str, pat.client_special_var, function(id)
-    local f = client_special_vars[id]
-    if f then return f(self)
-    else print("event: client special variable \""..id.."\" not implemented") end
+    if id ~= "Inventaire" then
+      local f = client_special_vars[id]
+      if f then return f(self)
+      else print("event: client special variable \""..id.."\" not implemented") end
+    end
   end)
 
   return str
