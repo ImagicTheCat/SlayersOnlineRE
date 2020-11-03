@@ -5,7 +5,7 @@ local Map = require("Map")
 local LivingEntity = require("entities.LivingEntity")
 local Mob = require("entities.Mob")
 local Player = require("entities.Player")
-local NetManager = require("NetManager")
+local ResourceManager = require("ResourceManager")
 local URL = require("socket.url")
 local GUI = require("gui.GUI")
 local GUI_Renderer = require("gui.Renderer")
@@ -110,7 +110,7 @@ function Client:__construct(cfg)
 
   self.touches = {} -- map of id => control
 
-  self.net_manager = NetManager(self)
+  self.rsc_manager = ResourceManager(self)
 
   self.textures = {} -- map of texture path => image
   self.skins = {} -- map of skin file => image
@@ -357,7 +357,7 @@ function Client:tick(dt)
   end
 
   -- net manager
-  self.net_manager:tick(dt)
+  self.rsc_manager:tick(dt)
 
   -- map
   if self.map then
@@ -378,7 +378,7 @@ function Client:tick(dt)
   elseif self.orientation == 3 then control = "left" end
 
   self:setMoveForward(not self.gui.focus --
-    and (not self.net_manager.requests[1] or not self.loading_screen_tex) -- not on loading screen
+    and (not self.rsc_manager:isBusy() or not self.loading_screen_tex) -- not on loading screen
     and not self.pick_target --
     and self:isControlPressed(control))
 
@@ -445,7 +445,7 @@ function Client:tick(dt)
         self.loading_screen_tex = nil -- remove loading screen
       end
     else
-      if not self.net_manager.requests[1] then
+      if not self.rsc_manager:isBusy() then
         self.loading_screen_time = self.loading_screen_fade -- next step, fade-out
       end
     end
@@ -458,7 +458,7 @@ function Client:onPacket(protocol, data)
     self:sendPacket(net.VERSION_CHECK, client_version)
     async(function()
       -- load remote manifest
-      if not self.net_manager:loadRemoteManifest() then
+      if not self.rsc_manager:loadRemoteManifest() then
         print("couldn't reach remote resources repository manifest")
         self.chat_history:addMessage({{0,1,0.5}, "Impossible de joindre le dépôt distant de ressources."})
         return
@@ -619,7 +619,7 @@ function Client:onPacket(protocol, data)
   elseif protocol == net.PLAY_MUSIC then
     if data then
       async(function()
-        if client.net_manager:requestResource("audio/"..data) then
+        if client.rsc_manager:requestResource("audio/"..data) then
           client:playMusic("resources/audio/"..data)
         else print("failed to load music \""..data.."\"") end
       end)
@@ -629,7 +629,7 @@ function Client:onPacket(protocol, data)
   elseif protocol == net.PLAY_SOUND then
     if data then
       async(function()
-        if client.net_manager:requestResource("audio/"..data) then
+        if client.rsc_manager:requestResource("audio/"..data) then
           client:playSound("resources/audio/"..data)
         else print("failed to load sound \""..data.."\"") end
       end)
@@ -732,7 +732,7 @@ function Client:onPacket(protocol, data)
     self.map_effect = data
     if self.map_effect == 4 and not self.fx_rain then -- rain init
       async(function()
-        if self.net_manager:requestResource("textures/sets/pluie.png") then
+        if self.rsc_manager:requestResource("textures/sets/pluie.png") then
           self.fx_rain = love.graphics.newParticleSystem(self:loadTexture("resources/textures/sets/pluie.png"))
           self.fx_rain:setEmissionRate(20)
           self.fx_rain:setSpeed(64)
@@ -744,7 +744,7 @@ function Client:onPacket(protocol, data)
       end)
     elseif self.map_effect == 5 and not self.fx_snow then -- snow init
       async(function()
-        if self.net_manager:requestResource("textures/sets/neige.png") then
+        if self.rsc_manager:requestResource("textures/sets/neige.png") then
           self.fx_snow = love.graphics.newParticleSystem(self:loadTexture("resources/textures/sets/neige.png"))
           self.fx_snow:setEmissionRate(10)
           self.fx_snow:setSpeed(32)
@@ -758,7 +758,7 @@ function Client:onPacket(protocol, data)
       end)
     elseif self.map_effect == 6 and not self.fx_fog then -- fog init
       async(function()
-        if self.net_manager:requestResource("textures/sets/brouillard.png") then
+        if self.rsc_manager:requestResource("textures/sets/brouillard.png") then
           self.fx_fog = {}
           self.fx_fog.tex = self:loadTexture("resources/textures/sets/brouillard.png")
           self.fx_fog.tex:setWrap("repeat")
@@ -781,13 +781,13 @@ function Client:onDisconnect()
 end
 
 function Client:close()
-  self.net_manager:close()
+  self.rsc_manager:close()
   self.peer:disconnect()
   while self.peer:state() ~= "disconnected" do -- wait for disconnection
     self.host:service(100)
   end
 
-  self.net_manager:saveLocalManifest()
+  self.rsc_manager:saveLocalManifest()
 end
 
 function Client:onApplyConfig(config)
@@ -1330,10 +1330,9 @@ function Client:draw()
     love.graphics.setColor(1,1,1)
   end
 
-  -- download info
-  local requests = self.net_manager.requests
-  if requests[1] then
-    local text = love.graphics.newText(self.font, "downloading "..requests[1].url.."...")
+  -- resource manager info
+  if self.rsc_manager:isBusy() then
+    local text = love.graphics.newText(self.font, self.rsc_manager.busy_hint)
     love.graphics.setColor(0,0,0)
     love.graphics.rectangle("fill", love.graphics.getWidth()-text:getWidth(), 0, text:getWidth(), text:getHeight())
     love.graphics.setColor(1,1,1)
@@ -1518,7 +1517,7 @@ function Client:loadSkin(file)
     else -- load
       self.loading_skins[file] = {r}
 
-      local data = self.net_manager:request(self.cfg.skin_repository..file)
+      local data = self.rsc_manager:request(self.cfg.skin_repository..file)
       if data then
         local filedata = love.filesystem.newFileData(data, "skin.png")
         local image = love.graphics.newImage(love.image.newImageData(filedata))

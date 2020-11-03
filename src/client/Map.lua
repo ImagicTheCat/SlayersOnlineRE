@@ -15,19 +15,19 @@ function Map:__construct(data)
   self:build(data)
 
   async(function()
-    if client.net_manager:requestResource("textures/sets/"..data.tileset) then
+    if client.rsc_manager:requestResource("textures/sets/"..data.tileset) then
       self.tileset = client:loadTexture("resources/textures/sets/"..data.tileset)
       self:build(data)
     else print("failed to load map tileset \""..data.tileset.."\"") end
 
     if #data.background > 0 then
-      if client.net_manager:requestResource("textures/sets/"..data.background) then
+      if client.rsc_manager:requestResource("textures/sets/"..data.background) then
         self.background = client:loadTexture("resources/textures/sets/"..data.background)
       else print("failed to load map background \""..data.background.."\"") end
     end
 
     if data.music then
-      if client.net_manager:requestResource("audio/"..data.music) then
+      if client.rsc_manager:requestResource("audio/"..data.music) then
         client:playMusic("resources/audio/"..data.music)
       else print("failed to load map music \""..data.music.."\"") end
     end
