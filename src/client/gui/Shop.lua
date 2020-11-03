@@ -1,3 +1,4 @@
+local utils = require("lib.utils")
 local Widget = require("ALGUI.Widget")
 local Window = require("gui.Window")
 local GridInterface = require("gui.GridInterface")
@@ -26,7 +27,7 @@ end
 
 function Shop.formatBuyItemInfo(data)
   local desc = Inventory.formatItemDescription("item", data)
-  desc = desc.."\n\nPrix: "..data.price.."\nTotal: "..(data.price*(data.amount or 0))
+  desc = desc.."\n\nPrix: "..utils.fn(data.price).."\nTotal: "..utils.fn(data.price*(data.amount or 0))
   return desc
 end
 
@@ -40,7 +41,7 @@ end
 
 function Shop.formatSellItemInfo(data)
   if data.amount > 0 then
-    return Inventory.formatItemDescription("item", data).."\n\nPrix de vente: "..math.ceil(data.price*0.1)
+    return Inventory.formatItemDescription("item", data).."\n\nPrix de vente: "..utils.fn(math.ceil(data.price*0.1))
   else
     return ""
   end
@@ -110,10 +111,10 @@ function Shop:__construct()
   self.content:listen("cell-focus", function(grid, cx, cy)
     if self.mode == "buy" then
       local item = self.buy_items[cy+1]
-      self.info:set(Shop.formatBuyItemInfo(item).."\nOr: "..client.stats.gold)
+      self.info:set(Shop.formatBuyItemInfo(item).."\nOr: "..utils.fn(client.stats.gold))
     else -- sell
       local item = self.sell_items[cy+1]
-      self.info:set(Shop.formatSellItemInfo(item).."\nOr: "..client.stats.gold)
+      self.info:set(Shop.formatSellItemInfo(item).."\nOr: "..utils.fn(client.stats.gold))
     end
   end)
 
@@ -146,7 +147,7 @@ function Shop:__construct()
 
       if id == "left" or id == "right" then
         self.content:set(0,grid.cy, Text(Shop.formatBuyItem(item)), true)
-        self.info:set(Shop.formatBuyItemInfo(item).."\nOr: "..client.stats.gold)
+        self.info:set(Shop.formatBuyItemInfo(item).."\nOr: "..utils.fn(client.stats.gold))
       end
     end
   end)
