@@ -6,6 +6,7 @@ function Entity:__construct(data)
   self.id = data.id
   self.x = data.x
   self.y = data.y
+  self.top = self.y -- top position of the displayed entity (used for sorting)
   self.draw_order = 0 -- 0: dynamic, -1: back, 1: front (must be set at construction)
   self.afterimage_duration = 0 -- configured duration for the afterimage when removed (seconds)
   -- self.afterimage -- opacity factor when the entity is an afterimage
@@ -18,6 +19,7 @@ function Entity:onPacket(action, data)
 end
 
 function Entity:tick(dt)
+  self.top = self.y
 end
 
 function Entity:draw()
