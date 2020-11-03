@@ -262,8 +262,7 @@ commands.skin = {10, function(self, client, args)
       client:setCharaset({
         path = skin,
         x = 0, y = 0,
-        w = 24, h = 32,
-        is_skin = true
+        w = 24, h = 32
       })
 
       client:sendChatMessage("skin assigné à \""..skin.."\"")

@@ -33,8 +33,7 @@ function Mob:__construct(data, area)
     path = string.sub(data.charaset, 9), -- remove Chipset\ part
     x = 0, y = 0,
     w = data.w,
-    h = data.h,
-    is_skin = false
+    h = data.h
   })
 
   self.speed = data.speed

@@ -47,8 +47,7 @@ function LivingEntity:__construct(data)
   self.charaset = {
     path = "charaset.png",
     x = 0, y = 0,
-    w = 24, h = 32,
-    is_skin = false
+    w = 24, h = 32
   }
 
   self.texture = client:loadTexture("resources/textures/sets/"..self.charaset.path)
@@ -134,21 +133,14 @@ function LivingEntity:setCharaset(charaset)
 
   async(function()
     -- load texture
-    local texture
-
-    if charaset.is_skin then -- skin
-      texture = client:loadSkin(charaset.path)
-    else -- resource
-      if client.rsc_manager:requestResource("textures/sets/"..charaset.path) then
-        texture = client:loadTexture("resources/textures/sets/"..charaset.path)
+    if client.rsc_manager:requestResource("textures/sets/"..charaset.path) then
+      local texture = client:loadTexture("resources/textures/sets/"..charaset.path)
+      if texture then
+        self.texture = texture
+        self.atlas = LivingEntity.getTextureAtlas(charaset.x, charaset.y, texture:getWidth(), texture:getHeight(), charaset.w, charaset.h)
+      else
+        print("failed to load charaset \""..charaset.path.."\"")
       end
-    end
-
-    if texture then
-      self.texture = texture
-      self.atlas = LivingEntity.getTextureAtlas(charaset.x, charaset.y, texture:getWidth(), texture:getHeight(), charaset.w, charaset.h)
-    else
-      print("failed to load charaset "..(charaset.is_skin and "skin" or "resource").." \""..charaset.path.."\"")
     end
   end)
 end
