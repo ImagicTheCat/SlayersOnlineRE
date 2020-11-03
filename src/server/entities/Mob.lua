@@ -72,18 +72,17 @@ function Mob:doAI()
     end
 
     local aggro = (self.target and self.target.map == self.map)
-    self.ai_task = task(utils.randf(1, 5)/self.speed*(aggro and 0.5 or 2), function()
+    self.ai_task = task(utils.randf(1, 5)/self.speed*(aggro and 0.25 or 1.5), function()
       if self.map then
         if aggro then -- aggro mode
           local dcx, dcy = self.target.cx-self.cx, self.target.cy-self.cy
           if math.abs(dcx)+math.abs(dcy) > 1 then -- too far, seek target
             if self.data.type ~= Mob.Type.STATIC then -- move to target
-              local orientation = LivingEntity.vectorOrientation(dcx, dcy)
-              local dx, dy = LivingEntity.orientationVector(orientation)
-              local ncx, ncy = self.cx+dx, self.cy+dy
-
-              if self:isCellPassable(ncx, ncy) then
-                self:moveToCell(ncx, ncy)
+              local dx, dy = utils.sign(dcx), utils.sign(dcy)
+              if dx ~= 0 and math.abs(dcx) > math.abs(dy) and self:isCellPassable(self.cx+dx, self.cy) then
+                self:moveToCell(self.cx+dx, self.cy)
+              elseif dy ~= 0 and self:isCellPassable(self.cx, self.cy+dy) then
+                self:moveToCell(self.cx, self.cy+dy)
               end
             end
           else -- close to target, try attack
@@ -95,17 +94,13 @@ function Mob:doAI()
           if self.data.type ~= Mob.Type.STATIC and self.data.type ~= Mob.Type.BREAKABLE then
             local ok
             local ncx, ncy
-
             -- search for a passable cell
             local i = 1
             while not ok and i <= 10 do
               local orientation = math.random(0,3)
-
               local dx, dy = LivingEntity.orientationVector(orientation)
               ncx, ncy = self.cx+dx, self.cy+dy
-
               ok = self:isCellPassable(ncx, ncy)
-
               i = i+1
             end
 
