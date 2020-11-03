@@ -26,6 +26,4 @@ if r and in_img:bands() == 3 then
   -- replace first indexed color by transparency
   local out_img = in_img:equal({r,g,b,255}):bandand():ifthenelse({r,g,b,0}, in_img)
   out_img:write_to_file(out_path)
-else -- identity
-  in_img:write_to_file(out_path)
 end
