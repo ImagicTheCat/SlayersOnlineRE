@@ -115,6 +115,7 @@ function Client:__construct(cfg)
   self.textures = {} -- map of texture path => image
   self.skins = {} -- map of skin file => image
   self.loading_skins = {} -- map of skin file => callbacks
+  self.map_effect = 0
 
   self.sound_sources = {} -- list of source
   self.sounds = {} -- map of path => sound data
@@ -361,7 +362,14 @@ function Client:tick(dt)
   -- map
   if self.map then
     self.map:tick(dt)
+    -- effect
+    if self.map_effect == 4 and self.fx_rain then -- rain
+      self.fx_rain:update(dt)
+    elseif self.map_effect == 5 and self.fx_snow then -- rain
+      self.fx_snow:update(dt)
+    end
   end
+
 
   -- movement input
   local control = "up"
@@ -720,6 +728,46 @@ function Client:onPacket(protocol, data)
         self:sendPacket(net.DIALOG_RESULT, self:dialog(data.ftext, data.options))
       end)
     else self:sendPacket(net.DIALOG_RESULT) end -- busy, cancel
+  elseif protocol == net.MAP_EFFECT then
+    self.map_effect = data
+    if self.map_effect == 4 and not self.fx_rain then -- rain init
+      async(function()
+        if self.net_manager:requestResource("textures/sets/pluie.png") then
+          self.fx_rain = love.graphics.newParticleSystem(self:loadTexture("resources/textures/sets/pluie.png"))
+          self.fx_rain:setEmissionRate(20)
+          self.fx_rain:setSpeed(64)
+          self.fx_rain:setParticleLifetime(20*16/64)
+          self.fx_rain:setEmissionArea("uniform", love.graphics.getWidth()/self.world_scale, 16)
+          self.fx_rain:setDirection(3*math.pi/4)
+          self.fx_rain:start()
+        else print("failed to load resource \"pluie.png\"") end
+      end)
+    elseif self.map_effect == 5 and not self.fx_snow then -- snow init
+      async(function()
+        if self.net_manager:requestResource("textures/sets/neige.png") then
+          self.fx_snow = love.graphics.newParticleSystem(self:loadTexture("resources/textures/sets/neige.png"))
+          self.fx_snow:setEmissionRate(10)
+          self.fx_snow:setSpeed(32)
+          self.fx_snow:setParticleLifetime(16*16/32)
+          self.fx_snow:setEmissionArea("uniform", love.graphics.getWidth()/self.world_scale, 16)
+          self.fx_snow:setDirection(math.pi/2)
+          self.fx_snow:setSizes(1, 0.5)
+          self.fx_snow:setSpread(0.25)
+          self.fx_snow:start()
+        else print("failed to load resource \"neige.png\"") end
+      end)
+    elseif self.map_effect == 6 and not self.fx_fog then -- fog init
+      async(function()
+        if self.net_manager:requestResource("textures/sets/brouillard.png") then
+          self.fx_fog = {}
+          self.fx_fog.tex = self:loadTexture("resources/textures/sets/brouillard.png")
+          self.fx_fog.tex:setWrap("repeat")
+          local w,h = self.fx_fog.tex:getDimensions()
+          self.fx_fog.quad = love.graphics.newQuad(0, 0, w*2, h*2, w, h)
+          self.fx_fog.speed = 2 -- world units/s
+        else print("failed to load resource \"brouillard.png\"") end
+      end)
+    end
   end
 end
 
@@ -802,6 +850,9 @@ function Client:updateInfoOverlay()
 end
 
 function Client:onResize(w, h)
+  self.world_scale = math.ceil(h/16/15) -- display 15 tiles max (height)
+
+  -- GUI
   self.gui:setSize(w,h)
 
   local xp_w = self.gui_renderer.xp_tex:getWidth()
@@ -809,7 +860,6 @@ function Client:onResize(w, h)
   local phials_w = self.gui_renderer.phials_atlas.cell_w
   local phials_h = self.gui_renderer.phials_atlas.cell_h
 
-  self.world_scale = math.ceil(h/16/15) -- display 15 tiles max (height)
   self.phials_scale = utils.floorScale((h/3/phials_h), phials_h)
   self.xp_scale = math.min(self.phials_scale, utils.floorScale((w-phials_w*self.phials_scale*2)/xp_w, xp_w))
 
@@ -867,6 +917,14 @@ function Client:onResize(w, h)
 
   self.dialog_box:updateLayout(math.floor(w*0.75), 0)
   self.dialog_box:setPosition(math.floor(w/2-self.dialog_box.w/2), math.floor(h/2-self.dialog_box.h/2))
+
+  -- FX
+  if self.fx_rain then
+    self.fx_rain:setEmissionArea("uniform", w/self.world_scale, 16)
+  end
+  if self.fx_snow then
+    self.fx_snow:setEmissionArea("uniform", w/self.world_scale, 16)
+  end
 end
 
 function Client:onSetFont()
@@ -1203,6 +1261,44 @@ function Client:draw()
     end
 
     love.graphics.pop()
+
+    -- effect
+    if self.map_effect == 1 then -- dark cave
+      love.graphics.setBlendMode("multiply", "premultiplied")
+      love.graphics.setColor(0.4,0.4,0.4)
+      love.graphics.rectangle("fill", 0, 0, w, h)
+      love.graphics.setColor(1,1,1)
+      love.graphics.setBlendMode("alpha")
+    elseif self.map_effect == 2 then -- night
+      love.graphics.setBlendMode("multiply", "premultiplied")
+      love.graphics.setColor(0,0.4,1)
+      love.graphics.rectangle("fill", 0, 0, w, h)
+      love.graphics.setColor(1,1,1)
+      love.graphics.setBlendMode("alpha")
+    elseif self.map_effect == 3 then -- heat
+      love.graphics.setBlendMode("add")
+      love.graphics.setColor(1,0.1,0.1,0.5)
+      love.graphics.rectangle("fill", 0, 0, w, h)
+      love.graphics.setColor(1,1,1)
+      love.graphics.setBlendMode("alpha")
+    elseif self.map_effect == 4 then -- rain
+      if self.fx_rain then
+        love.graphics.draw(self.fx_rain, w, -32*self.world_scale, 0, self.world_scale)
+      end
+    elseif self.map_effect == 5 then -- snow
+      if self.fx_snow then
+        love.graphics.draw(self.fx_snow, 0, -32*self.world_scale, 0, self.world_scale)
+      end
+    elseif self.map_effect == 6 then -- fog
+      if self.fx_fog then
+        local tw, ws = self.fx_fog.tex:getWidth(), self.world_scale
+        local x = -((math.floor(scheduler.time*self.fx_fog.speed*ws)%(tw*ws)))
+        local y = math.floor(math.cos(scheduler.time*0.1)*4*ws)-4*ws
+        love.graphics.setColor(1,1,1,0.6)
+        love.graphics.draw(self.fx_fog.tex, self.fx_fog.quad, x, y, 0, ws)
+        love.graphics.setColor(1,1,1)
+      end
+    end
   end
 
   -- info overlay

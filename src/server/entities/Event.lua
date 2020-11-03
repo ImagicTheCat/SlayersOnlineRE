@@ -601,6 +601,12 @@ function client_special_vars:EvCaseY(value)
   end
 end
 
+function client_special_vars:Effect(value)
+  if not value then
+    return self.client.map_effect
+  else self.client:setMapEffect(utils.computeExpression(value) or 0) end
+end
+
 -- aliases
 client_special_vars.BloqueAttaqueLocal = client_special_vars.BloqueAttaque
 client_special_vars.BloqueDefenseLocal = client_special_vars.BloqueDefense
