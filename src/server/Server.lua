@@ -590,7 +590,7 @@ commands.ignore = {10, function(self, client, args)
     elseif itype == "guild" then
       client.ignores.guild_chan = not client.ignores.guild_chan
       client:sendChatMessage("Canal de guilde: "..(client.ignores.guild_chan and "ignoré" or "visible"))
-    elseif itype == "group" then
+    elseif itype == "party" then
       client.ignores.group_chan = not client.ignores.group_chan
       client:sendChatMessage("Canal de groupe: "..(client.ignores.group_chan and "ignoré" or "visible"))
     elseif itype == "announce" then
@@ -611,7 +611,7 @@ commands.ignore = {10, function(self, client, args)
       client:sendChatMessage("Échanges: "..(client.ignores.trade and "ignorés" or "acceptés"))
     else return true end
   end
-end, "<all|guild|group|announce|msg|player|trade> [pseudo]", "ignorer/dé-ignorer"}
+end, "<all|guild|party|announce|msg|player|trade> [pseudo]", "ignorer/dé-ignorer"}
 
 local profiling = false
 commands.profiler = {0, function(self, client, args)
