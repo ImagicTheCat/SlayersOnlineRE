@@ -642,7 +642,7 @@ function event_special_vars:Chipset(value)
     self.charaset.path = string.sub(value, 9) -- remove Chipset/ part
     self:setCharaset(self.charaset)
   else
-    return (self.charaset.is_skin and "" or "Chipset\\")..self.charaset.path
+    return "Chipset\\"..self.charaset.path
   end
 end
 
@@ -871,8 +871,7 @@ function command_functions:ChangeSkin(state, path)
   self.client:setCharaset({
     path = string.sub(path, 9), -- remove "Chipset/" part
     x = 0, y = 0,
-    w = 24, h = 32,
-    is_skin = false
+    w = 24, h = 32
   })
 end
 
@@ -1103,8 +1102,7 @@ function Event:__construct(client, data, page_index)
     self:setCharaset({
       path = string.sub(self.page.set, 9), -- remove Chipset/ part
       x = self.page.set_x, y = self.page.set_y,
-      w = self.page.w, h = self.page.h,
-      is_skin = false
+      w = self.page.w, h = self.page.h
     })
   end
 

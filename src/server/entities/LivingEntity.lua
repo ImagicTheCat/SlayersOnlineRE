@@ -285,7 +285,7 @@ function LivingEntity:__construct()
   self.ch_attack, self.ch_defense = 0, 0 -- attack/defense characteristics
   self.min_damage, self.max_damage = 0, 0
 
-  -- self.charaset {.path, .x, .y, .w, .h, .is_skin}
+  -- self.charaset {.path, .x, .y, .w, .h}
   -- self.attack_sound
   -- self.hurt_sound
 end
@@ -656,10 +656,9 @@ function LivingEntity:raycastEntities(dist)
   return entities
 end
 
--- charaset: {.path, .x, .y, .w, .h, .is_skin}
+-- charaset: {.path, .x, .y, .w, .h}
 --- x,y: atlas origin
 --- w,h: cell dimensions
---- is_skin: if true, use remote skin repository instead of resources
 function LivingEntity:setCharaset(charaset)
   self.charaset = charaset
   self:broadcastPacket("ch_charaset", self.charaset)

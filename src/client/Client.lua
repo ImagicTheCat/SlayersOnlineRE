@@ -113,8 +113,6 @@ function Client:__construct(cfg)
   self.rsc_manager = ResourceManager(self)
 
   self.textures = {} -- map of texture path => image
-  self.skins = {} -- map of skin file => image
-  self.loading_skins = {} -- map of skin file => callbacks
   self.map_effect = 0
 
   self.sound_sources = {} -- list of source
@@ -1501,42 +1499,6 @@ end
 
 function Client:closeTrade()
   self:sendPacket(net.TRADE_CLOSE)
-end
-
--- (async) load remote skin
--- return skin texture or nil on failure
-function Client:loadSkin(file)
-  local image = self.skins[file]
-  if image then
-    return image
-  else
-    local r = async()
-
-    if self.loading_skins[file] then -- already loading
-      table.insert(self.loading_skins[file], r)
-    else -- load
-      self.loading_skins[file] = {r}
-
-      local data = self.rsc_manager:request(self.cfg.skin_repository..file)
-      if data then
-        local filedata = love.filesystem.newFileData(data, "skin.png")
-        local image = love.graphics.newImage(love.image.newImageData(filedata))
-        self.skins[file] = image
-
-        for _, callback in ipairs(self.loading_skins[file]) do
-          callback(image)
-        end
-      else
-        for _, callback in ipairs(self.loading_skins[file]) do
-          callback()
-        end
-      end
-
-      self.loading_skins[file] = nil
-    end
-
-    return r:wait()
-  end
 end
 
 function Client:playMusic(path)
