@@ -1066,6 +1066,7 @@ end
 -- page_index: specific state or nil
 function Event:__construct(client, data, page_index)
   LivingEntity.__construct(self)
+  self.nettype = "Event"
 
   self:setClient(client)
   self.data = data -- event data
@@ -1098,15 +1099,17 @@ function Event:__construct(client, data, page_index)
     end
   end
 
-  self:setCharaset({
-    path = string.sub(self.page.set, 9), -- remove Chipset/ part
-    x = self.page.set_x, y = self.page.set_y,
-    w = self.page.w, h = self.page.h,
-    is_skin = false
-  })
+  if #self.page.set > 0 then
+    self:setCharaset({
+      path = string.sub(self.page.set, 9), -- remove Chipset/ part
+      x = self.page.set_x, y = self.page.set_y,
+      w = self.page.w, h = self.page.h,
+      is_skin = false
+    })
+  end
 
   self.obstacle = self.page.obstacle
-  self.active = self.page.active -- (active/visible)
+  self.active = self.page.active and #self.page.set > 0 -- (active/visible)
   self.animation_type = self.page.animation_type
   self.animation_number = self.page.animation_number
   self.speed = self.page.speed
@@ -1114,10 +1117,6 @@ function Event:__construct(client, data, page_index)
 
   if self.animation_type <= 2 then
     self.orientation = self.page.animation_mod
-  end
-
-  if self.page.active and string.len(self.page.set) > 0 then -- networked event
-    self.nettype = "Event"
   end
 end
 

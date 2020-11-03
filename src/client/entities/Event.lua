@@ -79,4 +79,11 @@ function Event:tick(dt)
   end
 end
 
+-- override
+function Event:draw()
+  if self.active then
+    LivingEntity.draw(self)
+  end
+end
+
 return Event
