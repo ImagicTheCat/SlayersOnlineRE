@@ -1051,6 +1051,7 @@ function Client:serializeNet()
   local data = Player.serializeNet(self)
   data.pseudo = self.pseudo
   data.guild = self.guild
+  data.alignment = self.alignment
   return data
 end
 
@@ -1368,6 +1369,7 @@ function Client:setAlignment(alignment)
   self.alignment = utils.clamp(alignment, 0, 100)
   self:triggerSpecialVariable("Alignement")
   self:send(Client.makePacket(net.STATS_UPDATE, {alignment = self.alignment}))
+  self:broadcastPacket("update_alignment", self.alignment)
 end
 
 function Client:setReputation(reputation)

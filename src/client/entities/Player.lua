@@ -9,6 +9,14 @@ local Player = class("Player", LivingEntity)
 
 -- STATICS
 
+local ALIGN_COLORS = {
+  {0,0,0}, -- 0-20
+  {1,0,0}, -- 21-40
+  {0.42,0.7,0.98}, -- 41-60
+  {0.83,0.80,0.68}, -- 61-80
+  {1,1,1} -- 81-100
+}
+
 -- METHODS
 
 function Player:__construct(data)
@@ -22,6 +30,7 @@ function Player:__construct(data)
 
   self.pseudo = data.pseudo
   self.guild = data.guild
+  self.alignment = data.alignment
   self.name_tag = love.graphics.newText(client.font)
   self:updateNameTag()
   self.visible = true
@@ -31,7 +40,9 @@ function Player:updateNameTag()
   local final = self.pseudo
   if #self.guild > 0 then final = final.."["..self.guild.."]" end
   if self.group_data then final = "{"..final.."}" end
-  self.name_tag:set(final)
+
+  local color = ALIGN_COLORS[math.floor(self.alignment/100*5)+1] or ALIGN_COLORS[5]
+  self.name_tag:set({color, final})
 end
 
 -- override
@@ -47,6 +58,9 @@ function Player:onPacket(action, data)
     self:updateNameTag()
   elseif action == "group_remove" then
     self.group_data = nil
+    self:updateNameTag()
+  elseif action == "update_alignment" then
+    self.alignment = data
     self:updateNameTag()
   end
 end
