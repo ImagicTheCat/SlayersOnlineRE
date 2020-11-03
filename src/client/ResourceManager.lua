@@ -91,7 +91,7 @@ function ResourceManager:tick(dt)
   while r do
     local cb = table.remove(self.ioc_tasks, 1)
     cb(unpack(r, 1, table.maxn(r)))
-    r = self.http_cout:pop()
+    r = self.ioc_cout:pop()
   end
 end
 
