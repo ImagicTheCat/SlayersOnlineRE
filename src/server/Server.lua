@@ -10,6 +10,13 @@ local sha2 = require("sha2")
 local DBManager = require("DBManager")
 local net = require("protocol")
 
+-- optional require
+local profiler
+do
+  local ok, r = pcall(require, "jit.p")
+  profiler = ok and r
+end
+
 local Server = class("Server")
 
 -- PRIVATE STATICS
@@ -605,6 +612,32 @@ commands.ignore = {10, function(self, client, args)
     else return true end
   end
 end, "<all|guild|group|announce|msg|player|trade> [pseudo]", "ignorer/dé-ignorer"}
+
+local profiling = false
+commands.profiler = {0, function(self, client, args)
+  if not client then
+    if not profiler then print("profiler unavailable"); return end
+    if args[2] == "start" then
+      if not profiling then
+        local out = args[3] or "profile.out"
+        local opts = args[4] or "F"
+        print("profiler started; output: "..out.."; options: "..opts)
+        profiler.start(opts, out)
+        profiling = true
+      else
+        print("already profiling")
+      end
+    elseif args[2] == "stop" then
+      if profiling then
+        profiler.stop()
+        print("profiler stopped")
+        profiling = false
+      else
+        print("not profiling")
+      end
+    else return true end
+  end
+end, "<start|stop> [output_path] [options]", "LuaJIT profiler"}
 
 -- STATICS
 
