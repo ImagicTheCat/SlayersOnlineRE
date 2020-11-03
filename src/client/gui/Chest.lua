@@ -102,17 +102,17 @@ function Chest:__construct()
   end)
 
   self.content_l.grid:listen("move-select", function(grid, dx, dy)
-    if dx == 1 and grid.cx == grid.wc-1 then
+    if dx == 1 and not grid:isSelectable(grid.cx+1, grid.cy) then
       self.gui:setFocus(self.content_r.grid)
-    elseif dy == -1 and grid.cy == 0 then
+    elseif dy == -1 and not grid:isSelectable(grid.cx, grid.cy-1) then
       self.gui:setFocus(self.gold_l)
     end
   end)
 
   self.content_r.grid:listen("move-select", function(grid, dx, dy)
-    if dx == -1 and grid.cx == 0 then
+    if dx == -1 and not grid:isSelectable(grid.cx-1, grid.cy) then
       self.gui:setFocus(self.content_l.grid)
-    elseif dy == -1 and grid.cy == 0 then
+    elseif dy == -1 and not grid:isSelectable(grid.cx, grid.cy-1) then
       self.gui:setFocus(self.gold_r)
     end
   end)
