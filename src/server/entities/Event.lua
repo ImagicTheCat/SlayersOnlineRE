@@ -497,6 +497,11 @@ function client_special_vars:BloqueDialogue(value)
   end
 end
 
+function client_special_vars:BloqueChevauchement(value)
+  -- disabled
+  if not value then return 0 end
+end
+
 function client_special_vars:NbObjetInventaire(value)
   if not value then
     return self.client.inventory:getAmount()
