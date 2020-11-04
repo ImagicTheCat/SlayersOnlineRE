@@ -13,38 +13,37 @@ end
 function Map:__construct(data)
   self.tileset = client:loadTexture("resources/textures/sets/tileset.png") -- default
   self:build(data)
-
+  -- load map resources
   async(function()
     if client.rsc_manager:requestResource("textures/sets/"..data.tileset) then
       self.tileset = client:loadTexture("resources/textures/sets/"..data.tileset)
       self:build(data)
     else print("failed to load map tileset \""..data.tileset.."\"") end
-
     if #data.background > 0 then
       if client.rsc_manager:requestResource("textures/sets/"..data.background) then
         self.background = client:loadTexture("resources/textures/sets/"..data.background)
       else print("failed to load map background \""..data.background.."\"") end
     end
-
     if data.music then
       if client.rsc_manager:requestResource("audio/"..data.music) then
         client:playMusic("resources/audio/"..data.music)
       else print("failed to load map music \""..data.music.."\"") end
     end
   end)
-
+  -- request preload resources
+  for path in pairs(data.preload_resources) do
+    async(function() client.rsc_manager:requestResource(path) end)
+  end
   self.data = data
   self.packet_index = data.packet_index
-  
   -- build entities
   self.entities = {} -- map of id => entity
-
   -- lists of entities
   self.back_draw_list = {}
   self.dynamic_draw_list = {}
   self.front_draw_list = {}
   self.afterimages = {} -- map of entity => time
-
+  -- create/spawn
   for _, edata in pairs(data.entities) do
     self:createEntity(edata)
   end

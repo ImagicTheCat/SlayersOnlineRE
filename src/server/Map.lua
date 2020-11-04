@@ -23,28 +23,44 @@ function Map:__construct(server, id, data)
   self.server = server
   self.id = id
   self.ids = IdManager()
-
   self.data = data -- map data
-
   self.entities = {} -- map of entity => id
   self.entities_by_id = {} -- map of id => entity
   self.clients = {} -- map of client
   self.cells = {} -- map space partitioning (16x16 cells), map of cell index => map of entity
-
   self.living_entity_updates = {} -- map of living entity
   self.movement_packet_count = 0
-
   self.w = self.data.width
   self.h = self.data.height
   self.tileset = string.sub(self.data.tileset, 9) -- remove Chipset/ part
   self.background = string.sub(self.data.background, 9) -- remove Chipset/ part
-
   local music_name = string.match(data.music, "^Sound\\(.+)%.mid$")
   self.music = music_name and music_name..".ogg"
-
   self.tiledata = self.data.tiledata
   self.tileset_data = self.data.tileset_data
-
+  -- build preload resource map
+  self.preload_resources = {}
+  for _, event in ipairs(self.data.events) do
+    for _, page in ipairs(event.pages) do
+      -- page chipset
+      local set = string.sub(page.set, 9) -- remove Chipset/ part
+      if #set > 0 then self.preload_resources["textures/sets/"..set] = true end
+      -- resources in instructions/commands
+      for _, ins in ipairs(page.commands) do
+        -- Chipset
+        for path in string.gmatch(ins, "Chipset[\\/](.-%.%a+)") do
+          if #path > 0 then self.preload_resources["textures/sets/"..path] = true end
+        end
+        -- Sound/Music
+        for path in string.gmatch(ins, "Sound[\\/](.-%.%a+)") do
+          if #path > 0 then
+            path = string.gsub(path, "%.mid$", ".ogg")
+            self.preload_resources["textures/audio/"..path] = true
+          end
+        end
+      end
+    end
+  end
   -- init mob areas
   self.mob_areas = {} -- list of mob area states
   for i, area in ipairs(data.mob_areas) do
@@ -240,9 +256,9 @@ function Map:serializeNet(client)
     tileset = self.tileset,
     background = self.background,
     tiledata = self.tiledata,
-    music = self.music
+    music = self.music,
+    preload_resources = self.preload_resources
   }
-
   -- serialize entities
   data.entities = {}
   for entity in pairs(self.entities) do
@@ -250,7 +266,6 @@ function Map:serializeNet(client)
       table.insert(data.entities, entity:serializeNet())
     end
   end
-
   return data
 end
 
