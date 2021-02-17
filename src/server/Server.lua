@@ -229,6 +229,48 @@ commands.memory = {0, function(self, client, args)
   end
 end, "", "afficher la mémoire utilisée par la VM Lua"}
 
+commands.dump = {0, function(self, client, args)
+  if client then return end
+  if args[2] == "chipsets" then
+    -- dump chipsets paths
+    local f_maps = "dump_chipsets_maps.txt"
+    local f_mobs = "dump_chipsets_mobs.txt"
+    local f_spells = "dump_chipsets_spells.txt"
+    --- map chipsets
+    print("write "..f_maps.."...")
+    local f = io.open(f_maps, "w")
+    for _, map in pairs(self.project.maps) do
+      self:loadMapData(map.name)
+      f:write(map.name.."\n")
+      f:write("  - tileset: "..map.tileset.."\n")
+      f:write("  - background: "..map.background.."\n")
+      for _, event in ipairs(map.events or {}) do
+        for page_index, page in ipairs(event.pages) do
+          if #page.set > 0 then
+            f:write("  - ("..event.x..","..event.y..") P"..page_index..": "..page.set.."\n")
+          end
+        end
+      end
+    end
+    f:close()
+    --- mob chipsets
+    print("write "..f_mobs.."...")
+    f = io.open(f_mobs, "w")
+    for _, mob in ipairs(self.project.mobs) do
+      f:write(mob.name..": "..mob.charaset.."\n")
+    end
+    f:close()
+    --- spell chipsets
+    print("write "..f_spells.."...")
+    f = io.open(f_spells, "w")
+    for _, spell in ipairs(self.project.spells) do
+      f:write(spell.name..": "..spell.set.."\n")
+    end
+    f:close()
+    print("done")
+  else return true end
+end, "chipsets", "dump project data"}
+
 commands.count = {10, function(self, client, args)
   local count = 0
   for _ in pairs(self.clients) do
