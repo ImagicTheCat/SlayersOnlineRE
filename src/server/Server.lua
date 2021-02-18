@@ -31,6 +31,7 @@ INSERT INTO users(
   pseudo,
   password,
   rank,
+  ban_timestamp,
   class,
   level,
   alignment,
@@ -52,15 +53,15 @@ INSERT INTO users(
   guild_rank_title
 ) VALUES(
   {pseudo}, UNHEX({password}),
-  {rank}, 1, 1, 100, 0, 0,
+  {rank}, 0, 1, 1, 100, 0, 0,
   0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0,
   "", 0, ""
 );
 ]]
-
 local q_set_rank = "UPDATE users SET rank = {rank} WHERE pseudo = {pseudo}"
 local q_set_guild = "UPDATE users SET guild = {guild}, guild_rank = {rank}, guild_rank_title = {title} WHERE pseudo = {pseudo}"
+local q_set_ban = "UPDATE users SET ban_timestamp = {timestamp} WHERE pseudo = {pseudo}"
 
 -- COMMANDS
 
@@ -587,14 +588,6 @@ commands.givegold = {1, function(self, client, args)
   end
 end, "<amount>", "créer de l'or"}
 
--- CONSOLE THREAD
-local function console_main(flags, channel)
-  while flags.running do
-    local line = io.stdin:read("*l")
-    channel:push(line)
-  end
-end
-
 commands.time = {10, function(self, client, args)
   local formatted = os.date("%d/%m/%Y %H:%M")
   if client then client:sendChatMessage(formatted)
@@ -682,6 +675,52 @@ commands.profiler = {0, function(self, client, args)
     else return true end
   end
 end, "<start|stop> [output_path] [options]", "LuaJIT profiler"}
+
+commands.ban = {2, function(self, client, args)
+  local pseudo, reason, hours = args[2], args[3], tonumber(args[4]) or 1
+  if not pseudo or #pseudo == 0 or not reason or #reason == 0 then return true end
+  async(function()
+    -- set ban
+    local affected = self.db:query(q_set_ban, {pseudo = pseudo, timestamp = os.time()+math.floor(hours*3600)})
+    -- output
+    if not client then print(affected == 0 and "no-op" or "player banned")
+    else client:sendChatMessage(affected == 0 and "no-op" or "Joueur banni.") end
+    -- kick
+    local target = self.clients_by_pseudo[pseudo]
+    if target then target:kick("Banni "..hours.." heure(s): "..reason) end
+  end)
+end, "<pseudo> <reason> [hours]", "bannir un joueur (1 heure par défaut, virgule possible)"}
+
+commands.unban = {2, function(self, client, args)
+  local pseudo = args[2]
+  if not pseudo or #pseudo == 0 then return true end
+  async(function()
+    -- set ban
+    local affected = self.db:query(q_set_ban, {pseudo = pseudo, timestamp = 0})
+    -- output
+    if not client then print(affected == 0 and "no-op" or "player unbanned")
+    else client:sendChatMessage(affected == 0 and "no-op" or "Joueur débanni.") end
+  end)
+end, "<pseudo>", "débannir un joueur"}
+
+commands.kick = {2, function(self, client, args)
+  local pseudo, reason = args[2], args[3]
+  if not pseudo or #pseudo == 0 or not reason or #reason == 0 then return true end
+  -- kick
+  local target = self.clients_by_pseudo[pseudo]
+  if target then target:kick(reason) end
+  -- output
+  if not client then print(not target and "player not found" or "player kicked")
+  else client:sendChatMessage(not target and "Joueur introuvable." or "Joueur kické.") end
+end, "<pseudo> <reason>", "kick un joueur"}
+
+-- CONSOLE THREAD
+local function console_main(flags, channel)
+  while flags.running do
+    local line = io.stdin:read("*l")
+    channel:push(line)
+  end
+end
 
 -- STATICS
 
