@@ -408,8 +408,8 @@ commands.create_account = {0, function(self, client, args)
     if #args < 3 or #args[2] == 0 or #args[3] == 0 then return true end -- wrong parameters
 
     local pseudo = args[2]
-    local client_password = sha2.hex2bin(sha2.sha512("<client_salt>"..pseudo..args[3]))
-    local password = sha2.sha512("<server_salt>"..pseudo..client_password)
+    local client_password = sha2.hex2bin(sha2.sha512(self.cfg.client_salt..pseudo..args[3]))
+    local password = sha2.sha512(self.cfg.server_salt..pseudo..client_password)
     self.db:_query(q_create_account, {
       pseudo = args[2],
       password = password,
