@@ -5,7 +5,7 @@ local LivingEntity = require("entities.LivingEntity")
 local Map = class("Map")
 
 local function sort_entities(a, b)
-  return a.top < b.top
+  return a.top < b.top or (a.top == b.top and a.id < b.id)
 end
 
 -- METHODS
