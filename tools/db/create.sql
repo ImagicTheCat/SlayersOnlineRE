@@ -3,6 +3,7 @@ CREATE TABLE users(
   pseudo VARCHAR(50) UNIQUE,
   password BINARY(64),
   rank TINYINT UNSIGNED, -- user rank (permissions); 0: server, 10: normal player
+  ban_timestamp INTEGER, -- ban timestamp (end)
   config BLOB, -- player config (msgpack)
   state BLOB, -- player state (msgpack)
   class TINYINT UNSIGNED, -- class index (1-based)
