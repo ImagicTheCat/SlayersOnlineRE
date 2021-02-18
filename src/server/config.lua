@@ -3,6 +3,9 @@ return {
   max_clients = 100,
   tickrate = 60,
   save_interval = 60, -- seconds
+  -- password salts
+  client_salt = "<client_salt>",
+  server_salt = "<server_salt>",
   project_name = "game",
   db = {
     host = "localhost",

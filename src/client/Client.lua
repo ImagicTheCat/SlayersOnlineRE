@@ -463,14 +463,12 @@ function Client:onPacket(protocol, data)
       end
     end)
   elseif protocol == net.MOTD_LOGIN then
-    local motd = data
-
     async(function()
       -- login process
-      local pseudo = self:prompt(motd.."\n\nPseudo: ")
-      local password = self:prompt(motd.."\n\nMot de passe: ")
+      local pseudo = self:prompt(data.motd.."\n\nPseudo: ")
+      local password = self:prompt(data.motd.."\n\nMot de passe: ")
 
-      local pass_hash = sha2.hex2bin(sha2.sha512("<client_salt>"..pseudo..password))
+      local pass_hash = sha2.hex2bin(sha2.sha512(data.salt..pseudo..password))
       self:sendPacket(net.LOGIN, {pseudo = pseudo, password = pass_hash})
     end)
   elseif protocol == net.MAP then

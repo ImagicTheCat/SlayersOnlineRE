@@ -158,14 +158,18 @@ function Client:onPacket(protocol, data)
     if not self.valid and protocol == net.VERSION_CHECK then -- check client version
       if type(data) == "string" and data == client_version then
         self.valid = true
-        self:send(Client.makePacket(net.MOTD_LOGIN, self.server.motd)) -- send motd (start login)
+        -- send motd (start login)
+        self:send(Client.makePacket(net.MOTD_LOGIN, {
+          motd = self.server.motd,
+          salt = self.server.cfg.client_salt
+        }))
       else
         self:kick("Version du client incompatible avec le serveur, téléchargez la dernière version pour résoudre le problème.")
       end
     elseif self.valid and protocol == net.LOGIN then -- login
       if not self.user_id and type(data) == "table" and type(data.pseudo) == "string" and type(data.password) == "string" then
         async(function()
-          local pass_hash = sha2.sha512("<server_salt>"..data.pseudo..data.password)
+          local pass_hash = sha2.sha512(self.server.cfg.server_salt..data.pseudo..data.password)
 
           local rows = self.server.db:query(q_login, {data.pseudo, pass_hash})
           if rows and rows[1] and not self.server.clients_by_id[tonumber(rows[1].id)] then
@@ -349,7 +353,11 @@ function Client:onPacket(protocol, data)
             self:sendChatMessage("Identifié.")
           else -- login failed
             self:sendChatMessage("Identification échouée.")
-            self:send(Client.makePacket(net.MOTD_LOGIN, self.server.motd)) -- send motd (start login)
+            -- send motd (start login)
+            self:send(Client.makePacket(net.MOTD_LOGIN, {
+              motd = self.server.motd,
+              salt = self.server.cfg.client_salt
+            }))
           end
         end)
       end
