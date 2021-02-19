@@ -15,6 +15,11 @@ return {
     name = "slayers_online_re"
   },
   motd = "Bienvenue sur Slayers Online RE.",
+  quotas = { -- {amount, period in seconds}
+    packets = {250, 5}, -- input packets
+    data = {5e3, 10}, -- input bytes
+    chat_all = {3, 24} -- global chat messages
+  },
   server_vars_init = { -- map of key => value
   },
   spawn_location = { -- default (re)spawn location

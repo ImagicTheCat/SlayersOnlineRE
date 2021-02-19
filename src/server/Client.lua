@@ -1,6 +1,6 @@
 local msgpack = require("MessagePack")
 local net = require("protocol")
-local Quota = require("lib.Quota")
+local Quota = require("Quota")
 local Player = require("entities.Player")
 local Event = require("entities.Event")
 local Mob = require("entities.Mob")
@@ -99,14 +99,21 @@ function Client:__construct(server, peer)
   self.server = server
   self.peer = peer
   self.valid = false
-  self.packet_quota = Quota(500, function(quota)
-    print("client spam kick "..tostring(self.peer))
-    self:kick("Spam.")
-  end)
-  self.data_quota = Quota(10000, function(quota)
-    print("client spam kick "..tostring(self.peer))
-    self:kick("Spam.")
-  end)
+  do -- quotas
+    local quotas = server.cfg.quotas
+    self.packets_quota = Quota(quotas.packets[1], quotas.packets[2], function()
+      print("client packet quota reached "..tostring(self.peer))
+      self:kick("Quota de paquets atteint (anti-spam).")
+    end)
+    self.packets_quota:start()
+    self.data_quota = Quota(quotas.data[1], quotas.data[2], function()
+      print("client data quota reached "..tostring(self.peer))
+      self:kick("Quota de données entrantes atteint (anti-flood).")
+    end)
+    self.data_quota:start()
+    self.chat_quota = Quota(quotas.chat_all[1], quotas.chat_all[2])
+    self.chat_quota:start()
+  end
 
   self.entities = {} -- bound map entities, map of entity
   self.events_by_name = {} -- map of name => event entity
@@ -731,9 +738,6 @@ function Client:timerTick()
 end
 
 function Client:minuteTick()
-  self.packet_quota:set(0)
-  self.data_quota:set(0)
-
   if self.user_id then
     self:setAlignment(self.alignment+1)
   end
@@ -1038,37 +1042,37 @@ function Client:onDisconnect()
   end
   self:setGroup(nil)
   self:cancelTrade()
-
+  -- save
   self:save()
   if self.map then
     self.map:removeEntity(self)
   end
-
+  -- unreference
   if self.user_id then
     self.server.clients_by_id[self.user_id] = nil
     self.server.clients_by_pseudo[self.pseudo] = nil
     self.user_id = nil
   end
+  -- quotas
+  self.packets_quota:stop()
+  self.data_quota:stop()
+  self.chat_quota:stop()
 end
 
 -- override
 function Client:onMapChange()
   Player.onMapChange(self)
-
   if self.map then -- join map
     self.prevent_next_contact = true -- prevent cell contact on map join
-
     -- send map
     self:send(Client.makePacket(net.MAP, {map = self.map:serializeNet(self), id = self.id}))
     self:setMapEffect(self.map.data.effect)
-
     -- build events
     for _, event_data in ipairs(self.map.data.events) do
       local event = Event(self, event_data)
       self.map:addEntity(event)
       event:teleport(event_data.x*16, event_data.y*16)
     end
-
     self:sendGroupUpdate()
     self:receiveGroupUpdates()
   end
@@ -1093,7 +1097,6 @@ function Client:onCellChange()
         end
       end
     end
-
     self.prevent_next_contact = nil
   end
 end
@@ -1137,7 +1140,6 @@ end
 function Client:interact()
   -- event interact check
   local entities = self:raycastEntities(2)
-
   for _, entity in ipairs(entities) do
     if class.is(entity, Event) and entity.client == self and entity.trigger_interact then
       entity:trigger(Event.Condition.INTERACT)
