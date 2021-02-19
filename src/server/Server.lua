@@ -377,17 +377,24 @@ end, "", "se suicider"}
 -- global chat
 commands.all = {10, function(self, client, args)
   if client and client.user_id and client:canChat() then
+    if client.chat_quota.exceeded then
+      local max, period = unpack(self.cfg.quotas.chat_all)
+      client:sendChatMessage("Quota de chat global atteint ("..max.." message(s) / "..period.."s).")
+      return
+    end
+    -- send
     local packet = Client.makePacket(net.GLOBAL_CHAT, {
       pseudo = client.pseudo,
       msg = table.concat(args, " ", 2)
     })
-
     -- broadcast to all logged clients
     for id, client in pairs(self.clients_by_id) do
       if not client.ignores.all and not client.ignores.all_chan then
         client:send(packet)
       end
     end
+    -- quota
+    client.chat_quota:add(1)
   end
 end, "", "chat global"}
 
@@ -889,7 +896,7 @@ function Server:tick(dt)
     if event.type == "receive" then
       local client = self.clients[event.peer]
       -- quotas
-      client.packet_quota:add(1)
+      client.packets_quota:add(1)
       client.data_quota:add(#event.data)
       -- packet
       local ok, packet = pcall(msgpack.unpack, event.data)
