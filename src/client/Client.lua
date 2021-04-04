@@ -157,6 +157,7 @@ function Client:__construct(cfg)
 
         local text = self.input_chat.text
         self.input_chat:set("")
+        self.input_chat:setHidden(false)
         self.gui:setFocus()
         self.w_input_chat:setVisible(false)
         self.message_window:setVisible(false)
@@ -166,6 +167,7 @@ function Client:__construct(cfg)
       else -- chat
         self:inputChat(self.input_chat.text)
         self.input_chat:set("")
+        self.input_chat:setHidden(false)
         self.gui:setFocus()
         self.w_input_chat:setVisible(false)
         self.chat_history:hide()
@@ -466,7 +468,7 @@ function Client:onPacket(protocol, data)
     async(function()
       -- login process
       local pseudo = self:prompt(data.motd.."\n\nPseudo: ")
-      local password = self:prompt(data.motd.."\n\nMot de passe: ")
+      local password = self:prompt(data.motd.."\n\nMot de passe: ", "", true)
 
       local pass_hash = sha2.hex2bin(sha2.sha512(data.salt..pseudo..password))
       self:sendPacket(net.LOGIN, {pseudo = pseudo, password = pass_hash})
@@ -1172,8 +1174,9 @@ end
 -- (async) prompt text
 -- will replace message window and input chat content
 -- value: (optional) default text value
+-- hidden: (optional) if true, hide the input text
 -- return entered text
-function Client:prompt(title, value)
+function Client:prompt(title, value, hidden)
   local r = async()
   self.prompt_task = r
 
@@ -1182,6 +1185,7 @@ function Client:prompt(title, value)
 
   self:onResize(love.graphics.getDimensions())
   self.w_input_chat:setVisible(true)
+  if hidden then self.input_chat:setHidden(true) end
   self.input_chat:set(value or "")
   self.gui:setFocus(self.input_chat)
 
