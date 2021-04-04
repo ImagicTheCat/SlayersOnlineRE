@@ -10,25 +10,28 @@ server:: LuaJIT
 client:: LÖVE 11.x
 
 .Server dependencies
-* https://github.com/ImagicTheCat/Luaoop 
-* https://fperrad.frama.io/lua-MessagePack/
-* https://github.com/ImagicTheCat/Luaseq 
-* https://github.com/brimworks/lua-ev
-* https://github.com/leafo/lua-enet
-* https://luarocks.org/modules/luarocks/struct
-* https://luarocks.org/modules/luarocks/lua-iconv
-* https://github.com/libvips/lua-vips
-* https://github.com/effil/effil
-* https://github.com/keplerproject/luasql/
-* https://github.com/Egor-Skriptunoff/pure_lua_SHA2
+- https://github.com/ImagicTheCat/Luaoop
+- https://fperrad.frama.io/lua-MessagePack/
+- https://github.com/ImagicTheCat/Luaseq
+- https://github.com/brimworks/lua-ev
+- https://github.com/leafo/lua-enet
+- https://luarocks.org/modules/luarocks/struct
+- https://luarocks.org/modules/luarocks/lua-iconv
+- https://github.com/libvips/lua-vips
+- https://github.com/effil/effil
+- https://github.com/keplerproject/luasql/
+- https://github.com/Egor-Skriptunoff/pure_lua_SHA2
 
 .Client dependencies
-* https://github.com/ImagicTheCat/Luaoop 
-* https://github.com/ImagicTheCat/Luaseq
-* https://github.com/ImagicTheCat/ALGUI
-* https://github.com/ImagicTheCat/ELScheduler
-* https://fperrad.frama.io/lua-MessagePack/
-* https://github.com/Egor-Skriptunoff/pure_lua_SHA2
+- https://github.com/ImagicTheCat/Luaoop
+- https://github.com/ImagicTheCat/Luaseq
+- https://github.com/ImagicTheCat/ALGUI
+- https://github.com/ImagicTheCat/ELScheduler
+- https://fperrad.frama.io/lua-MessagePack/
+- https://github.com/Egor-Skriptunoff/pure_lua_SHA2
+
+.Credits
+Windows MIDI SoundFont (gm.sf2):: https://musical-artifacts.com/artifacts/713
 
 .Copyright notice
 ----
