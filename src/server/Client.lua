@@ -27,23 +27,32 @@ local q_set_var = "INSERT INTO users_vars(user_id, id, value) VALUES({1},{2},{3}
 local q_set_bool_var = "INSERT INTO users_bool_vars(user_id, id, value) VALUES({1},{2},{3}) ON DUPLICATE KEY UPDATE value = {3}"
 local q_set_config = "UPDATE users SET config = UNHEX({2}) WHERE id = {1}"
 local q_set_state = "UPDATE users SET state = UNHEX({2}) WHERE id = {1}"
-local q_set_data = [[UPDATE users SET
-level = {level},
-alignment = {alignment},
-reputation = {reputation},
-gold = {gold},
-chest_gold = {chest_gold},
-xp = {xp},
-strength_pts = {strength_pts},
-dexterity_pts = {dexterity_pts},
-constitution_pts = {constitution_pts},
-magic_pts = {magic_pts},
-remaining_pts = {remaining_pts},
-weapon_slot = {weapon_slot},
-shield_slot = {shield_slot},
-helmet_slot = {helmet_slot},
-armor_slot = {armor_slot}
-WHERE id = {user_id}]]
+local q_set_data = [[
+  UPDATE users SET
+  level = {level},
+  alignment = {alignment},
+  reputation = {reputation},
+  gold = {gold},
+  chest_gold = {chest_gold},
+  xp = {xp},
+  strength_pts = {strength_pts},
+  dexterity_pts = {dexterity_pts},
+  constitution_pts = {constitution_pts},
+  magic_pts = {magic_pts},
+  remaining_pts = {remaining_pts},
+  weapon_slot = {weapon_slot},
+  shield_slot = {shield_slot},
+  helmet_slot = {helmet_slot},
+  armor_slot = {armor_slot}
+  WHERE id = {user_id}
+]]
+local q_prune_skins = [[
+  DELETE users_skins FROM users_skins
+  INNER JOIN users AS sharer ON users_skins.shared_by = sharer.id
+  INNER JOIN users AS self ON users_skins.user_id = self.id
+  WHERE users_skins.user_id = {1} AND self.guild != sharer.guild
+]]
+local q_get_skins = "SELECT name FROM users_skins WHERE user_id = {1}"
 
 -- STATICS
 
@@ -199,6 +208,17 @@ function Client:onPacket(protocol, data)
           self.pseudo = user_row.pseudo
           self.server.clients_by_id[self.user_id] = self
           self.server.clients_by_pseudo[self.pseudo] = self
+          -- load skin infos
+          self.allowed_skins = {}
+          --- prune invalid skins
+          self.server.db:query(q_prune_skins, {self.user_id})
+          --- load
+          do
+            local rows = self.server.db:query(q_get_skins, {self.user_id})
+            if rows then
+              for _, row in ipairs(rows) do self.allowed_skins[row.name] = true end
+            end
+          end
           -- load user data
           self.user_rank = tonumber(user_row.rank)
           self.class = tonumber(user_row.class)
