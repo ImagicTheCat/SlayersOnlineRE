@@ -1,6 +1,6 @@
 CREATE TABLE users(
   id INTEGER UNSIGNED AUTO_INCREMENT,
-  pseudo VARCHAR(50) UNIQUE,
+  pseudo VARCHAR(50),
   password BINARY(64),
   rank TINYINT UNSIGNED, -- user rank (permissions); 0: server, 10: normal player
   ban_timestamp INTEGER, -- ban timestamp (end)
@@ -25,7 +25,8 @@ CREATE TABLE users(
   guild VARCHAR(100),
   guild_rank TINYINT UNSIGNED,
   guild_rank_title VARCHAR(100),
-  CONSTRAINT pk_users PRIMARY KEY(id)
+  CONSTRAINT pk_users PRIMARY KEY(id),
+  CONSTRAINT ux_pseudo UNIQUE INDEX(pseudo)
 );
 
 CREATE TABLE users_vars(
@@ -57,4 +58,22 @@ CREATE TABLE users_items(
   amount INTEGER UNSIGNED,
   CONSTRAINT pk_users_items PRIMARY KEY(id, user_id, inventory),
   CONSTRAINT fk_users_items_users FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE skins(
+  name VARCHAR(100),
+  free BOOLEAN,
+  CONSTRAINT pk_skins PRIMARY KEY(name)
+);
+
+CREATE TABLE users_skins(
+  user_id INTEGER UNSIGNED,
+  name VARCHAR(100),
+  type CHAR(1), -- #: access, M: module, @: guild sharing
+  quantity INTEGER,
+  start_quantity INTEGER,
+  shared_by INTEGER UNSIGNED,
+  INDEX(user_id),
+  CONSTRAINT fk_users_skins_users FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_users_skins_sharedby FOREIGN KEY(shared_by) REFERENCES users(id) ON DELETE CASCADE
 );

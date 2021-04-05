@@ -62,6 +62,7 @@ INSERT INTO users(
 local q_set_rank = "UPDATE users SET rank = {rank} WHERE pseudo = {pseudo}"
 local q_set_guild = "UPDATE users SET guild = {guild}, guild_rank = {rank}, guild_rank_title = {title} WHERE pseudo = {pseudo}"
 local q_set_ban = "UPDATE users SET ban_timestamp = {timestamp} WHERE pseudo = {pseudo}"
+local q_get_free_skins = "SELECT name FROM skins WHERE free = TRUE"
 
 -- COMMANDS
 
@@ -300,17 +301,19 @@ commands.skin = {10, function(self, client, args)
     if not args[2] then return true end
 
     local skin = args[2] or ""
-
-    if client:canChangeSkin() then
-      client:setCharaset({
-        path = skin,
-        x = 0, y = 0,
-        w = 24, h = 32
-      })
-
-      client:sendChatMessage("skin assigné à \""..skin.."\"")
+    if self.free_skins[skin] or client.allowed_skins[skin] then
+      if client:canChangeSkin() then
+        client:setCharaset({
+          path = skin,
+          x = 0, y = 0,
+          w = 24, h = 32
+        })
+        client:sendChatMessage("skin assigné à \""..skin.."\"")
+      else
+        client:sendChatMessage("impossible de changer le skin")
+      end
     else
-      client:sendChatMessage("impossible de changer le skin")
+      client:sendChatMessage("skin invalide")
     end
   end
 end, "<skin_name>", "changer son skin"}
@@ -774,6 +777,7 @@ function Server:__construct(cfg)
   self.commands = {} -- map of id => callback
   self.motd = self.cfg.motd
   self.groups = {} -- player groups, map of id => map of client
+  self.free_skins = {} -- set of skin names
 
   self.last_time = clock()
 
@@ -817,12 +821,17 @@ function Server:__construct(cfg)
         count = count+1
       end
     end
-
     print(count.." server vars loaded")
-
     -- init vars
     for k,v in pairs(self.cfg.server_vars_init) do
       self:setVariable(k,v)
+    end
+    -- load free skins
+    do
+      local rows = self.db:query(q_get_free_skins)
+      if rows then
+        for _, row in ipairs(rows) do self.free_skins[row.name] = true end
+      end
     end
   end)
 
