@@ -329,6 +329,7 @@ function Deserializer.loadMapTiles(id)
   end
 end
 
+-- can return nil
 function Deserializer.loadMapMobAreas(id)
   local file = io.open("resources/project/Maps/"..id..".zon", "rb")
   if file then
@@ -345,8 +346,6 @@ function Deserializer.loadMapMobAreas(id)
     file:close()
 
     return areas
-  else
-    print("error loading mob areas for map \""..id.."\"")
   end
 end
 
