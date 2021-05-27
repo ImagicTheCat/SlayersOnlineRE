@@ -1,4 +1,3 @@
-
 = Architecture
 
 This file is about how all the game data is managed.
@@ -40,7 +39,3 @@ The repository manifest is computed using `tools/build_manifest.lua`.
 .Slayers Online -> Slayers Online RE
 - `Chipset\` textures go to `textures/sets/` (with proper alpha)
 - `Sound\` midi files are converted to Ogg/Vorbis using `tools/convert_midi.sh` and go to `audio/`
-
-== Skins
-
-Skins are loaded from the skin repository when needed and are not saved.

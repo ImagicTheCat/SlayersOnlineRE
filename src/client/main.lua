@@ -1,5 +1,5 @@
 -- Slayers Online RE - a rewrite from scratch of Slayers Online
--- Copyright (c) 2019-2020 ImagicTheCat
+-- Copyright (c) 2019 ImagicTheCat
 
 local Luaoop = require("Luaoop")
 class = Luaoop.class
