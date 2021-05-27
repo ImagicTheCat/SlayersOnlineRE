@@ -1,5 +1,5 @@
 -- Slayers Online RE - a rewrite from scratch of Slayers Online
--- Copyright (c) 2019-2020 ImagicTheCat
+-- Copyright (c) 2019 ImagicTheCat
 
 local ev = require("ev")
 local Luaoop = require("Luaoop")

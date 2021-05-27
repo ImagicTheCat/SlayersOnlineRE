@@ -36,5 +36,5 @@ Windows MIDI SoundFont (gm.sf2):: https://musical-artifacts.com/artifacts/713
 .Copyright notice
 ----
 Slayers Online RE - a rewrite from scratch of Slayers Online
-Copyright (c) 2019-2020 ImagicTheCat
+Copyright (c) 2019 ImagicTheCat
 ----
