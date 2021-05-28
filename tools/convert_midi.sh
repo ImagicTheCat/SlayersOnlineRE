@@ -1,30 +1,28 @@
 #!/bin/bash
 
-# Convert all midi files to ogg using a soundfont (ex: tools/gm.sf2 Windows GM)
-# from the current directory to the target directory (lazily).
+# Convert midi file to ogg using a soundfont (ex: tools/gm.sf2 Windows GM).
 #
-# parameters: <target directory> <soundfont path>
+# parameters: <input path> <output path>
+# env: SOUNDFONT_PATH
 
 if [ -z "$1" ]
 then
-  echo "missing target directory"
+  echo "missing input path"
   exit 1
 fi
 
 if [ -z "$2" ]
 then
+  echo "missing output path"
+  exit 1
+fi
+
+if [ -z "$SOUNDFONT_PATH" ]
+then
   echo "missing soundfont path"
   exit 1
 fi
 
-target=$1
-soundfont=$2
-
-find . -type f -name '*.mid' -printf '%P\n' | parallel "[[ ! -f $target/{/.}.ogg ]] && \
-  echo Convert {}... && \
-  fluidsynth -F $target/{/.}.wav \"$soundfont\" {/.}.mid 2> /dev/null && \
-  ffmpeg -y -i $target/{/.}.wav -vn -c:a libvorbis -b:a 128k -filter:a loudnorm -ar 44100 $target/{/.}.ogg && \
-  rm $target/{/.}.wav"
-
-# Old code using xargs.
-# find . -type f -name '*.mid' -printf '%P\n' | sed -e 's/^\(.\+\)\.mid$/\1/g' | xargs -d '\n' -P $(nproc) -n 1 -I % bash -c "[[ ! -f '$target/%.ogg' ]] && fluidsynth -F \"$target/%.wav\" \"$soundfont\" \"%.mid\" 2> /dev/null && ffmpeg -y -i \"$target/%.wav\" -vn -c:a libvorbis -b:a 128k -filter:a loudnorm -ar 44100 \"$target/%.ogg\" && rm \"$target/%.wav\""
+fluidsynth -F "$2.wav" "$SOUNDFONT_PATH" "$1" >/dev/null 2>&1 && \
+ffmpeg -y -i "$2.wav" -vn -c:a libvorbis -b:a 128k -filter:a loudnorm -ar 44100 "$2" >/dev/null 2>&1 && \
+rm "$2.wav"

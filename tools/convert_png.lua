@@ -5,14 +5,14 @@
 --- print_palette program
 --- lua-vips
 -- params: <input path> <output path>
-
 local vips = require("vips")
+local dir = arg[0]:match("(.*)/.-") or "."
+
 local in_path, out_path = ...
 if not in_path or not out_path then error("missing <input path> <output path>") end
 
 -- find first palette color
-
-local p = io.popen("./print_palette \""..in_path.."\"")
+local p = io.popen(dir.."/print_palette \""..in_path.."\"")
 local out = p:read("*a")
 p:close()
 
@@ -26,4 +26,6 @@ if r and in_img:bands() == 3 then
   -- replace first indexed color by transparency
   local out_img = in_img:equal({r,g,b,255}):bandand():ifthenelse({r,g,b,0}, in_img)
   out_img:write_to_file(out_path)
+else
+  os.execute("cp \""..in_path.."\" \""..out_path.."\"")
 end
