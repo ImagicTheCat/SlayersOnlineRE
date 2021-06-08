@@ -19,6 +19,7 @@ function ResourceManager:__construct(client)
   self.ioc_thread:start(self.ioc_cin, self.ioc_cout)
   self.ioc_tasks = {}
 
+  self.last_save = 0
   self.busy_hint = "" -- hint to display
   self.local_manifest = {} -- map of path => hash
   self.remote_manifest = {} -- map of path => hash
@@ -83,14 +84,14 @@ function ResourceManager:tick(dt)
   local r = self.http_cout:pop()
   while r do
     local cb = table.remove(self.http_tasks, 1)
-    cb(unpack(r, 1, table.maxn(r)))
+    cb(unpack(r, 1, r.n))
     r = self.http_cout:pop()
   end
   -- ioc queries
   r = self.ioc_cout:pop()
   while r do
     local cb = table.remove(self.ioc_tasks, 1)
-    cb(unpack(r, 1, table.maxn(r)))
+    cb(unpack(r, 1, r.n))
     r = self.ioc_cout:pop()
   end
 end

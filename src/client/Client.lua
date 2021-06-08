@@ -784,7 +784,6 @@ function Client:close()
   while self.peer:state() ~= "disconnected" do -- wait for disconnection
     self.host:service(100)
   end
-
   self.rsc_manager:saveLocalManifest()
 end
 
