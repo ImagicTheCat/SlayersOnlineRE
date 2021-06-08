@@ -19,7 +19,6 @@ function ResourceManager:__construct(client)
   self.ioc_thread:start(self.ioc_cin, self.ioc_cout)
   self.ioc_tasks = {}
 
-  self.last_save = 0
   self.busy_hint = "" -- hint to display
   self.local_manifest = {} -- map of path => hash
   self.remote_manifest = {} -- map of path => hash
@@ -137,7 +136,6 @@ function ResourceManager:requestResource(path)
   -- create request
   task = async()
   self.resource_tasks[path] = task
-
   local ret = false
   local lhash = self.local_manifest[path]
   local rhash = self.remote_manifest[path]
