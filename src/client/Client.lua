@@ -111,6 +111,7 @@ function Client:__construct(cfg)
   self.touches = {} -- map of id => control
 
   self.rsc_manager = ResourceManager(self)
+  self.last_manifest_save = scheduler.time
 
   self.textures = {} -- map of texture path => image
   self.map_effect = 0
@@ -356,7 +357,7 @@ function Client:tick(dt)
     event = self.host:service()
   end
 
-  -- net manager
+  -- resource manager
   self.rsc_manager:tick(dt)
 
   -- map
@@ -447,6 +448,11 @@ function Client:tick(dt)
     else
       if not self.rsc_manager:isBusy() then
         self.loading_screen_time = self.loading_screen_fade -- next step, fade-out
+        -- potential manifest save when the loading end
+        if scheduler.time-self.last_manifest_save >= 300 then
+          self.rsc_manager:saveLocalManifest()
+          self.last_manifest_save = scheduler.time
+        end
       end
     end
   end
