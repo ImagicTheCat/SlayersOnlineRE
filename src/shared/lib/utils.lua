@@ -169,4 +169,7 @@ function utils.fn(n, sign)
   else return formatted end
 end
 
+
+function utils.pack(...) return {..., n = select("#", ...)} end
+
 return utils

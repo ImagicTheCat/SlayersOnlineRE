@@ -1,5 +1,6 @@
 -- HTTP request thread
 local http = require("socket.http")
+local utils = require("lib.utils")
 
 local cin, cout = ...
 while true do
@@ -8,8 +9,8 @@ while true do
   -- process
   local body, code = http.request(req[1])
   if body and code == 200 then
-    cout:push({love.data.newByteData(body)})
+    cout:push(utils.pack(love.data.newByteData(body)))
   else
-    cout:push({})
+    cout:push(utils.pack())
   end
 end
