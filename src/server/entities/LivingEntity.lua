@@ -327,7 +327,6 @@ end
 function LivingEntity:setMoveForward(move_forward)
   if self.move_forward ~= move_forward then
     self.move_forward = move_forward
-
     if self.move_forward then
       self.move_time = clock()
 
@@ -336,10 +335,8 @@ function LivingEntity:setMoveForward(move_forward)
 
       self.move_task = itask(1/cfg.tickrate, function()
         local dt = clock()-self.move_time
-
         local speed = LivingEntity.pixelSpeed(self.speed)
         if self.acting then speed = speed/2 end -- slow movement when acting
-
         -- move following the orientation
         local dx, dy = LivingEntity.orientationVector(self.orientation)
         local dist = math.floor(speed*dt) -- pixels traveled
@@ -348,7 +345,6 @@ function LivingEntity:setMoveForward(move_forward)
           local dcx, dcy = nx-self.cx*16, ny-self.cy*16
           if dcx ~= 0 then dcx = dcx/math.abs(dcx) end
           if dcy ~= 0 then dcy = dcy/math.abs(dcy) end
-
           -- check collision with the 3 cells in the movement direction
           local col_x = dcx ~= 0 and not self.map:isCellPassable(self, self.cx+dcx, self.cy)
           local col_y = dcy ~= 0 and not self.map:isCellPassable(self, self.cx, self.cy+dcy)
@@ -373,14 +369,12 @@ function LivingEntity:setMoveForward(move_forward)
           else
             self:updatePosition(nx, ny)
           end
-
           self.move_time = self.move_time+dist/speed -- sub traveled time
         end
       end)
     else
       self.move_task:remove()
       self.move_task = nil
-
       -- final teleport
       self.move_final_task = task(0.25, function()
         self:teleport(self.x, self.y) -- end position
@@ -418,7 +412,6 @@ function LivingEntity:moveToCell(cx, cy, blocking)
       self:teleport(cx*16, cy*16)
       self.move_task:remove()
       self.move_task = nil
-
       if blocking then
         r()
       end
