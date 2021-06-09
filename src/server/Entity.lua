@@ -28,17 +28,14 @@ end
 -- update cell coords and map space partitioning
 function Entity:updateCell()
   local cx, cy = math.floor(self.x/16+0.5), math.floor(self.y/16+0.5)
-
   if cx ~= self.cx or cy ~= self.cy then
     if self.map then -- map cell reference update
       self.map:removeFromCell(self, self.cx, self.cy)
       self.map:addToCell(self, cx, cy)
     end
-
     -- update
     self.cx = cx
     self.cy = cy
-
     self:onCellChange()
   end
 end

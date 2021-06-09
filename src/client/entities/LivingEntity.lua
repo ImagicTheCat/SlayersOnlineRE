@@ -197,8 +197,9 @@ function LivingEntity:tick(dt)
     end
   elseif self.x ~= self.tx or self.y ~= self.ty then -- free movement
     -- lerp
-    local x = math.floor(utils.lerp(self.x, self.tx, 0.5))
-    local y = math.floor(utils.lerp(self.y, self.ty, 0.5))
+    -- Note: 0.51 is used to reach the target at 1px delta.
+    local x = utils.round(utils.lerp(self.x, self.tx, 0.51))
+    local y = utils.round(utils.lerp(self.y, self.ty, 0.51))
     -- compute movement animation
     local dist = math.abs(x-self.x)+math.abs(y-self.y)
     self.anim_move_traveled = self.anim_move_traveled+dist
