@@ -1098,14 +1098,11 @@ function Event:__construct(client, data, page_index)
     end
   end
 
-  if #self.page.set > 0 then
-    self:setCharaset({
-      path = string.sub(self.page.set, 9), -- remove Chipset/ part
-      x = self.page.set_x, y = self.page.set_y,
-      w = self.page.w, h = self.page.h
-    })
-  end
-
+  self:setCharaset({
+    path = string.sub(self.page.set, 9), -- remove Chipset/ part
+    x = self.page.set_x, y = self.page.set_y,
+    w = self.page.w, h = self.page.h
+  })
   self.obstacle = self.page.obstacle
   self.active = self.page.active and #self.page.set > 0 -- (active/visible)
   self.animation_type = self.page.animation_type
