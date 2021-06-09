@@ -30,38 +30,29 @@ local ANIM_STEP_LENGTH = 11 -- pixel length for a movement step
 function LivingEntity:__construct(data)
   Entity.__construct(self, data)
   self.afterimage_duration = 2
-
   self.tx = self.x
   self.ty = self.y
-
   self.anim_move_traveled = 0 -- distance traveled (pixels) for the movement animation
   self.anim_move_index = 1
-
   self.anim_x = 1
   self.anim_y = data.orientation
-
   self.acting = false
   self.ghost = data.ghost
-
   -- default charaset
   self.charaset = {
     path = "charaset.png",
     x = 0, y = 0,
     w = 24, h = 32
   }
-
   self.texture = client:loadTexture("resources/textures/sets/"..self.charaset.path)
   self.atlas = LivingEntity.getTextureAtlas(self.charaset.x, self.charaset.y,
     self.texture:getWidth(), self.texture:getHeight(),
     self.charaset.w, self.charaset.h)
-
   self.attack_sound = data.attack_sound
   self.hurt_sound = data.hurt_sound
-
   if data.charaset then
     self:setCharaset(data.charaset)
   end
-
   self.hints = {} -- list of {text, time}
   self.animations = {} -- list of animations
 end
@@ -82,7 +73,6 @@ function LivingEntity:onPacket(action, data)
     self.acting = data[1]
     self.acting_duration = data[2]
     self.acting_time = 0
-
     if self.acting == "attack" then
       if self.attack_sound then
         self:emitSound(self.attack_sound)
@@ -90,12 +80,10 @@ function LivingEntity:onPacket(action, data)
     end
   elseif action == "damage" then
     local amount = data
-
     -- sound
     if amount and self.hurt_sound then
       self:emitSound(self.hurt_sound)
     end
-
     -- hint
     local color = (client.id == self.id and (amount and {1,0,0} or {1,0.5,0}) or {1,1,1})
     if not amount then
@@ -115,7 +103,6 @@ function LivingEntity:onPacket(action, data)
     data.dist = math.sqrt(data.dx*data.dx+data.dy*data.dy)
     data.duration = data.dist/data.speed
     data.time = 0
-
     self.move_to_cell = data
   elseif action == "ch_ghost" then
     self.ghost = data
@@ -130,19 +117,19 @@ end
 
 function LivingEntity:setCharaset(charaset)
   self.charaset = charaset
-
-  async(function()
-    -- load texture
-    if client.rsc_manager:requestResource("textures/sets/"..charaset.path) then
-      local texture = client:loadTexture("resources/textures/sets/"..charaset.path)
+  if #charaset.path > 0 then
+    async(function()
+      -- load texture
+      local texture = (client.rsc_manager:requestResource("textures/sets/"..charaset.path) and
+        client:loadTexture("resources/textures/sets/"..charaset.path))
       if texture then
         self.texture = texture
         self.atlas = LivingEntity.getTextureAtlas(charaset.x, charaset.y, texture:getWidth(), texture:getHeight(), charaset.w, charaset.h)
-      else
-        print("failed to load charaset \""..charaset.path.."\"")
-      end
-    end
-  end)
+      else print("failed to load charaset \""..charaset.path.."\"") end
+    end)
+  else
+    self.texture = nil
+  end
 end
 
 function LivingEntity:onUpdatePosition(x,y)
@@ -187,7 +174,6 @@ function LivingEntity:emitAnimation(path, x, y, w, h, duration, alpha)
         duration = duration,
         alpha = alpha or 1
       }
-
       table.insert(self.animations, anim)
     else print("failed to load animation \""..path.."\"") end
   end)
@@ -198,7 +184,6 @@ function LivingEntity:tick(dt)
   if self.move_to_cell then -- targeted movement
     local mtc = self.move_to_cell
     mtc.time = mtc.time+dt
-
     -- compute movement animation
     local progress = mtc.time/mtc.duration
     local steps = math.floor((mtc.dist*progress)/ANIM_STEP_LENGTH)
@@ -207,7 +192,6 @@ function LivingEntity:tick(dt)
     self.y = utils.lerp(mtc.y, mtc.cy*16, progress)
     self.tx = self.x
     self.ty = self.y
-
     if mtc.time >= mtc.duration then
       self.move_to_cell = nil
     end
@@ -215,7 +199,6 @@ function LivingEntity:tick(dt)
     -- lerp
     local x = math.floor(utils.lerp(self.x, self.tx, 0.5))
     local y = math.floor(utils.lerp(self.y, self.ty, 0.5))
-
     -- compute movement animation
     local dist = math.abs(x-self.x)+math.abs(y-self.y)
     self.anim_move_traveled = self.anim_move_traveled+dist
@@ -224,7 +207,6 @@ function LivingEntity:tick(dt)
     self.anim_move_traveled = self.anim_move_traveled-ANIM_STEP_LENGTH*steps
     self.anim_move_index = (self.anim_move_index+steps)%4
     self.anim_x = math.abs((self.anim_move_index+2)%4-2) -- 0,1,2,3... => 0,1,2,1...
-
     -- apply new position
     self.x = x
     self.y = y
@@ -259,7 +241,6 @@ function LivingEntity:tick(dt)
   for i=#self.hints,1,-1 do -- remove ended hints
     if self.hints[i][2] <= 0 then table.remove(self.hints, i) end
   end
-
   -- animations
   for i=#self.animations,1,-1 do
     local anim = self.animations[i]
@@ -268,7 +249,6 @@ function LivingEntity:tick(dt)
       table.remove(self.animations, i)
     end
   end
-
   self.top = self.y+16-self.atlas.cell_h
 end
 
@@ -277,7 +257,6 @@ function LivingEntity:drawOver()
   -- draw hints
   if next(self.hints) then
     local scale = 1/client.world_scale -- world to GUI scale
-
     for _, hint in ipairs(self.hints) do
       local text, time = hint[1], hint[2]
 
@@ -299,17 +278,14 @@ function LivingEntity:draw()
   -- character
   if self.texture then
     local quad = self.atlas:getQuad(self.anim_x, self.anim_y)
-
     if quad then
       if self.ghost then love.graphics.setColor(1,1,1,0.60) end
       if self.afterimage then love.graphics.setColor(1,1,1,self.afterimage) end
-
       love.graphics.draw(
         self.texture,
         quad,
         self.x-math.floor((self.atlas.cell_w-16)/2),
         self.y+16-self.atlas.cell_h)
-
       if self.afterimage then love.graphics.setColor(1,1,1) end
       if self.ghost then love.graphics.setColor(1,1,1) end
     end
@@ -325,7 +301,6 @@ function LivingEntity:draw()
       love.graphics.draw(anim.texture, quad,
         self.x+8-math.floor(anim.atlas.cell_w/2)+anim.x,
         self.y-math.floor(anim.atlas.cell_h/2)+anim.y)
-
       if anim.alpha < 1 or self.afterimage then love.graphics.setColor(1,1,1) end
     end
   end

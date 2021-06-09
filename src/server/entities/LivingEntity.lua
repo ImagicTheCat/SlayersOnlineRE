@@ -277,15 +277,16 @@ function LivingEntity:__construct()
   self.speed = 1 -- game speed
   self.move_time = 0
   self.ghost = false
-
   self.acting = false
-
   self.health, self.max_health = 100, 100
   self.mana, self.max_mana = 100, 100
   self.ch_attack, self.ch_defense = 0, 0 -- attack/defense characteristics
   self.min_damage, self.max_damage = 0, 0
-
-  -- self.charaset {.path, .x, .y, .w, .h}
+  self.charaset = {
+    path = "charaset.png",
+    x = 0, y = 0,
+    w = 24, h = 32
+  }
   -- self.attack_sound
   -- self.hurt_sound
 end
@@ -657,6 +658,7 @@ function LivingEntity:raycastEntities(dist)
 end
 
 -- charaset: {.path, .x, .y, .w, .h}
+--- path: empty string => invisible
 --- x,y: atlas origin
 --- w,h: cell dimensions
 function LivingEntity:setCharaset(charaset)
