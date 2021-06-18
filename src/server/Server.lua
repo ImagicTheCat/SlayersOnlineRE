@@ -9,6 +9,7 @@ local vips = require("vips")
 local sha2 = require("sha2")
 local DBManager = require("DBManager")
 local net = require("protocol")
+local EventCompiler = require("EventCompiler")
 
 -- optional require
 local profiler
@@ -242,7 +243,6 @@ commands.dump = {0, function(self, client, args)
     print("write "..f_maps.."...")
     local f = io.open(f_maps, "w")
     for _, map in pairs(self.project.maps) do
-      self:loadMapData(map.name)
       f:write(map.name.."\n")
       f:write("  - tileset: "..map.tileset.."\n")
       f:write("  - background: "..map.background.."\n")
@@ -272,6 +272,64 @@ commands.dump = {0, function(self, client, args)
     print("done")
   else return true end
 end, "chipsets", "dump project data"}
+
+commands.validate = {0, function(self, client, args)
+  if client then return end
+  print("validate map events (instructions)...")
+  local function report(prefix, errors)
+    for _, err in ipairs(errors) do
+      print(prefix..":"..err.i..":"..err.instruction)
+      print(err.error)
+    end
+  end
+  for id, map in pairs(self.project.maps) do
+    for _, event in ipairs(map.events or {}) do
+      for page_index, page in ipairs(event.pages) do
+        local cond_errs = EventCompiler.validateConditions(page.conditions)
+        local cmd_errs = EventCompiler.validateCommands(page.commands)
+        if #cond_errs > 0 or #cmd_errs > 0 then
+          print("ERRORS map \""..map.name.."\" event ("..event.x..","..event.y..") P"..page_index)
+          report("CD", cond_errs)
+          report("EV", cmd_errs)
+          print()
+        end
+      end
+    end
+  end
+  print("done")
+end, "", "validate map events"}
+
+commands.compile = {0, function(self, client, args)
+  if client then return end
+  if #args < 6 then return true end
+  --
+  if self.cfg.debug then self:loadMapData(args[2]) end
+  local map = self.project.maps[args[2]]
+  if map then
+    local x, y = tonumber(args[3]) or 0, tonumber(args[4]) or 0
+    local event
+    -- search event
+    for _, s_event in ipairs(map.events or {}) do
+      if s_event.x == x and s_event.y == y then event = s_event; break end
+    end
+    if event then
+      local page = event.pages[tonumber(args[5]) or 0]
+      if page then
+        local code, err
+        if args[6] == "CD" then
+          code, err = EventCompiler.compileConditions(page.conditions)
+        else
+          code, err = EventCompiler.compileCommands(page.commands)
+        end
+        if code then
+          print("-- Lua --")
+          print(code)
+          print("---------")
+        else print(err) end
+      else print("page not found") end
+    else print("event not found") end
+  else print("map not found") end
+end, "<map> <x> <y> <page> <CD|EV>", "debug event compiler (conditions/commands)"}
 
 commands.count = {10, function(self, client, args)
   local count = 0
@@ -755,10 +813,8 @@ end
 
 function Server:__construct(cfg)
   self.cfg = cfg
-
   -- load project
   print("load project \""..self.cfg.project_name.."\"...")
-
   self.project = Deserializer.loadProject(self.cfg.project_name)
   print("- "..self.project.map_count.." maps loaded")
   print("- "..self.project.class_count.." classes loaded")
@@ -766,7 +822,13 @@ function Server:__construct(cfg)
   print("- "..self.project.mob_count.." mobs loaded")
   print("- "..self.project.spell_count.." spells loaded")
   self.project.tilesets = {} -- map of id => tileset data
-
+  -- load maps data
+  if not self.cfg.debug then
+    print("load maps data...")
+    for id in pairs(self.project.maps) do self:loadMapData(id) end
+    print("maps data loaded")
+  end
+  --
   self.clients = {} -- map of peer => client
   self.clients_by_id = {} -- map of user id => logged client
   self.clients_by_pseudo = {} -- map of pseudo => logged client
@@ -941,15 +1003,13 @@ end
 -- return map instance or nil
 function Server:getMap(id)
   local map = self.maps[id]
-
   if not map then -- load
-    local map_data = self:loadMapData(id)
-    if map_data then
+    local map_data = self.project.maps[id]
+    if map_data and map_data.loaded then
       map = Map(self, id, map_data)
       self.maps[id] = map
     else print("couldn't load \""..id.."\" map data") end
   end
-
   return map
 end
 
@@ -984,13 +1044,48 @@ function Server:loadMapData(id)
       map.tiledata = Deserializer.loadMapTiles(id)
       map.events = Deserializer.loadMapEvents(id)
       map.mob_areas = Deserializer.loadMapMobAreas(id) or {}
-
       map.tileset_id = string.sub(map.tileset, 9, string.len(map.tileset)-4)
       map.tileset_data = self:loadTilesetData(map.tileset_id)
       map.loaded = (map.tiledata and map.events and map.mob_areas and map.tileset_data)
+      -- Compile events.
+      local header = "local state, var, bool_var, server_var, special_var, func_var, event_var, func = ...; "
+      local env = {}
+      local function compileConditions(page, chunkname) -- return error or nil
+        local code, flags = EventCompiler.compileConditions(page.conditions)
+        if not code then return flags end
+        local f, err = loadstring(header..code, chunkname)
+        if not f then return err.."\n-- Lua --\n"..code.."\n---------" end
+        setfenv(f, env)
+        page.conditions_func = f
+        page.conditions_flags = flags
+      end
+      local function compileCommands(page, chunkname) -- return error or nil
+        local code, err = EventCompiler.compileCommands(page.commands)
+        if not code then return err end
+        local f, err = loadstring(header..code, chunkname)
+        if not f then return err.."\n-- Lua --\n"..code.."\n---------" end
+        setfenv(f, env)
+        page.commands_func = f
+      end
+      for _, event in ipairs(map.events or {}) do
+        for page_index, page in ipairs(event.pages) do
+          local err = compileConditions(page,
+            map.name.."("..event.x..","..event.y..") P"..page_index.." CD")
+          if err then
+            print("ERROR compiling conditions map \""..map.name.."\" event ("..event.x..","..event.y..") P"..page_index)
+            print(err)
+            print()
+          end
+          local err = compileCommands(page,
+            map.name.."("..event.x..","..event.y..") P"..page_index.." EV")
+          if err then
+            print("ERROR compiling commands map \""..map.name.."\" event ("..event.x..","..event.y..") P"..page_index)
+            print(err)
+            print()
+          end
+        end
+      end
     end
-
-    if map.loaded then return map end
   end
 end
 

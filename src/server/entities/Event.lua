@@ -40,132 +40,33 @@ Event.Condition = {
   EXPRESSION = 6
 }
 
-Event.Variable = {
-  SERVER = 0,
-  CLIENT = 1,
-  CLIENT_SPECIAL = 2,
-  EVENT_SPECIAL = 3
-}
-
-Event.Command = {
-  VARIABLE = 0,
-  FUNCTION = 1
-}
-
-Event.patterns = {
-  server_var = "Serveur%[([%w_%-%%éèàçê]+)%]", -- Serveur[string]
-  client_var = "Variable%[([%d%.]+)%]", -- Variable[int]
-  client_bool_var = "Bool%[([%d%.]+)%]", -- Bool[int]
-  event_special_var = "%%([^%.%%]+)%.([^%.%s%%%(%)]+)%%", -- %Nom Ev.Var%
-  client_special_var = "%%([^%.%s%%%(%)]+)%%" -- %Var%
-}
-
--- return (Event.Variable type, parameters...) or nil
-function Event.parseVariableInstruction(instruction)
-  local lhs, op, rhs = string.match(instruction, "^(.-)([<>!=]+)(.*)$")
-  if lhs then
-    -- detect variable kind
-    local id, ids, name
-
-    local pat = Event.patterns
-
-    id = string.match(lhs, "^"..pat.server_var.."$")
-    if id then return Event.Variable.SERVER, id, op, rhs end
-
-    -- id range
-    id = string.match(lhs, "^"..pat.client_var.."$")
-    ids = (id and utils.split(id, "%.%.") or {})
-    for i=1,#ids do ids[i] = math.floor(tonumber(ids[i])) end
-    if ids[1] then return Event.Variable.CLIENT, "var", ids, op, rhs end
-
-    -- id range
-    id = string.match(lhs, "^"..pat.client_bool_var.."$")
-    ids = (id and utils.split(id, "%.%.") or {})
-    for i=1,#ids do ids[i] = math.floor(tonumber(ids[i])) end
-    if ids[1] then return Event.Variable.CLIENT, "bool", ids, op, rhs end
-
-    name, id = string.match(lhs, "^"..pat.event_special_var.."$")
-    if name then return Event.Variable.EVENT_SPECIAL, name, id, op, rhs end
-
-    id = string.match(lhs, "^"..pat.client_special_var.."$")
-    if id then return Event.Variable.CLIENT_SPECIAL, id, op, rhs end
-  end
-end
-
--- return (Event.Condition type, parameters...) or nil
-function Event.parseCondition(instruction)
-  if instruction == "Appuie sur bouton" then return Event.Condition.INTERACT end
-  if instruction == "Automatique" then return Event.Condition.AUTO end
-  if instruction == "Auto une seul fois" then return Event.Condition.AUTO_ONCE end
-  if instruction == "En contact" then return Event.Condition.CONTACT end
-  if instruction == "Attaque" then return Event.Condition.ATTACK end
-
-  -- variable condition
-  local r = {Event.parseVariableInstruction(instruction)}
-  if r[1] then
-    return Event.Condition.VARIABLE, unpack(r)
-  end
-
-  -- anonymous condition
-  local lhs, op, rhs = string.match(instruction, "^(.-)([<>!=]+)(.*)$")
-  if lhs then
-    return Event.Condition.EXPRESSION, lhs, op, rhs
-  end
-end
-
--- return (Event.Command type, parameters...) or nil
-function Event.parseCommand(instruction)
-  if string.sub(instruction, 1, 2) == "//" then return end -- ignore comment
-
-  -- variable commands
-  local r = {Event.parseVariableInstruction(instruction)}
-  if r[1] then
-    return Event.Command.VARIABLE, unpack(r)
-  end
-
-  -- function
-  local id, content = string.match(instruction, "^([%w_]+)%(?(.-)%)?$")
-  if id then -- parse arguments
-    local args = {}
-    if string.sub(content, 1, 1) == "'" then -- textual
-      args = utils.split(string.sub(content, 2, string.len(content)-1), "','")
-    else -- raw
-      for arg in string.gmatch(content, "([^,]+)") do
-        table.insert(args, arg)
-      end
-    end
-
-    return Event.Command.FUNCTION, id, unpack(args)
-  end
-end
-
 -- PRIVATE METHODS
 
--- special var function definitions, map of id => function
+-- function vars definitions, map of id => function
 -- function(event, args...): should return a number or a string
 --- args...: passed string expressions (after substitution)
 
-local client_special_vfunctions = {}
+local function_vars = {}
 
-function client_special_vfunctions:rand(max)
+function function_vars:rand(max)
   if max then
-    return math.random(0, (utils.computeExpression(max) or 1)-1)
+    return math.random(0, (tonumber(max) or 1)-1)
   end
 end
 
-function client_special_vfunctions:min(a, b)
+function function_vars:min(a, b)
   if a and b then
-    return math.min(utils.computeExpression(a) or 0, utils.computeExpression(b) or 0)
+    return math.min(tonumber(a) or 0, tonumber(b) or 0)
   end
 end
 
-function client_special_vfunctions:max(a, b)
+function function_vars:max(a, b)
   if a and b then
-    return math.max(utils.computeExpression(a) or 0, utils.computeExpression(b) or 0)
+    return math.max(tonumber(a) or 0, tonumber(b) or 0)
   end
 end
 
-function client_special_vfunctions:upper(str)
+function function_vars:upper(str)
   if str then
     return string.upper(str)
   end
@@ -176,72 +77,72 @@ end
 --- value: passed string expression (after substitution) on set mode (nil on get mode)
 
 -- form: "%<var>%"
-local client_special_vars = {}
+local special_vars = {}
 
-function client_special_vars:Name(value)
+function special_vars:Name(value)
   if not value then
     return self.client.pseudo
   end
 end
 
-function client_special_vars:UpperName(value)
+function special_vars:UpperName(value)
   if not value then
     return string.gsub(string.upper(self.client.pseudo), "%U", "")
   end
 end
 
-function client_special_vars:Classe(value)
+function special_vars:Classe(value)
   if not value then
     local class_data = self.client.server.project.classes[self.client.class]
     return class_data.name
   end
 end
 
-function client_special_vars:Skin(value)
+function special_vars:Skin(value)
   if not value then
     return "Chipset\\"..self.client.charaset.path
   end
 end
 
-function client_special_vars:Force(value)
+function special_vars:Force(value)
   if value then
-    self.client.strength_pts = utils.computeExpression(value) or 0
+    self.client.strength_pts = tonumber(value) or 0
     self.client:updateCharacteristics()
   else
     return self.client.strength_pts
   end
 end
 
-function client_special_vars:Dext(value)
+function special_vars:Dext(value)
   if value then
-    self.client.dexterity_pts = utils.computeExpression(value) or 0
+    self.client.dexterity_pts = tonumber(value) or 0
     self.client:updateCharacteristics()
   else
     return self.client.dexterity_pts
   end
 end
 
-function client_special_vars:Constit(value)
+function special_vars:Constit(value)
   if value then
-    self.client.constitution_pts = utils.computeExpression(value) or 0
+    self.client.constitution_pts = tonumber(value) or 0
     self.client:updateCharacteristics()
   else
     return self.client.constitution_pts
   end
 end
 
-function client_special_vars:Magie(value)
+function special_vars:Magie(value)
   if value then
-    self.client.magic_pts = utils.computeExpression(value) or 0
+    self.client.magic_pts = tonumber(value) or 0
     self.client:updateCharacteristics()
   else
     return self.client.magic_pts
   end
 end
 
-function client_special_vars:Attaque(value)
+function special_vars:Attaque(value)
   if value then
-    self.client.ch_attack = utils.computeExpression(value) or 0
+    self.client.ch_attack = tonumber(value) or 0
     self.client:send(Client.makePacket(net.STATS_UPDATE, {
       attack = self.client.ch_attack,
     }))
@@ -250,9 +151,9 @@ function client_special_vars:Attaque(value)
   end
 end
 
-function client_special_vars:Defense(value)
+function special_vars:Defense(value)
   if value then
-    self.client.ch_defense = utils.computeExpression(value) or 0
+    self.client.ch_defense = tonumber(value) or 0
     self.client:send(Client.makePacket(net.STATS_UPDATE, {
       defense = self.client.ch_defense,
     }))
@@ -261,9 +162,9 @@ function client_special_vars:Defense(value)
   end
 end
 
-function client_special_vars:Vie(value)
+function special_vars:Vie(value)
   if value then
-    value = utils.computeExpression(value) or 0
+    value = tonumber(value) or 0
     local delta = value-self.client.health
     if delta > 0 then self.client:emitHint({{0,1,0}, utils.fn(delta)})
     elseif delta < 0 then self.client:broadcastPacket("damage", -delta) end
@@ -274,29 +175,29 @@ function client_special_vars:Vie(value)
   end
 end
 
-function client_special_vars:VieMax(value)
+function special_vars:VieMax(value)
   if not value then
     return self.client.max_health
   end
 end
 
-function client_special_vars:CurrentMag(value)
+function special_vars:CurrentMag(value)
   if value then
-    self.client:setMana(utils.computeExpression(value) or 0)
+    self.client:setMana(tonumber(value) or 0)
   else
     return self.client.mana
   end
 end
 
-function client_special_vars:MagMax(value)
+function special_vars:MagMax(value)
   if not value then
     return self.client.max_mana
   end
 end
 
-function client_special_vars:Alignement(value)
+function special_vars:Alignement(value)
   if value then
-    value = utils.computeExpression(value) or 0
+    value = tonumber(value) or 0
     local delta = value-self.client.alignment
     self.client:emitHint(utils.fn(delta, true).." alignement")
     self.client:setAlignment(value)
@@ -305,9 +206,9 @@ function client_special_vars:Alignement(value)
   end
 end
 
-function client_special_vars:Reputation(value)
+function special_vars:Reputation(value)
   if value then
-    value = utils.computeExpression(value) or 0
+    value = tonumber(value) or 0
     local delta = value-self.client.alignment
     self.client:emitHint(utils.fn(delta, true).." réputation")
     self.client:setReputation(value)
@@ -316,9 +217,9 @@ function client_special_vars:Reputation(value)
   end
 end
 
-function client_special_vars:Gold(value)
+function special_vars:Gold(value)
   if value then
-    value = utils.computeExpression(value) or 0
+    value = tonumber(value) or 0
     local delta = value-self.client.gold
     self.client:emitHint({{1,0.78,0}, utils.fn(delta, true)})
     self.client:setGold(value)
@@ -327,9 +228,9 @@ function client_special_vars:Gold(value)
   end
 end
 
-function client_special_vars:Lvl(value)
+function special_vars:Lvl(value)
   if value then
-    local xp = XPtable[utils.computeExpression(value) or 0]
+    local xp = XPtable[tonumber(value) or 0]
     if xp then
       local delta = xp-self.client.xp
       self.client:emitHint({{0,0.9,1}, utils.fn(delta, true)})
@@ -340,211 +241,211 @@ function client_special_vars:Lvl(value)
   end
 end
 
-function client_special_vars:LvlPoint(value)
+function special_vars:LvlPoint(value)
   if value then
-    self.client:setRemainingPoints(utils.computeExpression(value) or 0)
+    self.client:setRemainingPoints(tonumber(value) or 0)
   else
     return self.client.remaining_pts
   end
 end
 
-function client_special_vars:CurrentXP(value)
+function special_vars:CurrentXP(value)
   if value then
-    value = utils.computeExpression(value) or 0
+    value = tonumber(value) or 0
     local delta = value-self.client.xp
     self.client:emitHint({{0,0.9,1}, utils.fn(delta, true)})
-    self.client:setXP(utils.computeExpression(value) or 0)
+    self.client:setXP(tonumber(value) or 0)
   else
     return self.client.xp
   end
 end
 
-function client_special_vars:NextXP(value)
+function special_vars:NextXP(value)
   if not value then
     return XPtable[self.client.level+1] or self.client.xp
   end
 end
 
-function client_special_vars:Timer(value)
+function special_vars:Timer(value)
   if value then
-    self.client.timers[1] = (utils.computeExpression(value) or 0)
+    self.client.timers[1] = (tonumber(value) or 0)
   else
     return self.client.timers[1]
   end
 end
 
-function client_special_vars:Timer2(value)
+function special_vars:Timer2(value)
   if value then
-    self.client.timers[2] = (utils.computeExpression(value) or 0)
+    self.client.timers[2] = (tonumber(value) or 0)
   else
     return self.client.timers[2]
   end
 end
 
-function client_special_vars:Timer3(value)
+function special_vars:Timer3(value)
   if value then
-    self.client.timers[3] = (utils.computeExpression(value) or 0)
+    self.client.timers[3] = (tonumber(value) or 0)
   else
     return self.client.timers[3]
   end
 end
 
-function client_special_vars:KillPlayer(value)
+function special_vars:KillPlayer(value)
   if value then
-    self.client.kill_player = (utils.computeExpression(value) or 0)
+    self.client.kill_player = (tonumber(value) or 0)
   else
     return self.client.kill_player
   end
 end
 
-function client_special_vars:Visible(value)
+function special_vars:Visible(value)
   if value then
-    self.client.visible = (utils.computeExpression(value) or 0) > 0
+    self.client.visible = (tonumber(value) or 0) > 0
     self.client:broadcastPacket("ch_visible", visible)
   else
     return self.client.visible and 1 or 0
   end
 end
 
-function client_special_vars:Bloque(value)
+function special_vars:Bloque(value)
   if value then
-    self.client.blocked = (utils.computeExpression(value) or 0) > 0
+    self.client.blocked = (tonumber(value) or 0) > 0
   else
     return self.client.blocked and 1 or 0
   end
 end
 
-function client_special_vars:CaseX(value)
+function special_vars:CaseX(value)
   if value then
-    self.client:moveToCell(utils.computeExpression(value) or self.client.cx, self.client.cy, true)
+    self.client:moveToCell(tonumber(value) or self.client.cx, self.client.cy, true)
   else
     return self.client.cx
   end
 end
 
-function client_special_vars:CaseY(value)
+function special_vars:CaseY(value)
   if value then
-    self.client:moveToCell(self.client.cx, utils.computeExpression(value) or self.client.cy, true)
+    self.client:moveToCell(self.client.cx, tonumber(value) or self.client.cy, true)
   else
     return self.client.cy
   end
 end
 
-function client_special_vars:Position(value)
+function special_vars:Position(value)
   if value then
-    self.client.draw_order = utils.computeExpression(value) or 0
+    self.client.draw_order = tonumber(value) or 0
     self.client:broadcastPacket("ch_draw_order", self.client.draw_order)
   else
     return self.client.draw_order
   end
 end
 
-function client_special_vars:CentreX(value)
+function special_vars:CentreX(value)
   if value then
-    self.client.view_shift[1] = (utils.computeExpression(value) or 0)*(-16)
+    self.client.view_shift[1] = (tonumber(value) or 0)*(-16)
     self.client:send(Client.makePacket(net.VIEW_SHIFT_UPDATE, self.client.view_shift))
   else
     return self.client.view_shift[1]/-16
   end
 end
 
-function client_special_vars:CentreY(value)
+function special_vars:CentreY(value)
   if value then
-    self.client.view_shift[2] = (utils.computeExpression(value) or 0)*(-16)
+    self.client.view_shift[2] = (tonumber(value) or 0)*(-16)
     self.client:send(Client.makePacket(net.VIEW_SHIFT_UPDATE, self.client.view_shift))
   else
     return self.client.view_shift[2]/-16
   end
 end
 
-function client_special_vars:BloqueChangeSkin(value)
+function special_vars:BloqueChangeSkin(value)
   if value then
-    self.client.blocked_skin = (utils.computeExpression(value) or 0) > 0
+    self.client.blocked_skin = (tonumber(value) or 0) > 0
   else
     return self.client.blocked_skin and 1 or 0
   end
 end
 
-function client_special_vars:BloqueAttaque(value)
+function special_vars:BloqueAttaque(value)
   if value then
-    self.client.blocked_attack = (utils.computeExpression(value) or 0) > 0
+    self.client.blocked_attack = (tonumber(value) or 0) > 0
   else
     return self.client.blocked_attack and 1 or 0
   end
 end
 
-function client_special_vars:BloqueDefense(value)
+function special_vars:BloqueDefense(value)
   if value then
-    self.client.blocked_defend = (utils.computeExpression(value) or 0) > 0
+    self.client.blocked_defend = (tonumber(value) or 0) > 0
   else
     return self.client.blocked_defend and 1 or 0
   end
 end
 
-function client_special_vars:BloqueMagie(value)
+function special_vars:BloqueMagie(value)
   if value then
-    self.client.blocked_cast = (utils.computeExpression(value) or 0) > 0
+    self.client.blocked_cast = (tonumber(value) or 0) > 0
   else
     return self.client.blocked_cast and 1 or 0
   end
 end
 
-function client_special_vars:BloqueDialogue(value)
+function special_vars:BloqueDialogue(value)
   if value then
-    self.client.blocked_chat = (utils.computeExpression(value) or 0) > 0
+    self.client.blocked_chat = (tonumber(value) or 0) > 0
   else
     return self.client.blocked_chat and 1 or 0
   end
 end
 
-function client_special_vars:BloqueChevauchement(value)
+function special_vars:BloqueChevauchement(value)
   -- disabled
   if not value then return 0 end
 end
 
-function client_special_vars:NbObjetInventaire(value)
+function special_vars:NbObjetInventaire(value)
   if not value then
     return self.client.inventory:getAmount()
   end
 end
 
-function client_special_vars:Arme(value)
+function special_vars:Arme(value)
   if not value then
     local item = self.client.server.project.objects[self.client.weapon_slot]
     return item and item.name or ""
   end
 end
 
-function client_special_vars:Bouclier(value)
+function special_vars:Bouclier(value)
   if not value then
     local item = self.client.server.project.objects[self.client.shield_slot]
     return item and item.name or ""
   end
 end
 
-function client_special_vars:Casque(value)
+function special_vars:Casque(value)
   if not value then
     local item = self.client.server.project.objects[self.client.helmet_slot]
     return item and item.name or ""
   end
 end
 
-function client_special_vars:Armure(value)
+function special_vars:Armure(value)
   if not value then
     local item = self.client.server.project.objects[self.client.armor_slot]
     return item and item.name or ""
   end
 end
 
-function client_special_vars:Direction(value)
+function special_vars:Direction(value)
   if value then
-    self.client:setOrientation(utils.computeExpression(value) or 0)
+    self.client:setOrientation(tonumber(value) or 0)
   else
     return self.client.orientation
   end
 end
 
-function client_special_vars:Groupe(value)
+function special_vars:Groupe(value)
   if not value then
     return self.client.group or ""
   else
@@ -552,25 +453,25 @@ function client_special_vars:Groupe(value)
   end
 end
 
-function client_special_vars:Guilde(value)
+function special_vars:Guilde(value)
   if not value then
     return self.client.guild
   end
 end
 
-function client_special_vars:Rang(value)
+function special_vars:Rang(value)
   if not value then
     return self.client.guild_rank_title
   end
 end
 
-function client_special_vars:Grade(value)
+function special_vars:Grade(value)
   if not value then
     return self.client.guild_rank
   end
 end
 
-function client_special_vars:String1(value)
+function special_vars:String1(value)
   if value then
     self.client.strings[1] = value
   else
@@ -578,7 +479,7 @@ function client_special_vars:String1(value)
   end
 end
 
-function client_special_vars:String2(value)
+function special_vars:String2(value)
   if value then
     self.client.strings[2] = value
   else
@@ -586,7 +487,7 @@ function client_special_vars:String2(value)
   end
 end
 
-function client_special_vars:String3(value)
+function special_vars:String3(value)
   if value then
     self.client.strings[3] = value
   else
@@ -594,33 +495,33 @@ function client_special_vars:String3(value)
   end
 end
 
-function client_special_vars:EvCaseX(value)
+function special_vars:EvCaseX(value)
   if not value then
     return self.cx
   end
 end
 
-function client_special_vars:EvCaseY(value)
+function special_vars:EvCaseY(value)
   if not value then
     return self.cy
   end
 end
 
-function client_special_vars:Effect(value)
+function special_vars:Effect(value)
   if not value then
     return self.client.map_effect
-  else self.client:setMapEffect(utils.computeExpression(value) or 0) end
+  else self.client:setMapEffect(tonumber(value) or 0) end
 end
 
 -- aliases
-client_special_vars.BloqueAttaqueLocal = client_special_vars.BloqueAttaque
-client_special_vars.BloqueDefenseLocal = client_special_vars.BloqueDefense
-client_special_vars.BloqueMagieLocal = client_special_vars.BloqueMagie
+special_vars.BloqueAttaqueLocal = special_vars.BloqueAttaque
+special_vars.BloqueDefenseLocal = special_vars.BloqueDefense
+special_vars.BloqueMagieLocal = special_vars.BloqueMagie
 
 -- form: "%<Ev>.<var>%"
-local event_special_vars = {}
+local event_vars = {}
 
-function event_special_vars:Name(value)
+function event_vars:Name(value)
   if value then
     -- unreference
     local entity = self.client.events_by_name[self.name]
@@ -637,7 +538,7 @@ function event_special_vars:Name(value)
   end
 end
 
-function event_special_vars:Chipset(value)
+function event_vars:Chipset(value)
   if value then
     self.charaset.path = string.sub(value, 9) -- remove Chipset/ part
     self:setCharaset(self.charaset)
@@ -646,26 +547,26 @@ function event_special_vars:Chipset(value)
   end
 end
 
-function event_special_vars:Bloquant(value)
+function event_vars:Bloquant(value)
   if value then
-    self.obstacle = ((utils.computeExpression(value) or 0) > 0)
+    self.obstacle = ((tonumber(value) or 0) > 0)
   else
     return (self.obstacle and 1 or 0)
   end
 end
 
-function event_special_vars:Visible(value)
+function event_vars:Visible(value)
   if value then
-    self.active = ((utils.computeExpression(value) or 0) > 0)
+    self.active = ((tonumber(value) or 0) > 0)
     self:broadcastPacket("ch_active", self.active)
   else
     return (self.active and 1 or 0)
   end
 end
 
-function event_special_vars:TypeAnim(value)
+function event_vars:TypeAnim(value)
   if value then
-    self.animation_type = (utils.computeExpression(value) or 0)
+    self.animation_type = (tonumber(value) or 0)
 
     -- update
     local data = {
@@ -691,125 +592,125 @@ function event_special_vars:TypeAnim(value)
   end
 end
 
-function event_special_vars:Direction(value)
+function event_vars:Direction(value)
   if value then
-    self:setOrientation(utils.computeExpression(value) or 0)
+    self:setOrientation(tonumber(value) or 0)
   else
     return self.orientation
   end
 end
 
-function event_special_vars:CaseX(value)
+function event_vars:CaseX(value)
   if value then
-    self:moveToCell(utils.computeExpression(value) or self.cx, self.cy, true)
+    self:moveToCell(tonumber(value) or self.cx, self.cy, true)
   else
     return self.cx
   end
 end
 
-function event_special_vars:CaseY(value)
+function event_vars:CaseY(value)
   if value then
-    self:moveToCell(self.cx, utils.computeExpression(value) or self.cy, true)
+    self:moveToCell(self.cx, tonumber(value) or self.cy, true)
   else
     return self.cy
   end
 end
 
-function event_special_vars:CaseNBX(value)
+function event_vars:CaseNBX(value)
   if value then
-    self:moveToCell(utils.computeExpression(value) or self.cx, self.cy)
+    self:moveToCell(tonumber(value) or self.cx, self.cy)
   end
 end
 
-function event_special_vars:CaseNBY(value)
+function event_vars:CaseNBY(value)
   if value then
-    self:moveToCell(self.cx, utils.computeExpression(value) or self.cy)
+    self:moveToCell(self.cx, tonumber(value) or self.cy)
   end
 end
 
-function event_special_vars:X(value)
+function event_vars:X(value)
   if value then
-    self.charaset.x = (utils.computeExpression(value) or 0)
+    self.charaset.x = (tonumber(value) or 0)
     self:setCharaset(self.charaset)
   else
     return self.charaset.x
   end
 end
 
-function event_special_vars:Y(value)
+function event_vars:Y(value)
   if value then
-    self.charaset.y = (utils.computeExpression(value) or 0)
+    self.charaset.y = (tonumber(value) or 0)
     self:setCharaset(self.charaset)
   else
     return self.charaset.y
   end
 end
 
-function event_special_vars:W(value)
+function event_vars:W(value)
   if value then
-    self.charaset.w = (utils.computeExpression(value) or 0)
+    self.charaset.w = (tonumber(value) or 0)
     self:setCharaset(self.charaset)
   else
     return self.charaset.w
   end
 end
 
-function event_special_vars:H(value)
+function event_vars:H(value)
   if value then
-    self.charaset.h = (utils.computeExpression(value) or 0)
+    self.charaset.h = (tonumber(value) or 0)
     self:setCharaset(self.charaset)
   else
     return self.charaset.h
   end
 end
 
-function event_special_vars:NumAnim(value)
+function event_vars:NumAnim(value)
   if value then
-    self.animation_number = (utils.computeExpression(value) or 0)
+    self.animation_number = (tonumber(value) or 0)
     self:broadcastPacket("ch_animation_number", self.animation_number)
   else
     return self.animation_number
   end
 end
 
-function event_special_vars:Vitesse(value)
+function event_vars:Vitesse(value)
   if value then
-    self.speed = (utils.computeExpression(value) or 0)
+    self.speed = (tonumber(value) or 0)
   else
     return self.speed
   end
 end
 
-function event_special_vars:Transparent(value)
+function event_vars:Transparent(value)
   if value then
-    self:setGhost((utils.computeExpression(value) or 0) > 0)
+    self:setGhost((tonumber(value) or 0) > 0)
   else
     return self.ghost and 1 or 0
   end
 end
 
-function event_special_vars:AnimAttaque(value)
+function event_vars:AnimAttaque(value)
   if value then self:act("attack", 1)
   else return 0 end
 end
 
-function event_special_vars:AnimDefense(value)
+function event_vars:AnimDefense(value)
   if value then self:act("defend", 1)
   else return 0 end
 end
 
-function event_special_vars:AnimMagie(value)
+function event_vars:AnimMagie(value)
   if value then self:act("cast", 1)
   else return 0 end
 end
 
 -- command function definitions, map of id => function
--- function(event, state, args...)
+-- function(event, args...)
 --- args...: function arguments as string expressions (after substitution)
 local command_functions = {}
 
-function command_functions:AddObject(state, name, amount)
-  amount = utils.computeExpression(amount or "") or 1
+function command_functions:AddObject(name, amount)
+  amount = tonumber(amount) or 1
   local id = self.client.server.project.objects_by_name[name]
   if id and amount > 0 then
     local count = 0
@@ -820,8 +721,8 @@ function command_functions:AddObject(state, name, amount)
   end
 end
 
-function command_functions:DelObject(state, name, amount)
-  amount = utils.computeExpression(amount or "") or 1
+function command_functions:DelObject(name, amount)
+  amount = tonumber(amount) or 1
   local id = self.client.server.project.objects_by_name[name]
   if id and amount > 0 then
     local count = 0
@@ -832,9 +733,9 @@ function command_functions:DelObject(state, name, amount)
   end
 end
 
-function command_functions:Teleport(state, map_name, cx, cy)
-  local cx = utils.computeExpression(cx)
-  local cy = utils.computeExpression(cy)
+function command_functions:Teleport(map_name, cx, cy)
+  local cx = tonumber(cx)
+  local cy = tonumber(cy)
 
   if map_name and cx and cy then
     local map = self.client.server:getMap(map_name)
@@ -845,9 +746,9 @@ function command_functions:Teleport(state, map_name, cx, cy)
   end
 end
 
-function command_functions:ChangeResPoint(state, map_name, cx, cy)
-  cx = utils.computeExpression(cx)
-  cy = utils.computeExpression(cy)
+function command_functions:ChangeResPoint(map_name, cx, cy)
+  cx = tonumber(cx)
+  cy = tonumber(cy)
 
   if map_name and cx and cy then
     self.client.respawn_point = {
@@ -858,16 +759,16 @@ function command_functions:ChangeResPoint(state, map_name, cx, cy)
   end
 end
 
-function command_functions:SScroll(state, cx, cy)
-  cx = utils.computeExpression(cx)
-  cy = utils.computeExpression(cy)
+function command_functions:SScroll(cx, cy)
+  cx = tonumber(cx)
+  cy = tonumber(cy)
 
   if cx and cy then
     self.client:scrollTo(cx*16, cy*16)
   end
 end
 
-function command_functions:ChangeSkin(state, path)
+function command_functions:ChangeSkin(path)
   self.client:setCharaset({
     path = string.sub(path, 9), -- remove "Chipset/" part
     x = 0, y = 0,
@@ -875,100 +776,18 @@ function command_functions:ChangeSkin(state, path)
   })
 end
 
-function command_functions:Message(state, msg)
+function command_functions:Message(msg)
   if msg then
     self.client:requestMessage(msg)
   end
 end
 
-function command_functions:Condition(state, condition)
-  if condition then
-    local ok
-
-    local ctype = Event.parseCondition(condition)
-
-    if ctype == Event.Condition.VARIABLE or ctype == Event.Condition.EXPRESSION then -- condition check
-      ok = self:checkCondition(condition)
-    else -- condition trigger check
-      ok = (ctype == state.condition)
-    end
-
-    if not ok then -- skip condition block
-      local i = state.cursor+1
-      local size = #self.page.commands
-      local i_found
-
-      while not i_found and i <= size do -- find next Condition instruction
-        local args = {Event.parseCommand(self.page.commands[i])}
-        if args[1] == Event.Command.FUNCTION and args[2] == "Condition" then
-          i_found = i
-        end
-
-        i = i+1
-      end
-
-      if i_found then
-        state.cursor = i_found-1
-      else -- skip all
-        state.cursor = i-1
-      end
-    end
-  end
-end
-
-function command_functions:InputQuery(state, title, ...)
+function command_functions:InputQuery(title, ...)
   local options = {...}
-
-  local answer = options[self.client:requestInputQuery(title, options)] or ""
-  answer = self:instructionSubstitution(answer)
-
-  local i = state.cursor+1
-  local size = #self.page.commands
-  local i_found
-  while not i_found and i <= size do -- skip after valid OnResultQuery or QueryEnd
-    local args = {Event.parseCommand(self.page.commands[i])}
-    if args[1] == Event.Command.FUNCTION then
-      if (args[2] == "OnResultQuery" and self:instructionSubstitution(args[3]) == answer)
-        or args[2] == "QueryEnd" then
-        i_found = i
-      end
-    end
-
-    i = i+1
-  end
-
-  if i_found then
-    state.cursor = i_found
-  else -- skip all
-    state.cursor = i-1
-  end
+  return options[self.client:requestInputQuery(title, options)] or ""
 end
 
-function command_functions:OnResultQuery(state)
-  local i = state.cursor+1
-  local size = #self.page.commands
-  local i_found
-  while not i_found and i <= size do -- skip after QueryEnd
-    local args = {Event.parseCommand(self.page.commands[i])}
-    if args[1] == Event.Command.FUNCTION and args[2] == "QueryEnd" then
-      i_found = i
-    end
-
-    i = i+1
-  end
-
-  if i_found then
-    state.cursor = i_found
-  else -- skip all
-    state.cursor = i-1
-  end
-end
-
-function command_functions:QueryEnd(state)
-  -- void, prevent not implemented warning
-end
-
-function command_functions:Magasin(state, title, ...)
+function command_functions:Magasin(title, ...)
   local items, items_id = {...}, {}
   local objects_by_name = self.client.server.project.objects_by_name
   for _, item in ipairs(items) do
@@ -979,12 +798,12 @@ function command_functions:Magasin(state, title, ...)
   self.client:openShop(title, items_id)
 end
 
-function command_functions:Coffre(state, title)
+function command_functions:Coffre(title)
   self.client:openChest(title)
 end
 
-function command_functions:GenereMonstre(state, name, x, y, amount)
-  x,y,amount = utils.computeExpression(x), utils.computeExpression(y), utils.computeExpression(amount) or 0
+function command_functions:GenereMonstre(name, x, y, amount)
+  x,y,amount = tonumber(x), tonumber(y), tonumber(amount) or 0
   if name and x and y and amount > 0 then
     local mob_data = self.client.server.project.mobs[self.client.server.project.mobs_by_name[name]]
     if mob_data then
@@ -998,12 +817,12 @@ function command_functions:GenereMonstre(state, name, x, y, amount)
   end
 end
 
-function command_functions:TueMonstre(state)
+function command_functions:TueMonstre()
   self.map:killGeneratedMobs()
 end
 
-function command_functions:AddMagie(state, name, amount)
-  amount = utils.computeExpression(amount or "") or 1
+function command_functions:AddMagie(name, amount)
+  amount = tonumber(amount) or 1
   local id = self.client.server.project.spells_by_name[name]
   if id and amount > 0 then
     local count = 0
@@ -1014,8 +833,8 @@ function command_functions:AddMagie(state, name, amount)
   end
 end
 
-function command_functions:DelMagie(state, name, amount)
-  amount = utils.computeExpression(amount or "") or 1
+function command_functions:DelMagie(name, amount)
+  amount = tonumber(amount) or 1
   local id = self.client.server.project.spells_by_name[name]
   if id and amount > 0 then
     local count = 0
@@ -1026,18 +845,18 @@ function command_functions:DelMagie(state, name, amount)
   end
 end
 
-function command_functions:ChAttaqueSound(state, path)
+function command_functions:ChAttaqueSound(path)
   -- remove Sound/ part
   self.client:setSounds(string.sub(path, 7), self.client.hurt_sound)
 end
 
-function command_functions:ChBlesseSound(state, path)
+function command_functions:ChBlesseSound(path)
   -- remove Sound/ part
   self.client:setSounds(self.client.attack_sound, string.sub(path, 7))
 end
 
-function command_functions:Attente(state, amount)
-  amount = utils.computeExpression(amount) or 0
+function command_functions:Attente(amount)
+  amount = tonumber(amount) or 0
   if amount > 0 then
     local r = async()
     task(amount*0.03, function() r() end)
@@ -1045,18 +864,18 @@ function command_functions:Attente(state, amount)
   end
 end
 
-function command_functions:PlayMusic(state, path)
+function command_functions:PlayMusic(path)
   local sub_path = string.match(path, "^Sound\\(.+)%.mid$")
   path = sub_path and sub_path..".ogg"
 
   if path then self.client:playMusic(path) end
 end
 
-function command_functions:StopMusic(state)
+function command_functions:StopMusic()
   self.client:stopMusic()
 end
 
-function command_functions:PlaySound(state, path)
+function command_functions:PlaySound(path)
   self.client:playSound(string.sub(path, 7)) -- remove Sound\ part
 end
 
@@ -1066,38 +885,52 @@ end
 function Event:__construct(client, data, page_index)
   LivingEntity.__construct(self)
   self.nettype = "Event"
-
   self:setClient(client)
+  -- prepare event's execution environment
+  local function var(id, value)
+    if value then return self.client:setVariable("var", id, value)
+    else return self.client:getVariable("var", id) end
+  end
+  local function bool_var(id, value)
+    if value then return self.client:setVariable("bool", id, value)
+    else return self.client:getVariable("bool", id) end
+  end
+  local function server_var(id, value)
+    if value then return self.client.server:setVariable(id, value)
+    else return self.client.server:getVariable(id) end
+  end
+  local function special_var(id, value)
+    local f = special_vars[id]
+    if f then return f(self, value) end
+  end
+  local function func_var(id, ...)
+    local f = function_vars[id]
+    if f then return f(self, ...) end
+  end
+  local function event_var(event_id, id, value)
+    local event = self.client.events_by_name[event_id]
+    if event then
+      local f = event_vars[id]
+      if f then return f(event, id, value) end
+    end
+  end
+  local function func(id, ...)
+    local f = command_functions[id]
+    if f then f(self, ...) end
+  end
+  self.vm = {var, bool_var, server_var, special_var, func_var, event_var, func}
+  -- setup data
   self.data = data -- event data
   self.page_index = page_index or self:selectPage()
   self.page = self.data.pages[self.page_index]
-
-  self.special_var_listeners = {} -- map of id (string) => map of callback
-  self.server_vars_listened = {} -- map of id (string)
-
-  self.trigger_auto = false
-  self.trigger_auto_once = false
-  self.trigger_attack = false
-  self.trigger_contact = false
-  self.trigger_interact = false
-
-  self.name = self.page.name
-
-  for _, instruction in ipairs(self.page.conditions) do
-    local ctype = Event.parseCondition(instruction)
-    if ctype == Event.Condition.AUTO then
-      self.trigger_auto = true
-    elseif ctype == Event.Condition.AUTO_ONCE then
-      self.trigger_auto_once = true
-    elseif ctype == Event.Condition.ATTACK then
-      self.trigger_attack = true
-    elseif ctype == Event.Condition.CONTACT then
-      self.trigger_contact = true
-    elseif ctype == Event.Condition.INTERACT then
-      self.trigger_interact = true
-    end
+  if self.page.conditions_flags then
+    self.trigger_auto = self.page.conditions_flags.auto
+    self.trigger_auto_once = self.page.conditions_flags.auto_once
+    self.trigger_attack = self.page.conditions_flags.attack
+    self.trigger_contact = self.page.conditions_flags.contact
+    self.trigger_interact = self.page.conditions_flags.interact
   end
-
+  self.name = self.page.name
   self:setCharaset({
     path = string.sub(self.page.set, 9), -- remove Chipset/ part
     x = self.page.set_x, y = self.page.set_y,
@@ -1109,7 +942,6 @@ function Event:__construct(client, data, page_index)
   self.animation_number = self.page.animation_number
   self.speed = self.page.speed
   self:setGhost(self.page.transparent)
-
   if self.animation_type <= 2 then
     self.orientation = self.page.animation_mod
   end
@@ -1118,160 +950,20 @@ end
 -- override
 function Event:setOrientation(orientation)
   LivingEntity.setOrientation(self, orientation)
-  self:triggerSpecialVariable("Direction")
-end
-
--- (async) process the string to substitute all event language patterns
--- f_input: if passed/true, will substitute InputString functions (async)
--- return processed string
-function Event:instructionSubstitution(str, f_input)
-  local pat = Event.patterns
-
-  if f_input then -- special: "InputString('')"
-    str = utils.gsub(str, "InputString%('(.*)'%)", function(title)
-      title = self:instructionSubstitution(title, f_input)
-      return self.client:requestInputString(title)
-    end)
-  end
-
-  -- special: variable functions "%func(...)%"
-  str = utils.gsub(str, "%%([%w_]+)%((.-)%)%%", function(id, content)
-    local f = client_special_vfunctions[id]
-    if f then
-      -- process function arguments
-      local args = utils.split(content, ",")
-      for i=1,#args do
-        args[i] = self:instructionSubstitution(args[i], f_input)
-      end
-      return f(self, unpack(args))
-    else print("event: client variable function \""..id.."\" not implemented") end
-  end)
-
-  -- server var
-  str = string.gsub(str, pat.server_var, function(id)
-    return self.client.server:getVariable(id)
-  end)
-
-  -- client var
-  str = string.gsub(str, pat.client_var, function(id)
-    id = tonumber(id)
-    if id then return self.client:getVariable("var", id) end
-  end)
-
-  -- client bool var
-  str = string.gsub(str, pat.client_bool_var, function(id)
-    id = tonumber(id)
-    if id then return self.client:getVariable("bool", id) end
-  end)
-
-  -- event var
-  str = string.gsub(str, pat.event_special_var, function(name, id)
-    local event = self.client.events_by_name[name]
-    if event then
-      local f = event_special_vars[id]
-      if f then return f(event)
-      else print("event: event special variable \""..id.."\" not implemented") end
-    end
-  end)
-
-  -- client special var
-  str = string.gsub(str, pat.client_special_var, function(id)
-    if id ~= "Inventaire" then
-      local f = client_special_vars[id]
-      if f then return f(self)
-      else print("event: client special variable \""..id.."\" not implemented") end
-    end
-  end)
-
-  return str
-end
-
--- check condition instruction
--- return bool
-function Event:checkCondition(instruction)
-  --print("CD", self.data.x, self.data.y, instruction)
-  local args = {Event.parseCondition(instruction)}
-
-  local lhs, op, expr
-  if args[1] == Event.Condition.VARIABLE then -- comparison check
-    if args[2] == Event.Variable.SERVER then
-      local key = self:instructionSubstitution(args[3])
-      lhs = self.client.server:getVariable(key)
-      op, expr = args[4], args[5]
-    elseif args[2] == Event.Variable.CLIENT then
-      lhs = self.client:getVariable(args[3], args[4][1])
-      op, expr = args[5], args[6]
-    elseif args[2] == Event.Variable.CLIENT_SPECIAL then
-      if args[3] == "Inventaire" then -- inventory check, set lhs as rhs or "" if not owned
-        local rhs = self:instructionSubstitution(args[5])
-        local id = self.client.server.project.objects_by_name[rhs]
-        lhs = (id and (self.client.inventory.items[id] or 0) > 0 and rhs or "")
-      else -- regular
-        local f = client_special_vars[args[3]]
-        if f then lhs = f(self)
-        else print("event: client special variable \""..args[3].."\" not implemented") end
-      end
-      op, expr = args[4], args[5]
-    elseif args[2] == Event.Variable.EVENT_SPECIAL then
-      local event = self.client.events_by_name[args[3]]
-      if event then
-        local f = event_special_vars[args[4]]
-        if f then lhs = f(event)
-        else print("event: event special variable \""..args[4].."\" not implemented") end
-      end
-
-      op, expr = args[5], args[6]
-    end
-  elseif args[1] == Event.Condition.EXPRESSION then -- expression comparison
-    lhs, op, expr = self:instructionSubstitution(args[2]), args[3], args[4]
-  end
-
-  if op then -- comparison
-    if not lhs then return false end
-    lhs = tostring(lhs)
-    local rhs = self:instructionSubstitution(expr)
-
-    local rhs_n = utils.computeExpression(rhs)
-    local lhs_n = utils.computeExpression(lhs)
-    if rhs_n and lhs_n then -- number comparison
-      lhs = lhs_n
-      rhs = rhs_n
-    else -- string comparison
-      lhs = lhs_n and tostring(lhs_n) or lhs
-      rhs = rhs_n and tostring(rhs_n) or rhs
-    end
-
-    if op == "=" then return (lhs == rhs)
-    elseif op == "<" then return (lhs < rhs)
-    elseif op == ">" then return (lhs > rhs)
-    elseif op == "<=" then return (lhs <= rhs)
-    elseif op == ">=" then return (lhs >= rhs)
-    elseif op == "!=" then return (lhs ~= rhs)
-    else return false end
-  end
-
-  return true
 end
 
 -- check if the page conditions are valid
 -- return bool
 function Event:checkConditions(page)
-  for _, instruction in ipairs(page.conditions) do
-    if not self:checkCondition(instruction) then return false end
-  end
-
-  return true
+  return page.conditions_func and page.conditions_func(nil, unpack(self.vm))
 end
 
 -- search for a valid page
 -- return page index
 function Event:selectPage()
   for i, page in ipairs(self.data.pages) do
-    if self:checkConditions(page) then
-      return i
-    end
+    if self:checkConditions(page) then return i end
   end
-
   return #self.data.pages
 end
 
@@ -1286,7 +978,6 @@ end
 -- condition: Event.Condition type triggered
 function Event:execute(condition)
   --print("EXECUTE", condition, self.map.id, self.cx, self.cy, self.page_index)
-
   if condition == Event.Condition.INTERACT then
     local atype = self.animation_type
     if atype == Event.Animation.CHARACTER_RANDOM or atype == Event.Animation.STATIC_CHARACTER then
@@ -1295,121 +986,13 @@ function Event:execute(condition)
       self:setOrientation(orientation)
     end
   end
-
   -- execution context state
   local state = {
-    cursor = 1, -- instruction cursor
     condition = condition
   }
-
-  -- process instructions
-  local size = #self.page.commands
-
-  while state.cursor <= size do
-    local instruction = self.page.commands[state.cursor]
-    --print("INS", instruction)
-    local args = {Event.parseCommand(instruction)}
-
-    if args[1] == Event.Command.VARIABLE then -- variable assignment
-      local op, expr
-
-      if args[2] == Event.Variable.SERVER then
-        op, expr = args[4], args[5]
-
-        -- concat compatibility support
-        expr = string.gsub(expr, "Concat%('(.*)'%)", "Serveur["..args[3].."]%1")
-      elseif args[2] == Event.Variable.CLIENT then
-        op, expr = args[5], args[6]
-      elseif args[2] == Event.Variable.CLIENT_SPECIAL then
-        op, expr = args[4], args[5]
-
-        -- concat compatibility support
-        expr = string.gsub(expr, "Concat%('(.*)'%)", "%%"..args[3].."%%%1")
-      elseif args[2] == Event.Variable.EVENT_SPECIAL then
-        op, expr = args[5], args[6]
-      end
-
-      if op == "=" then
-        expr = self:instructionSubstitution(expr, true)
-
-        if args[2] == Event.Variable.SERVER then
-          local key = self:instructionSubstitution(args[3])
-          self.client.server:setVariable(key, utils.computeExpression(expr) or expr)
-        elseif args[2] == Event.Variable.CLIENT then
-          local value = (utils.computeExpression(expr) or 0)
-          for id=args[4][1], (args[4][2] or args[4][1]) do -- range set
-            self.client:setVariable(args[3], id, value)
-          end
-        elseif args[2] == Event.Variable.CLIENT_SPECIAL then
-          local f = client_special_vars[args[3]]
-          if f then
-            f(self, expr)
-            self.client:triggerSpecialVariable(args[3])
-          else print("event: client special variable \""..args[3].."\" not implemented") end
-        elseif args[2] == Event.Variable.EVENT_SPECIAL then
-          local event = self.client.events_by_name[args[3]]
-          if event then
-            local f = event_special_vars[args[4]]
-            if f then
-              f(event, expr)
-              event:triggerSpecialVariable(args[4])
-            else print("event: event special variable \""..args[4].."\" not implemented") end
-          end
-        end
-      end
-    elseif args[1] == Event.Command.FUNCTION then -- function
-      local f = command_functions[args[2]]
-
-      -- process function arguments
-      local fargs = {}
-      for i=3,#args do
-        table.insert(fargs, self:instructionSubstitution(args[i], true))
-      end
-
-      if f then
-        f(self, state, unpack(fargs))
-      else print("event: command function \""..args[2].."\" not implemented") end
-    end
-
-    state.cursor = state.cursor+1
-  end
-
+  self.page.commands_func(state, unpack(self.vm))
   -- end
   self.client:resetScroll()
-end
-
--- trigger special variable (client/event) change event
-function Event:triggerSpecialVariable(id)
-  -- call listeners
-  local listeners = self.special_var_listeners[id]
-  if listeners then
-    for callback in pairs(listeners) do
-      callback()
-    end
-  end
-end
-
--- listen special variable (client/event)
--- client/event name collisions are not really a problem (trigger a full page check anyway)
-function Event:listenSpecialVariable(id, callback)
-  local listeners = self.special_var_listeners[id]
-  if not listeners then
-    listeners = {}
-    self.special_var_listeners[id] = listeners
-  end
-
-  listeners[callback] = true
-end
-
-function Event:unlistenSpecialVariable(id, callback)
-  local listeners = self.special_var_listeners[id]
-  if listeners then
-    listeners[callback] = nil
-
-    if not next(listeners) then
-      self.special_var_listeners[id] = nil
-    end
-  end
 end
 
 -- override
@@ -1467,7 +1050,6 @@ function Event:moveAI()
           end
         end
       end
-
       -- next AI tick
       self.move_ai_task = nil
       self:moveAI()
@@ -1487,39 +1069,11 @@ end
 function Event:onMapChange()
   if self.map then -- added to map
     self:moveAI()
-
     -- reference event by name
     self.client.events_by_name[self.name] = self
-
-    -- listen to conditions of all previous and current page
-    --- callback on conditions change (select a new page)
-    self.vars_callback = function() self.client.event_checks[self] = true end
-
-    for i=1,self.page_index do
-      local page = self.data.pages[i]
-      for _, instruction in ipairs(page.conditions) do
-        local args = {Event.parseCondition(instruction)}
-        if args[1] == Event.Condition.VARIABLE then
-          if args[2] == Event.Variable.SERVER then
-            local key = self:instructionSubstitution(args[3])
-            self.server_vars_listened[key] = true
-            self.client.server:listenVariable(key, self.vars_callback)
-          elseif args[2] == Event.Variable.CLIENT then
-            self.client:listenVariable(args[3], args[4][1], self.vars_callback)
-          elseif args[2] == Event.Variable.CLIENT_SPECIAL then
-            self.client:listenSpecialVariable(args[3], self.vars_callback)
-          elseif args[2] == Event.Variable.EVENT_SPECIAL then
-            local event = self.client.events_by_name[args[3]]
-            if event then event:listenSpecialVariable(args[4], self.vars_callback) end
-          end
-        end
-      end
-    end
-
     -- auto trigger
     if self.trigger_auto then
       self.trigger_task = true
-
       -- task iteration
       local function iteration()
         task(0.03, function()
@@ -1529,7 +1083,6 @@ function Event:onMapChange()
             end
         end)
       end
-
       iteration()
     elseif self.trigger_auto_once then
       self:trigger(Event.Condition.AUTO_ONCE)
@@ -1537,34 +1090,9 @@ function Event:onMapChange()
   else -- removed from map
     -- unreference event by name
     self.client.events_by_name[self.name] = nil
-
     -- unreference trigger/check
     self.client.event_checks[self] = nil
     self.client.triggered_events[self] = nil
-
-    -- unlisten to conditions of all previous and current page
-    for i=1,self.page_index do
-      local page = self.data.pages[i]
-      for _, instruction in ipairs(page.conditions) do
-        local args = {Event.parseCondition(instruction)}
-        if args[1] == Event.Condition.VARIABLE then
-          if args[2] == Event.Variable.CLIENT then
-            self.client:unlistenVariable(args[3], args[4], self.vars_callback)
-          elseif args[2] == Event.Variable.CLIENT_SPECIAL then
-            self.client:unlistenSpecialVariable(args[3], self.vars_callback)
-          elseif args[2] == Event.Variable.EVENT_SPECIAL then
-            local event = self.client.events_by_name[args[3]]
-            if event then event:unlistenSpecialVariable(args[4], self.vars_callback) end
-          end
-        end
-      end
-    end
-
-    for id in pairs(self.server_vars_listened) do
-      self.client.server:unlistenVariable(id, self.vars_callback)
-    end
-    self.server_vars_listened = {}
-
     -- auto trigger
     if self.trigger_auto then
       self.trigger_task = nil
