@@ -43,8 +43,8 @@ Event.Condition = {
 -- PRIVATE METHODS
 
 -- function vars definitions, map of id => function
--- function(event, args...): should return a number or a string
---- args...: passed string expressions (after substitution)
+-- form: %var(...)%
+-- function(event, args...)
 
 local function_vars = {}
 
@@ -73,10 +73,9 @@ function function_vars:upper(str)
 end
 
 -- special var accessor definitions, map of id => function
--- function(event, value): should return a number or a string on get mode
---- value: passed string expression (after substitution) on set mode (nil on get mode)
-
--- form: "%<var>%"
+-- form: "%var%"
+-- function(event, value): should return on get mode
+--- value: nil on get mode
 local special_vars = {}
 
 function special_vars:Name(value)
@@ -518,7 +517,10 @@ special_vars.BloqueAttaqueLocal = special_vars.BloqueAttaque
 special_vars.BloqueDefenseLocal = special_vars.BloqueDefense
 special_vars.BloqueMagieLocal = special_vars.BloqueMagie
 
--- form: "%<Ev>.<var>%"
+-- event vars, map of id => function
+-- form: "%Ev.var%"
+-- function(event, value): should return on get mode
+--- value: nil on get mode
 local event_vars = {}
 
 function event_vars:Name(value)
@@ -705,8 +707,8 @@ function event_vars:AnimMagie(value)
 end
 
 -- command function definitions, map of id => function
+-- form: Command(...)
 -- function(event, args...)
---- args...: function arguments as string expressions (after substitution)
 local command_functions = {}
 
 function command_functions:AddObject(name, amount)
@@ -925,7 +927,12 @@ function Event:__construct(client, data, page_index)
     local f = command_functions[id]
     if f then return f(self, ...) end
   end
-  self.vm = {var, bool_var, server_var, special_var, func_var, event_var, func}
+  local function inventory(item)
+    -- return item quantity in inventory
+    local id = self.client.server.project.objects_by_name[item]
+    return id and self.client.inventory.items[id] or 0
+  end
+  self.env = {var, bool_var, server_var, special_var, func_var, event_var, func, inventory}
   -- setup data
   self.data = data -- event data
   self.page_index = page_index or self:selectPage()
@@ -962,7 +969,7 @@ end
 -- check if the page conditions are valid
 -- return bool
 function Event:checkConditions(page)
-  return page.conditions_func and page.conditions_func(nil, unpack(self.vm))
+  return page.conditions_func and page.conditions_func(nil, unpack(self.env))
 end
 
 -- search for a valid page
@@ -997,7 +1004,7 @@ function Event:execute(condition)
   local state = {
     condition = condition
   }
-  self.page.commands_func(state, unpack(self.vm))
+  self.page.commands_func(state, unpack(self.env))
   -- end
   self.client:resetScroll()
 end
