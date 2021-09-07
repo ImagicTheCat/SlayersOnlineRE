@@ -1,15 +1,16 @@
 -- Compile event conditions/commands to Lua functions.
--- Recursive descent parser with prediction and a lexer pass.
+-- Recursive descent parser with prediction (not LL(k)) and a lexer pass.
 --
 --[[
 EBNF-like:
-condition = condition_flag | expr cmp_op expr_empty
+condition = condition_flag | inventory cmp_op expr | expr cmp_op expr_empty
+inventory = '%' 'Inventaire' '%'
 condition_flag = 'Appuie sur bouton' | 'Automatique' | 'Auto une seul fois' |
   'En contact' | 'Attaque'
 command = call_condition | call | assignment
 call = text [args | quoted_args]
 call_condition = 'Condition' '(' ''' condition ''' ')'
-assignment = lvar '=' expr
+assignment = lvar '=' (concat | expr)
 lvar = var | bool_var | server_var | special_var | event_var
 args = '(' expr {',' expr} ')'
 quoted_args = '(' ''' expr {''' ',' ''' expr} ''' ')'
@@ -24,6 +25,7 @@ identifier = identifier_item {identifier_item}
 identifier_item = '-' | whitespace | text
 function_var = '%' text args '%'
 input_string = 'InputString' quoted_args
+concat = 'Concat' quoted_args
 range = text '..' text
 expr = expr_item {expr_item}
 expr_empty = {expr_item}
@@ -342,6 +344,19 @@ function Parser:input_string()
   end
 end
 
+-- return code
+function Parser:concat()
+  if self:check('Concat') then
+    local args = self:quoted_args()
+    if not args then self:error("expecting quoted arguments") end
+    return args
+  end
+end
+
+function Parser:inventory()
+  return self:check('%', 'Inventaire', '%')
+end
+
 function Parser:expr_item()
   if self:predict({'%'}, {nil, "text"}, {'('}) then
     return prefix("code", self:function_var())
@@ -412,7 +427,7 @@ function Parser:expr(allow_empty, end_predictions)
         else table.insert(parts, "(N("..item[2]..") or 0)") end -- code
       end
       -- Check for valid computation expression.
-      local code = table.concat(parts)
+      local code = "R("..table.concat(parts)..")"
       if not valid_computation or not loadstring("return "..code) then
         -- fallback to concatenation
         local parts = {}
@@ -452,7 +467,17 @@ function Parser:condition(end_predictions)
   -- flag
   local cflag = self:condition_flag()
   if cflag then return {"flag", cflag} end
-  -- comparison
+  -- inventory comparison
+  if self:inventory() then
+    local op = self:cmp_op()
+    if not op then self:error("expecting comparison operator") end
+    local expr = self:expr(true, end_predictions)
+    if not expr then self:error("expecting expression") end
+    if op == "==" then return {"code", "inventory("..expr..")>0"}
+    elseif op == "~=" then return {"code", "inventory("..expr..")==0"}
+    else self:error("invalid inventory comparison operator") end
+  end
+  -- expression comparison
   local lexpr = self:expr(false, { {{'='}}, {{'<'}}, {{'>'}}, {{'!'}} })
   if lexpr then
     local op = self:cmp_op()
@@ -513,7 +538,19 @@ function Parser:assignment()
   local lvar = self:lvar()
   if lvar then
     self:expect('=')
-    local expr = self:expr(true)
+    -- check for concat or expression
+    local concat = self:concat()
+    local expr
+    if concat then -- Concat(...)
+      if lvar[1] == "server_var" then
+        expr = "S(server_var("..lvar[2].."))..("..concat..")"
+      elseif lvar[1] == "special_var" then
+        expr = "S(special_var(\""..lvar[2].."\"))..("..concat..")"
+      elseif lvar[1] == "event_var" then
+        local event_var = lvar[2]
+        expr = "S(event_var(\""..event_var[2].."\", \""..event_var[1].."\"))..("..concat..")"
+      end
+    else expr = self:expr(true) end
     if not expr then self:error("expecting expression") end
     -- generate code
     local code
