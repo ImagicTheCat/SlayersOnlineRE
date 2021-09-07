@@ -390,7 +390,7 @@ function Deserializer.loadMapEvents(id)
       instruction = Deserializer.string_conv:iconv(instruction)
 
       -- process allowed escapes
-      instruction = string.gsub(instruction, "\\n", "\n")
+--      instruction = string.gsub(instruction, "\\n", "\n")
 
       if ltype then -- match
         local event = events_by_coords[x..","..y] -- get events by coords
