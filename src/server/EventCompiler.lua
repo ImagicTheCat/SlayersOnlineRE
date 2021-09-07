@@ -473,11 +473,11 @@ function Parser:call()
     local call = "func(\""..id[1].."\""..(args and ", "..args..")" or ")")
     --- query control flow
     if id[1] == "InputQuery" then
-      return "qresult = "..call
+      return "state.qresult = "..call
     elseif id[1] == "OnResultQuery" then
       local label = "::query"..self.queries.."::"
       self.queries = self.queries+1
-      return label.."; if qresult ~= "..(args or "").." then goto query"..self.queries.." end"
+      return label.."; if state.qresult ~= "..(args or "").." then goto query"..self.queries.." end"
     elseif id[1] == "QueryEnd" then
       local label = "::query"..self.queries.."::"
       self.queries = self.queries+1

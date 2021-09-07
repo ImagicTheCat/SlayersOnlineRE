@@ -1117,7 +1117,8 @@ function Server:setVariable(id, value)
   if type(value) == "string" or type(value) == "number" then
     self.changed_vars[id] = true
     self.vars[id] = value
-
+    -- mark swipe for all clients
+    for peer, client in pairs(self.clients) do client:markSwipe() end
     -- call listeners
     local listeners = self.var_listeners[id]
     if listeners then

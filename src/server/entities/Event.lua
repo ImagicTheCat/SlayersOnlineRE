@@ -774,6 +774,7 @@ function command_functions:ChangeSkin(path)
     x = 0, y = 0,
     w = 24, h = 32
   })
+  self.client:markSwipe()
 end
 
 function command_functions:Message(msg)
@@ -901,7 +902,10 @@ function Event:__construct(client, data, page_index)
   end
   local function special_var(id, value)
     local f = special_vars[id]
-    if f then return f(self, value) end
+    if f then
+      if value then self.client:markSwipe() end
+      return f(self, value)
+    end
   end
   local function func_var(id, ...)
     local f = function_vars[id]
@@ -911,12 +915,15 @@ function Event:__construct(client, data, page_index)
     local event = self.client.events_by_name[event_id]
     if event then
       local f = event_vars[id]
-      if f then return f(event, id, value) end
+      if f then
+        if value then self.client:markSwipe() end
+        return f(event, id, value)
+      end
     end
   end
   local function func(id, ...)
     local f = command_functions[id]
-    if f then f(self, ...) end
+    if f then return f(self, ...) end
   end
   self.vm = {var, bool_var, server_var, special_var, func_var, event_var, func}
   -- setup data
@@ -1090,8 +1097,7 @@ function Event:onMapChange()
   else -- removed from map
     -- unreference event by name
     self.client.events_by_name[self.name] = nil
-    -- unreference trigger/check
-    self.client.event_checks[self] = nil
+    -- unreference trigger
     self.client.triggered_events[self] = nil
     -- auto trigger
     if self.trigger_auto then
