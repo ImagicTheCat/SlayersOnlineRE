@@ -409,7 +409,7 @@ function Parser:expr(allow_empty, end_predictions)
             valid_computation = false; break
           end
           table.insert(parts, token[1])
-        else table.insert(parts, item[2]) end -- code
+        else table.insert(parts, "(N("..item[2]..") or 0)") end -- code
       end
       -- Check for valid computation expression.
       local code = table.concat(parts)
@@ -427,7 +427,7 @@ function Parser:expr(allow_empty, end_predictions)
               item = items[i]
             until not item or item[1] ~= "token"
             table.insert(parts, "\""..table.concat(tokens).."\"")
-          else table.insert(parts, item[2]); i = i+1 end -- raw code
+          else table.insert(parts, "S("..item[2]..")"); i = i+1 end -- raw code
         end
         code = table.concat(parts, "..")
       end
@@ -459,7 +459,12 @@ function Parser:condition(end_predictions)
     if not op then self:error("expecting comparison operator") end
     local rexpr = self:expr(true, end_predictions)
     if not rexpr then self:error("expecting expression") end
-    return {"code", lexpr..op..rexpr}
+    -- Convert both operands to string or number based on the operator.
+    if op == "==" or op == "~=" then
+      return {"code", "S("..lexpr..")"..op.."S("..rexpr..")"}
+    else
+      return {"code", "(N("..lexpr..") or 0)"..op.."(N("..rexpr..") or 0)"}
+    end
   end
 end
 
@@ -496,9 +501,9 @@ function Parser:call_condition()
     local label = "::condition"..self.conditions.."::"
     self.conditions = self.conditions+1
     if condition[1] == "flag" then
-      return label.."; if not state.condition == \""..condition[2].."\" then goto condition"..self.conditions.." end"
+      return label.."; if state.condition ~= \""..condition[2].."\" then goto condition"..self.conditions.." end"
     else -- comparison code
-      return label.."; if not "..condition[2].." then goto condition"..self.conditions.." end"
+      return label.."; if not ("..condition[2]..") then goto condition"..self.conditions.." end"
     end
   end
 end

@@ -777,6 +777,7 @@ function Client:eventTick()
                 local event = entity
                 local page_index = event:selectPage()
                 if page_index ~= event.page_index then -- reload event
+                  print("change!")
                   -- remove
                   self.map:removeEntity(event)
                   -- re-create
