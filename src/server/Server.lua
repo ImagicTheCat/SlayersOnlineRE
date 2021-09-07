@@ -1048,8 +1048,8 @@ function Server:loadMapData(id)
       map.tileset_data = self:loadTilesetData(map.tileset_id)
       map.loaded = (map.tiledata and map.events and map.mob_areas and map.tileset_data)
       -- Compile events.
-      local header = "local state, var, bool_var, server_var, special_var, func_var, event_var, func = ...; "
-      local env = {}
+      local header = "local state, var, bool_var, server_var, special_var, func_var, event_var, func = ...; local S, N = tostring, tonumber;"
+      local env = {tostring = tostring, tonumber = tonumber}
       local function compileConditions(page, chunkname) -- return error or nil
         local code, flags = EventCompiler.compileConditions(page.conditions)
         if not code then return flags end

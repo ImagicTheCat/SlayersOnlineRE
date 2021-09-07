@@ -87,7 +87,7 @@ end
 
 function special_vars:UpperName(value)
   if not value then
-    return string.gsub(string.upper(self.client.pseudo), "%U", "")
+    return (string.gsub(string.upper(self.client.pseudo), "%U", ""))
   end
 end
 
