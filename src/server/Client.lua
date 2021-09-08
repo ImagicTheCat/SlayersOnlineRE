@@ -1178,7 +1178,6 @@ function Client:useItem(id)
     self:setHealth(self.health+item.mod_hp)
     self:setMana(self.mana+item.mod_mp)
     self:act("use", 1)
-
     -- heal effect
     if item.mod_hp > 0 then
       self:emitSound("Holy2.wav")
@@ -1187,7 +1186,12 @@ function Client:useItem(id)
     elseif item.mod_hp < 0 then -- damage
       self:broadcastPacket("damage", -item.mod_hp)
     end
-
+    -- mana effect
+    if item.mod_mp > 0 then
+      self:emitSound("Holy2.wav")
+      self:emitAnimation("mana.png", 0, 0, 48, 56, 0.75)
+      self:emitHint({{0.04,0.42,1}, utils.fn(item.mod_mp)})
+    end
     return true
   end
 end
