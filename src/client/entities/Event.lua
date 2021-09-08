@@ -6,17 +6,17 @@ local Event = class("Event", LivingEntity)
 -- STATICS
 
 Event.Position = {
-  DYNAMIC = 0,
-  FRONT = 1,
-  BACK = 2
+  [0] = "dynamic",
+  "front",
+  "back"
 }
 
 Event.Animation = {
-  STATIC = 0,
-  STATIC_CHARACTER = 1,
-  CHARACTER_RANDOM = 2,
-  VISUAL_EFFECT = 3,
-  CHARACTER_FOLLOW = 4
+  [0] = "static",
+  "static_character",
+  "character_random",
+  "visual_effect",
+  "character_follow"
 }
 
 -- METHODS
@@ -37,9 +37,10 @@ function Event:__construct(data)
 
   self.active = data.active
 
-  if data.position_type == Event.Position.BACK then
+  local ptype = Event.Position[data.position_type]
+  if ptype == "back" then
     self.draw_order = -1
-  elseif data.position_type == Event.Position.FRONT then
+  elseif ptype == "front" then
     self.draw_order = 1
   end
 end
@@ -71,7 +72,7 @@ function Event:tick(dt)
   LivingEntity.tick(self, dt)
 
   if self.active then
-    if self.animation_type == Event.Animation.VISUAL_EFFECT then -- effect
+    if Event.Animation[self.animation_type] == "visual_effect" then -- effect
       self.anim_index = math.floor(scheduler.time/self.anim_interval)%(self.anim_wc*self.anim_hc)
       self.anim_x = self.anim_index%self.anim_wc
       self.anim_y = math.floor(self.anim_index/self.anim_wc)
