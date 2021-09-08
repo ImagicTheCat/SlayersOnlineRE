@@ -50,7 +50,11 @@ function Event:onPacket(action, data)
   LivingEntity.onPacket(self, action, data)
 
   if action == "teleport" then
-    self.anim_x = self.animation_number
+    local atype = Event.Animation[self.animation_type]
+    if atype ~= "character_random" and atype ~= "character_follow" then
+      -- Prevent erasing anim_x for moving events.
+      self.anim_x = self.animation_number
+    end
   elseif action == "ch_active" then
     self.active = data
   elseif action == "ch_animation_type" then
