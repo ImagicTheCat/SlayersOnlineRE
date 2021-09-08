@@ -853,8 +853,20 @@ function Client:updateInfoOverlay()
 end
 
 function Client:onResize(w, h)
+  -- Contrain windowed dimensions to prevent abnormal ratio.
+  -- Prevent problematic resize loop with delay.
+  if not love.window.getFullscreen() then
+    if self.resize_timer then self.resize_timer:remove() end
+    self.resize_timer = scheduler:timer(1, function()
+      local MAX_RATIO = 2
+      local ratio = w/h
+      if ratio > MAX_RATIO then
+        w = MAX_RATIO*h
+        love.window.setMode(w, h, {resizable = true})
+      end
+    end)
+  end
   self.world_scale = math.ceil(h/16/15) -- display 15 tiles max (height)
-
   -- GUI
   self.gui:setSize(w,h)
 
