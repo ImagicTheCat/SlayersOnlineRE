@@ -16,28 +16,12 @@ local Event = class("Event", LivingEntity)
 
 Event.TRIGGER_RADIUS = 15 -- visibility/trigger radius in cells
 
-Event.Position = {
-  DYNAMIC = 0,
-  FRONT = 1,
-  BACK = 2
-}
-
 Event.Animation = {
-  STATIC = 0,
-  STATIC_CHARACTER = 1,
-  CHARACTER_RANDOM = 2,
-  VISUAL_EFFECT = 3,
-  CHARACTER_FOLLOW = 4
-}
-
-Event.Condition = {
-  INTERACT = 0,
-  AUTO = 1,
-  AUTO_ONCE = 2,
-  CONTACT = 3,
-  ATTACK = 4,
-  VARIABLE = 5,
-  EXPRESSION = 6
+  [0] = "static",
+  "static_character",
+  "character_random",
+  "visual_effect",
+  "character_follow"
 }
 
 -- PRIVATE METHODS
@@ -579,7 +563,7 @@ function event_vars:TypeAnim(value)
       self:setOrientation(self.page.animation_mod)
     end
 
-    if self.animation_type ~= Event.Animation.VISUAL_EFFECT then
+    if Event.Animation[self.animation_type] ~= "visual_effect" then
       data.animation_number = self.animation_number
     else
       data.animation_wc = math.max(self.page.animation_number, 1)
@@ -982,19 +966,19 @@ function Event:selectPage()
 end
 
 -- trigger the event (marked for execution, doesn't execute the event)
--- condition: Event.Condition type triggered
+-- condition: type triggered
 function Event:trigger(condition)
 --  print("TRIGGER", condition, self.cx, self.cy, self.page_index)
   self.client.triggered_events[self] = condition
 end
 
 -- (async) execute event script commands
--- condition: Event.Condition type triggered
+-- condition: type triggered
 function Event:execute(condition)
   --print("EXECUTE", condition, self.map.id, self.cx, self.cy, self.page_index)
-  if condition == Event.Condition.INTERACT then
-    local atype = self.animation_type
-    if atype == Event.Animation.CHARACTER_RANDOM or atype == Event.Animation.STATIC_CHARACTER then
+  if condition == "interact" then
+    local atype = Event.Animation[self.animation_type]
+    if atype == "character_random" or atype == "static_character" then
       -- look at player
       local orientation = LivingEntity.vectorOrientation(self.client.x-self.x, self.client.y-self.y)
       self:setOrientation(orientation)
@@ -1016,7 +1000,7 @@ function Event:serializeNet()
   data.animation_type = self.animation_type
   data.position_type = self.page.position_type
 
-  if self.animation_type ~= Event.Animation.VISUAL_EFFECT then
+  if Event.Animation[self.animation_type] ~= "visual_effect" then
     data.orientation = self.orientation
     data.animation_number = self.animation_number
   else
@@ -1029,14 +1013,15 @@ function Event:serializeNet()
   return data
 end
 
--- randomly move the event if type is Animation.CHARACTER_RANDOM
+-- randomly move the event if type is "character_random"
 -- (starts a unique loop, will call itself again)
 function Event:moveAI()
-  if self.map and not self.move_ai_task
-    and (self.animation_type == Event.Animation.CHARACTER_RANDOM or self.animation_type == Event.Animation.CHARACTER_FOLLOW) then
-    self.move_ai_task = task(utils.randf(1, 5)/self.speed*(self.animation_type == Event.Animation.CHARACTER_FOLLOW and 0.25 or 1.5), function()
+  local atype = Event.Animation[self.animation_type]
+  if self.map and not self.move_ai_task and
+      (atype == "character_random" or atype == "character_follow") then
+    self.move_ai_task = task(utils.randf(1, 5)/self.speed*(atype == "character_follow" and 0.25 or 1.5), function()
       if not self.client.running_event and self.map then -- prevent movement when an event is in execution
-        if self.animation_type == Event.Animation.CHARACTER_FOLLOW then -- follow mode
+        if Event.Animation[self.animation_type] == "character_follow" then -- follow mode
           local dcx, dcy = self.client.cx-self.cx, self.client.cy-self.cy
           if math.abs(dcx)+math.abs(dcy) > 1 then -- too far, move to target
             local dx, dy = utils.sign(dcx), utils.sign(dcy)
@@ -1074,7 +1059,7 @@ end
 -- override
 function Event:onAttack(attacker)
   if class.is(attacker, Client) and self.trigger_attack then -- event
-    self:trigger(Event.Condition.ATTACK)
+    self:trigger("attack")
     return true
   end
 end
@@ -1092,14 +1077,14 @@ function Event:onMapChange()
       local function iteration()
         task(0.03, function()
             if self.trigger_task then
-              self:trigger(Event.Condition.AUTO)
+              self:trigger("auto")
               iteration()
             end
         end)
       end
       iteration()
     elseif self.trigger_auto_once then
-      self:trigger(Event.Condition.AUTO_ONCE)
+      self:trigger("auto_once")
     end
   else -- removed from map
     -- unreference event by name

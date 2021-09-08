@@ -794,7 +794,7 @@ function Client:eventTick()
     local events = {}
     local max_delta = radius*16
     for event, condition in pairs(self.triggered_events) do
-      if condition == Event.Condition.AUTO or condition == Event.Condition.AUTO_ONCE then
+      if condition == "auto" or condition == "auto_once" then
         local dx = math.abs(event.cx*16-(self.cx*16+self.view_shift[1]))
         local dy = math.abs(event.cy*16-(self.cy*16+self.view_shift[2]))
         if dx <= max_delta and dy <= max_delta then
@@ -1114,7 +1114,7 @@ function Client:onCellChange()
       if not self.ghost and not self.prevent_next_contact then
         for entity in pairs(cell) do
           if class.is(entity, Event) and entity.client == self and entity.trigger_contact then
-            entity:trigger(Event.Condition.CONTACT)
+            entity:trigger("contact")
           end
         end
       end
@@ -1164,7 +1164,7 @@ function Client:interact()
   local entities = self:raycastEntities(2)
   for _, entity in ipairs(entities) do
     if class.is(entity, Event) and entity.client == self and entity.trigger_interact then
-      entity:trigger(Event.Condition.INTERACT)
+      entity:trigger("interact")
       break
     end
   end
