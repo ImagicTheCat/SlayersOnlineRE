@@ -64,7 +64,7 @@ function Map:__construct(server, id, data)
   -- init mob areas
   self.mob_areas = {} -- list of mob area states
   for i, area in ipairs(data.mob_areas) do
-    self.mob_areas[i] = { mob_count = 0 }
+    self.mob_areas[i] = { mob_count = 0, data = area }
     if area.type >= 0 then
       self:mobAreaSpawnTask(i)
     end
@@ -295,7 +295,7 @@ function Map:canSpawnMob(mob, cx, cy)
   -- check passable
   if not self:isCellPassable(mob, cx, cy) then return false end
 
-  -- check for no spawn areas
+  -- check for "no spawn" areas
   for _, area in ipairs(self.data.mob_areas) do
     if area.type < 0 and cx >= area.x1 and cx <= area.x2 and cy >= area.y1 and cy <= area.y2 then
       return false

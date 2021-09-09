@@ -132,12 +132,18 @@ end
 
 function Mob:isCellPassable(cx,cy)
   if self.map and self.map:isCellPassable(self, cx, cy) then
-    -- prevent mob stacking
     local cell = self.map:getCell(cx,cy)
+    -- prevent mob stacking
     for entity in pairs(cell or {}) do
       if class.is(entity, Mob) then return false end
     end
-
+    -- prevent mob from leaving bound area
+    if self.area then
+      local data = self.area.data
+      if cx < data.x1 or cx > data.x2 or cy < data.y1 or cy > data.y2 then
+        return false
+      end
+    end
     return true
   else
     return false
