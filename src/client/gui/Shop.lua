@@ -133,19 +133,20 @@ function Shop:__construct()
 
     -- note: info field will be actualized by gold update
   end)
-
   -- buy amount modulation
   self.content:listen("control-press", function(grid, id)
     if self.mode == "buy" then
       local item = self.buy_items[grid.cy+1]
-
+      -- change amount
       if id == "left" then
-        item.amount = math.max(0, (item.amount or 0)-1)
+        item.amount = (item.amount or 0)-1
       elseif id == "right" then
         item.amount = (item.amount or 0)+1
       end
-
+      -- constrain amount and update infos
       if id == "left" or id == "right" then
+        local free_space = client.stats.inventory_size-client.inventory.content.amount
+        item.amount = item.amount%(free_space+1)
         self.content:set(0,grid.cy, Text(Shop.formatBuyItem(item)), true)
         self.info:set(Shop.formatBuyItemInfo(item).."\nOr: "..utils.fn(client.stats.gold))
       end

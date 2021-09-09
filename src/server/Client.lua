@@ -363,7 +363,8 @@ function Client:onPacket(protocol, data)
             level = self.level,
             points = self.remaining_pts,
             reputation = self.reputation,
-            mana = self.mana
+            mana = self.mana,
+            inventory_size = self.inventory.max
           }))
           self:sendChatMessage("Identifié.")
         else -- login failed

@@ -54,6 +54,7 @@ function Inventory.Content:__construct(itype, columns)
   self.itype = itype
 
   self.items = {} -- map of id => item data, synced inventory items
+  self.amount = 0
   self.dirty = false
 
   self.grid:listen("cell-focus", function(grid, cx, cy)
@@ -64,13 +65,17 @@ end
 -- items: list of {id, data}
 -- clear: (optional) flag, if truthy, will clear the inventory first
 function Inventory.Content:updateItems(items, clear)
+  self.dirty = true
   if clear then self.items = {} end
-
   for _, item in ipairs(items) do
     self.items[item[1]] = item[2]
   end
-
-  self.dirty = true
+  -- compute total amount
+  local amount = 0
+  for item, data in pairs(self.items) do
+    amount = amount+data.amount
+  end
+  self.amount = amount
 end
 
 function Inventory.Content:updateContent()
