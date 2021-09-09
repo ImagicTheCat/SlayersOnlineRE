@@ -143,7 +143,8 @@ local control_whitelist = {
   ["return"] = true,
   menu = true,
   chat_up = true,
-  chat_down = true
+  chat_down = true,
+  fullscreen = true
 }
 commands.bind = {10, function(self, client, args)
   if client then
@@ -183,7 +184,7 @@ end, "<type:input> [control]", [[afficher ou assigner un (LÖVE/SDL) scancode à
     types: sc (scancode) / gp (gamepad)
       scancodes: https://love2d.org/wiki/Scancode
       gamepad: https://love2d.org/wiki/GamepadButton
-    contrôles: none, up, right, down, left, interact, attack, defend, quick1, quick2, quick3, return, menu, chat_up, chat_down]]
+    contrôles: none, up, right, down, left, interact, attack, defend, quick1, quick2, quick3, return, menu, chat_up, chat_down, fullscreen]]
 }
 
 local volume_types = {

@@ -78,7 +78,8 @@ function Client:__construct(cfg)
       ["2"] = "quick2",
       ["3"] = "quick3",
       pagedown = "chat_up",
-      pageup = "chat_down"
+      pageup = "chat_down",
+      f11 = "fullscreen"
     },
     gamepad_controls = {
       dpup = "up",
@@ -1096,15 +1097,11 @@ end
 
 -- abstraction layer for controls
 function Client:pressControl(id)
-  -- OS repeatable inputs.
-  -- chat scrolling
+  -- chat scrolling (repeatable)
   if self.chat_history.visible then
     if id == "chat_up" then self.chat_history:scroll(-50)
     elseif id == "chat_down" then self.chat_history:scroll(50) end
   end
-  -- GUI handling
-  self.gui:triggerControlPress(id)
-  --
   -- Non-OS repeatable inputs.
   local control = self.controls[id]
   if not control then -- not already pressed
@@ -1117,6 +1114,14 @@ function Client:pressControl(id)
       end)
     else
       self.controls[id] = true
+    end
+    -- toggle fullscreen
+    if id == "fullscreen" then
+      if love.window.getFullscreen() then
+        love.window.setMode(800, 600, {fullscreen = false, resizable = true})
+      else
+        love.window.setMode(800, 600, {fullscreen = true})
+      end
     end
     -- gameplay handling
     local pickt = self.pick_target
@@ -1152,6 +1157,10 @@ function Client:pressControl(id)
       end
     end
   end
+  -- GUI handling (repeatable)
+  -- Need to be after gameplay handling to prevent changes to the UI state
+  -- before the checks.
+  self.gui:triggerControlPress(id)
 end
 
 function Client:releaseControl(id)
