@@ -258,9 +258,9 @@ function Client:onPacket(protocol, data)
             end
           end
           --- inventories
-          self.inventory = Inventory(self.user_id, 1, 100)
-          self.chest_inventory = Inventory(self.user_id, 2, 1000)
-          self.spell_inventory = Inventory(self.user_id, 3, 100)
+          self.inventory = Inventory(self.user_id, 1, self.server.cfg.inventory_size)
+          self.chest_inventory = Inventory(self.user_id, 2, self.server.cfg.chest_size)
+          self.spell_inventory = Inventory(self.user_id, 3, self.server.cfg.spell_inventory_size)
           self.inventory:load(self.server.db)
           self.chest_inventory:load(self.server.db)
           self.spell_inventory:load(self.server.db)
@@ -951,13 +951,13 @@ function Client:openTrade(player)
   -- init trading data
   self.trade = {
     peer = player,
-    inventory = Inventory(-1, -1, 100),
+    inventory = Inventory(-1, -1, self.server.cfg.inventory_size),
     gold = 0,
     locked = false
   }
   player.trade = {
     peer = self,
-    inventory = Inventory(-1, -1, 100),
+    inventory = Inventory(-1, -1, self.server.cfg.inventory_size),
     gold = 0,
     locked = false
   }
