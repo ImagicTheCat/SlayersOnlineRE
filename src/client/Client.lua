@@ -59,9 +59,7 @@ function Client:__construct(cfg)
   -- repeated controls, map of control id => repeat interval (seconds)
   self.controls_repeat = {
     attack = 0.25,
-    defend = 0.25,
-    chat_up = 0.1,
-    chat_down = 0.1
+    defend = 0.25
   }
 
   self.player_config = {
@@ -963,15 +961,9 @@ end
 
 function Client:onKeyPressed(keycode, scancode, isrepeat)
   self.gui:triggerKeyPress(keycode, scancode, isrepeat)
-
   -- control handling
-  if not isrepeat then
-    local control = self.player_config.scancode_controls[scancode]
-    if control then
-      self:pressControl(control)
-    end
-  end
-
+  local control = self.player_config.scancode_controls[scancode]
+  if control then self:pressControl(control) end
   -- input chat copy/paste
   if not isrepeat and love.keyboard.isDown("lctrl") then
     if keycode == "c" then
@@ -1108,8 +1100,18 @@ end
 
 -- abstraction layer for controls
 function Client:pressControl(id)
+  -- OS repeatable inputs.
+  -- chat scrolling
+  if self.chat_history.visible then
+    if id == "chat_up" then self.chat_history:scroll(-50)
+    elseif id == "chat_down" then self.chat_history:scroll(50) end
+  end
+  -- GUI handling
+  self.gui:triggerControlPress(id)
+  --
+  -- Non-OS repeatable inputs.
   local control = self.controls[id]
-  if not control then
+  if not control then -- not already pressed
     local interval = self.controls_repeat[id]
     if interval then -- repeated, bind timer
       self.controls[id] = scheduler:timer(interval, function()
@@ -1120,13 +1122,6 @@ function Client:pressControl(id)
     else
       self.controls[id] = true
     end
-
-    -- chat scrolling
-    if self.chat_history.visible then
-      if id == "chat_up" then self.chat_history:scroll(-50)
-      elseif id == "chat_down" then self.chat_history:scroll(50) end
-    end
-
     -- gameplay handling
     local pickt = self.pick_target
     if not self.gui.focus and pickt and self.map then
@@ -1160,9 +1155,6 @@ function Client:pressControl(id)
       elseif id == "quick3" then self:doQuickAction(3)
       end
     end
-
-    -- GUI handling
-    self.gui:triggerControlPress(id)
   end
 end
 
