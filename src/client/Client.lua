@@ -570,10 +570,11 @@ function Client:onPacket(protocol, data)
     self.shop:open(unpack(data))
     self.gui:setFocus(self.shop.menu)
   elseif protocol == net.STATS_UPDATE then
-    local stats = data
+    -- Update statistics (sparse).
+    -- Some statistics may not be basic character stats (e.g. inventory_size).
+    local stats = data -- updated stats
     utils.mergeInto(stats, self.stats)
-
-    -- updates
+    -- Process updates.
     if stats.name then self.g_stats:set(0,0, Text("Nom: "..stats.name)) end
     if stats.class then self.g_stats:set(0,1, Text("Classe: "..stats.class)) end
     if stats.level then self.g_stats:set(0,2, Text("Niveau: "..stats.level)) end
@@ -585,12 +586,10 @@ function Client:onPacket(protocol, data)
     if stats.chest_gold then
       self.chest.gold_r_display:set(utils.fn(stats.chest_gold))
     end
-
     if stats.alignment then
       self.g_stats:set(1,0, Text("Alignement: "..stats.alignment))
       self:updateInfoOverlay()
     end
-
     if stats.health or stats.max_health then
       self.health_phial.factor = self.stats.health/self.stats.max_health
       self.g_stats:set(1,1, Text("Vie: "..utils.fn(self.stats.health).." / "..utils.fn(self.stats.max_health)))
@@ -599,18 +598,15 @@ function Client:onPacket(protocol, data)
       self.mana_phial.factor = self.stats.mana/self.stats.max_mana
       self.g_stats:set(1,2, Text("Mana: "..utils.fn(self.stats.mana).." / "..utils.fn(self.stats.max_mana)))
     end
-
     if stats.strength then self.g_stats:set(0,5, Text("Force: "..utils.fn(stats.strength)), true) end
     if stats.dexterity then self.g_stats:set(0,6, Text("Dextérité: "..utils.fn(stats.dexterity)), true) end
     if stats.constitution then self.g_stats:set(0,7, Text("Constitution: "..utils.fn(stats.constitution)), true) end
     if stats.magic then self.g_stats:set(0,8, Text({{0,0,0}, "Magie: "..utils.fn(stats.magic)})) end
     if stats.points then self.g_stats:set(0,9, Text("Points restants: "..utils.fn(stats.points))) end
-
     if stats.helmet_slot then self.g_stats:set(0,11, Text("Casque: "..stats.helmet_slot.name), true) end
     if stats.armor_slot then self.g_stats:set(0,12, Text("Armure: "..stats.armor_slot.name), true) end
     if stats.weapon_slot then self.g_stats:set(0,13, Text("Arme: "..stats.weapon_slot.name), true) end
     if stats.shield_slot then self.g_stats:set(0,14, Text("Bouclier: "..stats.shield_slot.name), true) end
-
     if stats.attack then self.g_stats:set(1,5, Text("Attaque: "..utils.fn(stats.attack))) end
     if stats.defense then self.g_stats:set(1,6, Text("Défense: "..utils.fn(stats.defense))) end
     if stats.reputation then self.g_stats:set(1,7, Text("Réputation: "..utils.fn(stats.reputation))) end
