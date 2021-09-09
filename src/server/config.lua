@@ -21,6 +21,9 @@ return {
     data = {5e3, 10}, -- input bytes
     chat_all = {3, 24} -- global chat messages
   },
+  inventory_size = 100,
+  spell_inventory_size = 100,
+  chest_size = 1000,
   server_vars_init = { -- map of key => value
   },
   spawn_location = { -- default (re)spawn location
