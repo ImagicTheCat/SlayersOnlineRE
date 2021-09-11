@@ -376,7 +376,7 @@ function Parser:expr_item()
       elseif lvar[1] == "special_var" then code = "special_var(\""..lvar[2].."\")"
       elseif lvar[1] == "event_var" then
         local event_var = lvar[2]
-        code = "event_var(\""..event_var[2].."\", \""..event_var[1].."\")"
+        code = "event_var(\""..event_var[1].."\", \""..event_var[2].."\")"
       end
       if not code then self:error("no code generated for lvar") end
       lvar = code
@@ -548,7 +548,7 @@ function Parser:assignment()
         expr = "S(special_var(\""..lvar[2].."\"))..("..concat..")"
       elseif lvar[1] == "event_var" then
         local event_var = lvar[2]
-        expr = "S(event_var(\""..event_var[2].."\", \""..event_var[1].."\"))..("..concat..")"
+        expr = "S(event_var(\""..event_var[1].."\", \""..event_var[2].."\"))..("..concat..")"
       end
     else expr = self:expr(true) end
     if not expr then self:error("expecting expression") end
@@ -566,7 +566,7 @@ function Parser:assignment()
     elseif lvar[1] == "special_var" then code = "special_var(\""..lvar[2].."\", "..expr..")"
     elseif lvar[1] == "event_var" then
       local event_var = lvar[2]
-      code = "event_var(\""..event_var[2].."\", \""..event_var[1].."\", "..expr..")"
+      code = "event_var(\""..event_var[1].."\", \""..event_var[2].."\", "..expr..")"
     end
     if not code then self:error("no assignment code generated") end
     return code
