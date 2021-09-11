@@ -1051,13 +1051,14 @@ function Server:loadMapData(id)
       map.tileset_data = self:loadTilesetData(map.tileset_id)
       map.loaded = (map.tiledata and map.events and map.mob_areas and map.tileset_data)
       -- Compile events.
-      local header = "local state, var, bool_var, server_var, special_var, func_var, event_var, func, inventory = ...; local S, N, R = tostring, tonumber, R;"
+      local header = "local state, var, bool_var, server_var, special_var, func_var, event_var, func, inventory = ...; local S, N, R = S, N, R;"
       local function sanitize_result(v)
         if v ~= v then return 0
         elseif math.abs(v) == 1/0 then return 0
         else return math.floor(v) end
       end
-      local env = {tostring = tostring, tonumber = tonumber, R = sanitize_result}
+      local function to_number(v) return v and tonumber(v) or 0 end
+      local env = {S = tostring, N = to_number, R = sanitize_result}
       local function compileConditions(page, chunkname) -- return error or nil
         local code, flags = EventCompiler.compileConditions(page.conditions)
         if not code then return flags end
