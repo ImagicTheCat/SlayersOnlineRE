@@ -424,7 +424,7 @@ function Parser:expr(allow_empty, end_predictions)
             valid_computation = false; break
           end
           table.insert(parts, token[1])
-        else table.insert(parts, "(N("..item[2]..") or 0)") end -- code
+        else table.insert(parts, "N("..item[2]..")") end -- code
       end
       -- Check for valid computation expression.
       local code = "R("..table.concat(parts)..")"
@@ -488,7 +488,7 @@ function Parser:condition(end_predictions)
     if op == "==" or op == "~=" then
       return {"code", "S("..lexpr..")"..op.."S("..rexpr..")"}
     else
-      return {"code", "(N("..lexpr..") or 0)"..op.."(N("..rexpr..") or 0)"}
+      return {"code", "N("..lexpr..")"..op.."N("..rexpr..")"}
     end
   end
 end
