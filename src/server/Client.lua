@@ -760,6 +760,10 @@ end
 -- Should be called when variables change.
 function Client:markSwipe() self.to_swipe = true end
 
+local function event_error_handler(err)
+  io.stderr:write(debug.traceback("event: "..err, 2).."\n")
+end
+
 -- event handling
 function Client:eventTick()
   if self.map and not self.running_event then
@@ -821,7 +825,8 @@ function Client:eventTick()
       self.triggered_events[event] = nil
       self.running_event = event
       async(function()
-        event:execute(condition)
+        local ok = xpcall(event.execute, event_error_handler, event, condition)
+        if not ok then event:rollback() end -- rollback on error
         self.running_event = nil
         self:setMoveForward(self.move_forward_input) -- resume movement
       end)
@@ -1060,6 +1065,18 @@ function Client:kick(reason)
 end
 
 function Client:onDisconnect()
+  -- Rollback event effects on disconnection. Effectively handles interruption
+  -- by server shutdown too.
+  local event = self.running_event
+  if event then
+    -- Make sure the event coroutine will not continue its execution before the
+    -- rollback by disabling async tasks. The server guarantees that no more
+    -- packets from the client will be received and we can ignore this kind of task.
+    if self.move_task then self.move_task:remove() end
+    if event.wait_task then event.wait_task:remove() end
+    -- rollback
+    event:rollback()
+  end
   -- disconnect variable behavior
   local map_data = (self.map and self.map.data)
   if map_data and map_data.si_v >= 0 then
