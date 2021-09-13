@@ -849,9 +849,15 @@ end
 function command_functions:Attente(amount)
   amount = tonumber(amount) or 0
   if amount > 0 then
-    local r = async()
-    task(amount*0.03, function() r() end)
-    r:wait()
+    self.wait_task = async()
+    task(amount*0.03, function()
+      local r = self.wait_task
+      if r then
+        self.wait_task = nil
+        r()
+      end
+    end)
+    self.wait_task:wait()
   end
 end
 
@@ -954,10 +960,18 @@ function Event:setOrientation(orientation)
   LivingEntity.setOrientation(self, orientation)
 end
 
+local function error_handler(err)
+  io.stderr:write(debug.traceback("event: "..err, 2).."\n")
+end
+
 -- check if the page conditions are valid
 -- return bool
 function Event:checkConditions(page)
-  return page.conditions_func and page.conditions_func(nil, unpack(self.env))
+  if page.conditions_func then
+    local ok, r = xpcall(page.conditions_func, error_handler, nil, unpack(self.env))
+    return ok and r
+  end
+  return false
 end
 
 -- search for a valid page
@@ -988,13 +1002,30 @@ function Event:execute(condition)
       self:setOrientation(orientation)
     end
   end
-  -- execution context state
+  -- init transaction and state
+  self:startTransaction()
   local state = {
     condition = condition
   }
   self.page.commands_func(state, unpack(self.env))
   -- end
   self.client:resetScroll()
+end
+
+function Event:startTransaction()
+  self.transaction = {
+    -- values to be restored
+    server_vars = {},
+    vars = {},
+    bool_vars = {},
+    -- operations to be reversed
+    trace = {}
+  }
+end
+
+-- Rollback event execution effects.
+function Event:rollback()
+  -- TODO
 end
 
 -- override
