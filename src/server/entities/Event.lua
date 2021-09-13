@@ -769,6 +769,10 @@ function command_functions:Message(msg)
   end
 end
 
+function command_functions:InputString(title)
+  return self.client:requestInputString(title)
+end
+
 function command_functions:InputQuery(title, ...)
   local options = {...}
   return options[self.client:requestInputQuery(title, options)] or ""
