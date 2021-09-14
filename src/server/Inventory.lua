@@ -62,6 +62,10 @@ function Inventory:set(id, amount)
   self:onItemUpdate(id)
 end
 
+function Inventory:get(id)
+  return self.items[id] or 0
+end
+
 -- take one item
 -- dry: (optional) if truthy, no effects
 -- return true on success

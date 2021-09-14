@@ -699,6 +699,11 @@ function command_functions:AddObject(name, amount)
   amount = tonumber(amount) or 1
   local id = self.client.server.project.objects_by_name[name]
   if id and amount > 0 then
+    -- save
+    if not self.transaction.items[id] then
+      self.transaction.items[id] = self.client.inventory:get(id)
+    end
+    -- set
     local count = 0
     for i=1,amount do
       if self.client.inventory:put(id) then count = count+1 end
@@ -711,6 +716,11 @@ function command_functions:DelObject(name, amount)
   amount = tonumber(amount) or 1
   local id = self.client.server.project.objects_by_name[name]
   if id and amount > 0 then
+    -- save
+    if not self.transaction.items[id] then
+      self.transaction.items[id] = self.client.inventory:get(id)
+    end
+    -- set
     local count = 0
     for i=1,amount do
       if self.client.inventory:take(id) then count = count+1 end
@@ -737,6 +747,11 @@ function command_functions:ChangeResPoint(map_name, cx, cy)
   cy = tonumber(cy)
 
   if map_name and cx and cy then
+    -- save
+    if not self.transaction.respawn_point then
+      self.transaction.respawn_point = self.client.respawn_point
+    end
+    -- set
     self.client.respawn_point = {
       map = map_name,
       cx = cx,
@@ -755,6 +770,11 @@ function command_functions:SScroll(cx, cy)
 end
 
 function command_functions:ChangeSkin(path)
+  -- save
+  if not self.transaction.charaset then
+    self.transaction.charaset = self.client.charaset
+  end
+  -- set
   self.client:setCharaset({
     path = string.sub(path, 9), -- remove "Chipset/" part
     x = 0, y = 0,
@@ -816,6 +836,11 @@ function command_functions:AddMagie(name, amount)
   amount = tonumber(amount) or 1
   local id = self.client.server.project.spells_by_name[name]
   if id and amount > 0 then
+    -- save
+    if not self.transaction.spells[id] then
+      self.transaction.spells[id] = self.client.spell_inventory:get(id)
+    end
+    -- set
     local count = 0
     for i=1,amount do
       if self.client.spell_inventory:put(id) then count = count+1 end
@@ -828,6 +853,11 @@ function command_functions:DelMagie(name, amount)
   amount = tonumber(amount) or 1
   local id = self.client.server.project.spells_by_name[name]
   if id and amount > 0 then
+    -- save
+    if not self.transaction.spells[id] then
+      self.transaction.spells[id] = self.client.spell_inventory:get(id)
+    end
+    -- set
     local count = 0
     for i=1,amount do
       if self.client.spell_inventory:take(id) then count = count+1 end
@@ -837,11 +867,21 @@ function command_functions:DelMagie(name, amount)
 end
 
 function command_functions:ChAttaqueSound(path)
+  -- save
+  if not self.transaction.attack_sound then
+    self.transaction.attack_sound = self.client.attack_sound
+  end
+  -- set
   -- remove Sound/ part
   self.client:setSounds(string.sub(path, 7), self.client.hurt_sound)
 end
 
 function command_functions:ChBlesseSound(path)
+  -- save
+  if not self.transaction.hurt_sound then
+    self.transaction.hurt_sound = self.client.hurt_sound
+  end
+  -- set
   -- remove Sound/ part
   self.client:setSounds(self.client.attack_sound, string.sub(path, 7))
 end
@@ -885,22 +925,47 @@ function Event:__construct(client, data, page_index)
   self:setClient(client)
   -- prepare event's execution environment
   local function var(id, value)
-    if value then return self.client:setVariable("var", id, value)
+    if value then
+      -- save
+      if not self.transaction.vars[id] then
+        self.transaction.vars[id] = self.client:getVariable("var", id)
+      end
+      -- set
+      self.client:setVariable("var", id, value)
     else return self.client:getVariable("var", id) end
   end
   local function bool_var(id, value)
-    if value then return self.client:setVariable("bool", id, value)
+    if value then
+      -- save
+      if not self.transaction.bool_vars[id] then
+        self.transaction.bool_vars[id] = self.client:getVariable("bool", id)
+      end
+      -- set
+      self.client:setVariable("bool", id, value)
     else return self.client:getVariable("bool", id) end
   end
   local function server_var(id, value)
-    if value then return self.client.server:setVariable(id, value)
+    if value then
+      -- save
+      if not self.transaction.server_vars[id] then
+        self.transaction.server_vars[id] = server:getVariable(id)
+      end
+      -- set
+      server:setVariable(id, value)
     else return self.client.server:getVariable(id) end
   end
   local function special_var(id, value)
     local f = special_vars[id]
     if f then
-      if value then self.client:markSwipe() end
-      return f(self, value)
+      if value then
+        -- save
+        if not self.transaction.special_vars[id] then
+          self.transaction.special_vars[id] = f(self)
+        end
+        -- set
+        f(self, value)
+        self.client:markSwipe()
+      else return f(self) end
     end
   end
   local function func_var(id, ...)
@@ -1012,20 +1077,36 @@ function Event:execute(condition)
   self.client:resetScroll()
 end
 
+-- The transaction is used to handle the "soft" event interruptions like an
+-- event error, client disconnection or server shutdown by doing a rollback.
 function Event:startTransaction()
   self.transaction = {
     -- values to be restored
     server_vars = {},
     vars = {},
     bool_vars = {},
-    -- operations to be reversed
-    trace = {}
+    special_vars = {},
+    items = {},
+    spells = {}
   }
 end
 
 -- Rollback event execution effects.
 function Event:rollback()
-  -- TODO
+  local tr = self.transaction
+  -- restore values
+  for k,v in pairs(tr.vars) do self.client:setVariable("var", k, v) end
+  for k,v in pairs(tr.bool_vars) do self.client:setVariable("bool", k, v) end
+  for k,v in pairs(tr.server_vars) do server:setVariable(k, v) end
+  for k,v in pairs(tr.special_vars) do special_vars[k](self, v) end
+  for id, amount in pairs(tr.items) do self.client.inventory:set(id, amount) end
+  for id, amount in pairs(tr.spells) do self.client.spell_inventory:set(id, amount) end
+  if tr.respawn_point then self.client.respawn_point = tr.respawn_point end
+  if tr.charaset then self.client.charaset = tr.charaset end
+  if tr.hurt_sound or tr.attack_sound then
+    self.client:setSounds(tr.attack_sound or self.client.attack_sound,
+      tr.hurt_sound or self.client.hurt_sound)
+  end
 end
 
 -- override
