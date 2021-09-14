@@ -42,3 +42,10 @@ function love.wheelmoved(...) client:onWheelMoved(...) end
 function love.resize(...) client:onResize(...) end
 function love.threaderror(thread, err) error("thread: "..err) end
 function love.quit() client:close() end
+
+-- Debug touch/mobile controls using mouse inputs.
+--[[
+function love.mousepressed(x, y) client:onTouchPressed("mouse", x, y) end
+function love.mousereleased(x, y) client:onTouchReleased("mouse", x, y) end
+function love.mousemoved(x, y) client:onTouchMoved("mouse", x, y) end
+--]]

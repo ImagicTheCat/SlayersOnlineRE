@@ -29,7 +29,7 @@ local Client = class("Client")
 
 -- STATICS
 
-local GAMEPAD_DEAD_RADIUS = 0.5 -- stick dead center radius
+local GAMEPAD_DEAD_RADIUS = 0.4 -- stick dead center radius
 
 local net = {
   PROTOCOL = 0
@@ -111,6 +111,7 @@ function Client:__construct(cfg)
 
   self.rsc_manager = ResourceManager(self)
   self.last_manifest_save = scheduler.time
+  self.stats = {}
 
   self.textures = {} -- map of texture path => image
   self.map_effect = 0
@@ -136,7 +137,34 @@ function Client:__construct(cfg)
   self.phials_scale = 3
   self.xp_scale = 3
 
-  self.stats = {}
+  -- Mobile UI.
+  self.mobile = {
+    enabled = false,
+    textures = {
+      quick1 = self:loadTexture("resources/textures/mobile/quick1.png"),
+      quick2 = self:loadTexture("resources/textures/mobile/quick2.png"),
+      quick3 = self:loadTexture("resources/textures/mobile/quick3.png"),
+      stick_cursor = self:loadTexture("resources/textures/mobile/stick_cursor.png"),
+      defend = self:loadTexture("resources/textures/mobile/defend.png"),
+      chat = self:loadTexture("resources/textures/mobile/chat.png"),
+      attack = self:loadTexture("resources/textures/mobile/attack.png"),
+      interact = self:loadTexture("resources/textures/mobile/interact.png"),
+      stick = self:loadTexture("resources/textures/mobile/stick.png")
+    },
+    hbar = {"quick1", "quick2", "quick3"},
+    vbar = {"interact", "attack", "defend"},
+    stick = {0,0}, -- cursor x,y axis [-1,1] bottom-left origin
+    -- boundaries
+    left = 0,
+    right = 0,
+    top = 0,
+    bottom = 0,
+    scale = 3
+  }
+  do -- detect mobile platform
+    local os = love.system.getOS()
+    if os == "Android" or os == "iOS" then self.mobile.enabled = true end
+  end
 
   self.health_phial = Phial("health")
   self.gui:add(self.health_phial)
@@ -872,6 +900,7 @@ function Client:onResize(w, h)
 
   self.phials_scale = utils.floorScale((h/3/phials_h), phials_h)
   self.xp_scale = math.min(self.phials_scale, utils.floorScale((w-phials_w*self.phials_scale*2)/xp_w, xp_w))
+  self.mobile.scale = utils.floorScale(h/3/self.mobile.textures.stick:getHeight(), self.mobile.textures.stick:getHeight())
 
   local input_chat_y = h-self.font:getHeight()-2-12
   local message_height = math.floor(self.player_config.gui.dialog_height*h)
@@ -896,6 +925,11 @@ function Client:onResize(w, h)
 
   self.xp_bar:setSize(xp_w*self.xp_scale, xp_h*self.xp_scale)
   self.xp_bar:setPosition(math.floor(w/2-self.xp_bar.w/2), h-self.xp_bar.h)
+
+  self.mobile.left = self.health_phial.x+self.health_phial.w
+  self.mobile.right = self.mana_phial.x
+  self.mobile.top = 0
+  self.mobile.bottom = self.xp_bar.y
 
   self.message_window:setPosition(2, 2)
   self.message_window:setSize(w-4, message_height)
@@ -982,6 +1016,8 @@ function Client:onKeyReleased(keycode, scancode)
   end
 end
 
+-- Gamepad handling.
+
 function Client:onGamepadPressed(joystick, button)
   -- control handling
   local control = self.player_config.gamepad_controls[button]
@@ -1012,47 +1048,85 @@ function Client:onGamepadAxis(joystick, axis, value)
   end
 end
 
+-- Touch handling (e.g. mobile).
+
+-- x,y: touch position
+-- mode: (optional) "unbound"
+-- return (ax,ay) or nothing if outside joystick area
+local function computeJoystickAxis(self, x, y, mode)
+  local mobile = self.mobile
+  local tex = mobile.textures.stick
+  local jx, jy = mobile.left, mobile.bottom-tex:getHeight()*mobile.scale
+  local jw, jh = tex:getHeight()*mobile.scale, tex:getWidth()*mobile.scale
+  if mode ~= "unbound" and not utils.pointInRect(x, y, jx, jy, jw, jh) then return end
+  return (x-jx-jw/2)/(jw/2), -(y-jy-jh/2)/(jh/2)
+end
+
+local function getTouchedControl(self, x, y)
+  local mobile = self.mobile
+  local chat_dim = {mobile.textures.chat:getDimensions()}
+  local scale = mobile.scale
+  -- chat, top left
+  if utils.pointInRect(x, y, mobile.left, mobile.top,
+      chat_dim[1]*scale, chat_dim[2]*scale) then return "return" end
+  -- horizontal bar, top right
+  local offset = 0
+  for _, el in ipairs(mobile.hbar) do
+    local tex = mobile.textures[el]
+    offset = offset-tex:getWidth()*scale
+    if utils.pointInRect(x, y, mobile.right+offset, mobile.top,
+        tex:getWidth()*scale, tex:getHeight()*scale) then
+      return el
+    end
+  end
+  -- vertical bar, bottom right
+  local offset, max = 0, 0
+  for _, el in ipairs(mobile.vbar) do
+    local tex = mobile.textures[el]
+    max = math.max(max, tex:getWidth()*scale)
+    offset = offset-tex:getHeight()*scale
+    if utils.pointInRect(x, y, mobile.right-max, mobile.bottom+offset,
+        tex:getWidth()*scale, tex:getHeight()*scale) then
+      return el
+    end
+  end
+end
+
+local STICK_QUADRANTS = {"right", "up", "left", "down"}
+local function updateStickControls(self, ax, ay)
+  local a = math.atan2(ay, ax)
+  local radius = math.sqrt(ax*ax+ay*ay)
+  local display_radius = math.min(radius, 0.75)
+  self.mobile.stick = {display_radius*math.cos(a), display_radius*math.sin(a)}
+  if radius < GAMEPAD_DEAD_RADIUS then -- dead zone
+    if self.stick_control then
+      self:releaseControl(self.stick_control)
+      self.stick_control = nil
+    end
+    return
+  end
+  -- Find control quadrant based on the axis vector.
+  if a < 0 then a = a+math.pi*2 end -- [0, 2*PI]
+  local quadrant = (math.floor((a+math.pi/4)/(math.pi/2)))%4+1
+  local control = STICK_QUADRANTS[quadrant]
+  -- apply
+  if control ~= self.stick_control then
+    if self.stick_control then self:releaseControl(self.stick_control) end
+    self.stick_control = control
+    self:pressControl(control)
+  end
+end
+
 -- touch controls handling
 function Client:onTouchPressed(id, x, y)
   local w, h = love.graphics.getDimensions()
-  -- virtual joystick (bottom-left side, 1/3 height square)
-  local vj_size = h/3
-  if utils.pointInRect(x, y, 0, h-vj_size, vj_size, vj_size) then
-    -- compute axis
-    local dx, dy = (x-vj_size/2)/(vj_size/2), (y-h+vj_size/2)/(vj_size/2) -- [-1,1] axis
-    if dx <= -GAMEPAD_DEAD_RADIUS then self:pressControl("left") else self:releaseControl("left") end
-    if dx >= GAMEPAD_DEAD_RADIUS then self:pressControl("right") else self:releaseControl("right") end
-    if dy <= -GAMEPAD_DEAD_RADIUS then self:pressControl("up") else self:releaseControl("up") end
-    if dy >= GAMEPAD_DEAD_RADIUS then self:pressControl("down") else self:releaseControl("down") end
+  -- virtual joystick
+  local ax, ay = computeJoystickAxis(self, x, y)
+  if ax then
+    updateStickControls(self, ax, ay)
     self.touches[id] = "vjoystick" -- special
-  -- return button (top-left side, 25% height, 25% height squares)
-  elseif utils.pointInRect(x, y, 0, 0, h/4, h/4) then
-    self.touches[id] = "return"
-    self:pressControl("return")
-  -- right buttons (bottom-right side, 75% height, 3x25% height squares)
-  elseif utils.pointInRect(x, y, w-h/4, h/4, h/4, 3*h/4) then
-    local button = math.floor((h-y)/(h/4))+1 -- 1, 2, 3 "buttons" from bottom
-    local controls = { -- button controls
-      "interact",
-      "attack",
-      "defend"
-    }
-
-    local control = controls[button]
-    if control then
-      self.touches[id] = control
-      self:pressControl(control)
-    end
-  -- top buttons (top-right horizontal, 25% height, 3x25% height squares)
-  elseif utils.pointInRect(x, y, w-0.75*h, 0, 0.75*h, h/4) then
-    local button = math.floor((w-x)/(h/4))+1 -- 1, 2, 3 "buttons" from right
-    local controls = { -- button controls
-      "quick1",
-      "quick2",
-      "quick3"
-    }
-
-    local control = controls[button]
+  else -- other controls
+    local control = getTouchedControl(self, x, y)
     if control then
       self.touches[id] = control
       self:pressControl(control)
@@ -1062,16 +1136,10 @@ end
 
 function Client:onTouchMoved(id, x, y)
   local w, h = love.graphics.getDimensions()
-  -- virtual joystick movements (left-bottom side, 50% height square)
-  local vj_size = h/3
-  if self.touches[id] == "vjoystick" and utils.pointInRect(x, y, 0, h-vj_size, vj_size, vj_size) then
-    -- compute axis
-    local dx, dy = (x-vj_size/2)/(vj_size/2), (y-h+vj_size/2)/(vj_size/2) -- [-1,1] axis
-    local radius = GAMEPAD_DEAD_RADIUS*h/4
-    if dx <= -GAMEPAD_DEAD_RADIUS then self:pressControl("left") else self:releaseControl("left") end
-    if dx >= GAMEPAD_DEAD_RADIUS then self:pressControl("right") else self:releaseControl("right") end
-    if dy <= -GAMEPAD_DEAD_RADIUS then self:pressControl("up") else self:releaseControl("up") end
-    if dy >= GAMEPAD_DEAD_RADIUS then self:pressControl("down") else self:releaseControl("down") end
+  -- virtual joystick movements
+  local ax, ay = computeJoystickAxis(self, x, y, "unbound")
+  if self.touches[id] == "vjoystick" and ax then
+    updateStickControls(self, ax, ay)
   end
 end
 
@@ -1079,10 +1147,9 @@ function Client:onTouchReleased(id, x, y)
   local control = self.touches[id]
   if control then
     if control == "vjoystick" then -- special
-      self:releaseControl("left")
-      self:releaseControl("right")
-      self:releaseControl("up")
-      self:releaseControl("down")
+      if self.stick_control then self:releaseControl(self.stick_control) end
+      self.stick_control = nil
+      self.mobile.stick = {0,0}
     else -- regular
       self:releaseControl(control)
     end
@@ -1324,6 +1391,40 @@ function Client:draw()
 
   -- interface
   self.gui_renderer:render(self.gui)
+
+  -- mobile interface
+  if self.mobile.enabled then
+    local mobile = self.mobile
+    local scale = mobile.scale
+    local texs = mobile.textures
+    -- lower opacity when in GUI
+    if self.gui.focus then love.graphics.setColor(1,1,1,0.25) end
+    -- chat, top left
+    love.graphics.draw(texs.chat, mobile.left, mobile.top, 0, scale)
+    -- stick and cursor, bottom left
+    love.graphics.draw(texs.stick, mobile.left, mobile.bottom-texs.stick:getHeight()*scale, 0, scale)
+    local cx = math.floor((mobile.stick[1]+1)/2*texs.stick:getWidth()) -
+      math.floor(texs.stick_cursor:getWidth()/2)
+    local cy = math.floor((mobile.stick[2]+1)/2*texs.stick:getHeight()) +
+      math.floor(texs.stick_cursor:getHeight()/2)
+    love.graphics.draw(texs.stick_cursor, mobile.left+cx*scale, mobile.bottom-cy*scale, 0, scale)
+    -- horizontal bar, top right
+    local offset = 0
+    for _, el in ipairs(mobile.hbar) do
+      local tex = texs[el]
+      offset = offset-tex:getWidth()*scale
+      love.graphics.draw(tex, mobile.right+offset, mobile.top, 0, scale)
+    end
+    -- vertical bar, bottom right
+    local offset, max = 0, 0
+    for _, el in ipairs(mobile.vbar) do
+      local tex = texs[el]
+      max = math.max(max, tex:getWidth()*scale)
+      offset = offset-tex:getHeight()*scale
+      love.graphics.draw(tex, mobile.right-max, mobile.bottom+offset, 0, scale)
+    end
+    love.graphics.setColor(1,1,1)
+  end
 
   -- loading screen
   if self.loading_screen_tex then

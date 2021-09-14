@@ -22,6 +22,15 @@ base game files:: base/default files
 - `textures/phials.png`
 - `textures/system.png`
 - `textures/xp.png`
+- `textures/mobile/quick1.png`
+- `textures/mobile/quick2.png`
+- `textures/mobile/quick3.png`
+- `textures/mobile/stick.png`
+- `textures/mobile/stick_cursor.png`
+- `textures/mobile/attack.png`
+- `textures/mobile/defend.png`
+- `textures/mobile/interact.png`
+- `textures/mobile/chat.png`
 - `textures/sets/tileset.png` (default tileset on error)
 - `textures/sets/charaset.png` (default charaset on error)
 - `textures/loadings/...` (loading screens)
