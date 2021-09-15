@@ -274,6 +274,36 @@ commands.dump = {0, function(self, client, args)
   else return true end
 end, "chipsets", "dump project data"}
 
+commands.check_resources = {0, function(self, client, args)
+  if client then return end
+  print("check chipsets...")
+  -- Check a chipset path.
+  local chipset_cache = {}
+  local function checkChipset(path)
+    if chipset_cache[path] then return end -- prevent checking again
+    local tpath = "resources/project/Chipset/"..path:gsub("^Chipset\\", "")
+    local f = io.open(tpath)
+    if f then f:close() else print("missing chipset \""..path.."\"") end
+    chipset_cache[path] = true
+  end
+  -- Match chipset paths in a string and check them.
+  local function checkChipsets(str)
+    for path in str:gmatch("Chipset\\.-%.png") do checkChipset(path) end
+  end
+  for _, map in pairs(self.project.maps) do
+    for _, event in ipairs(map.events or {}) do
+      for page_index, page in ipairs(event.pages) do
+        if #page.set > 0 then checkChipset(page.set) end
+        for _, instruction in ipairs(page.conditions) do checkChipsets(instruction) end
+        for _, instruction in ipairs(page.commands) do checkChipsets(instruction) end
+      end
+    end
+  end
+  for _, mob in ipairs(self.project.mobs) do checkChipset(mob.charaset) end
+  for _, spell in ipairs(self.project.spells) do checkChipset(spell.set) end
+  print("done")
+end, "", "check existence of resources in the project"}
+
 commands.validate = {0, function(self, client, args)
   if client then return end
   print("validate map events (instructions)...")
