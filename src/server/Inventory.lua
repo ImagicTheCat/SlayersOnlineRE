@@ -1,12 +1,6 @@
 
 local Inventory = class("Inventory")
 
--- PRIVATE STATICS
-
-local q_get_items = "SELECT id, amount FROM users_items WHERE user_id = {1} AND inventory = {2}"
-local q_set_item = "INSERT INTO users_items(user_id, inventory, id, amount) VALUES({1},{2},{3},{4}) ON DUPLICATE KEY UPDATE amount = {4}"
-local q_rm_item = "DELETE FROM users_items WHERE user_id = {1} AND inventory = {2} AND id = {3}"
-
 -- METHODS
 
 -- inventory: inventory index (unsigned)
@@ -25,15 +19,8 @@ end
 function Inventory:load(db)
   self.items = {}
   self.changed_items = {}
-
-  local rows = db:query(q_get_items, {self.user_id, self.id})
-
-  for _, row in ipairs(rows) do
-    local id = tonumber(row.id)
-    local amount = tonumber(row.amount)
-
-    self.items[id] = amount
-  end
+  local rows = db:query("inventory/getItems", {self.user_id, self.id}).rows
+  for _, row in ipairs(rows) do self.items[row.id] = row.amount end
 end
 
 -- db: DBManager
@@ -41,12 +28,11 @@ function Inventory:save(db)
   for id in pairs(self.changed_items) do
     local amount = self.items[id]
     if amount and amount > 0 then
-      db:_query(q_set_item, {self.user_id, self.id, id, amount})
+      db:_query("inventory/setItem", {self.user_id, self.id, id, amount})
     else
-      db:_query(q_rm_item, {self.user_id, self.id, id})
+      db:_query("inventory/removeItem", {self.user_id, self.id, id})
     end
   end
-
   self.changed_items = {}
 end
 
