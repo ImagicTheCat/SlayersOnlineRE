@@ -23,48 +23,6 @@ local Server = class("Server")
 -- PRIVATE STATICS
 local GROUP_ID_LIMIT = 100
 
--- QUERIES
-
-local q_set_var = "INSERT INTO server_vars(id, value) VALUES({1}, {2}) ON DUPLICATE KEY UPDATE value = {2}"
-local q_get_vars = "SELECT id,value FROM server_vars"
-local q_create_account = [[
-INSERT INTO users(
-  pseudo,
-  password,
-  rank,
-  ban_timestamp,
-  class,
-  level,
-  alignment,
-  reputation,
-  gold,
-  chest_gold,
-  xp,
-  strength_pts,
-  dexterity_pts,
-  constitution_pts,
-  magic_pts,
-  remaining_pts,
-  weapon_slot,
-  shield_slot,
-  helmet_slot,
-  armor_slot,
-  guild,
-  guild_rank,
-  guild_rank_title
-) VALUES(
-  {pseudo}, UNHEX({password}),
-  {rank}, 0, 1, 1, 100, 0, 0,
-  0, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0,
-  "", 0, ""
-);
-]]
-local q_set_rank = "UPDATE users SET rank = {rank} WHERE pseudo = {pseudo}"
-local q_set_guild = "UPDATE users SET guild = {guild}, guild_rank = {rank}, guild_rank_title = {title} WHERE pseudo = {pseudo}"
-local q_set_ban = "UPDATE users SET ban_timestamp = {timestamp} WHERE pseudo = {pseudo}"
-local q_get_free_skins = "SELECT name FROM skins WHERE free = TRUE"
-
 -- COMMANDS
 
 -- map of command id => {rank, handler, usage, description}
@@ -509,8 +467,8 @@ commands.create_account = {0, function(self, client, args)
 
     local pseudo = args[2]
     local client_password = sha2.hex2bin(sha2.sha512(self.cfg.client_salt..pseudo..args[3]))
-    local password = sha2.sha512(self.cfg.server_salt..pseudo..client_password)
-    self.db:_query(q_create_account, {
+    local password = sha2.hex2bin(sha2.sha512(self.cfg.server_salt..pseudo..client_password))
+    self.db:_query("user/createAccount", {
       pseudo = args[2],
       password = password,
       rank = tonumber(args[4]) or 10
@@ -574,18 +532,18 @@ commands.uset = {0, function(self, client, args)
     local pseudo, prop = args[2], args[3]
     if prop == "rank" then
       async(function()
-        local affected = self.db:query(q_set_rank, {pseudo = pseudo, rank = tonumber(args[4]) or 10})
-        print(affected.." affected row(s)")
+        local result = self.db:query("user/setRank", {pseudo = pseudo, rank = tonumber(args[4]) or 10})
+        print(result.affected_rows.." affected row(s)")
       end)
     elseif prop == "guild" then
       async(function()
-        local affected = self.db:query(q_set_guild, {
+        local result = self.db:query("user/setGuild", {
           pseudo = pseudo,
           guild = args[4] or "" ,
           rank = tonumber(args[5]) or 0,
           title = args[6] or ""
         })
-        print(affected.." affected row(s)")
+        print(result.affected_rows.." affected row(s)")
       end)
     else return true end
   end
@@ -782,7 +740,7 @@ commands.ban = {2, function(self, client, args)
   if not pseudo or #pseudo == 0 or not reason or #reason == 0 then return true end
   async(function()
     -- set ban
-    local affected = self.db:query(q_set_ban, {pseudo = pseudo, timestamp = os.time()+math.floor(hours*3600)})
+    local affected = self.db:query("user/setBan", {pseudo = pseudo, timestamp = os.time()+math.floor(hours*3600)}).affected_rows
     -- output
     if not client then print(affected == 0 and "no-op" or "player banned")
     else client:sendChatMessage(affected == 0 and "no-op" or "Joueur banni.") end
@@ -797,7 +755,7 @@ commands.unban = {2, function(self, client, args)
   if not pseudo or #pseudo == 0 then return true end
   async(function()
     -- set ban
-    local affected = self.db:query(q_set_ban, {pseudo = pseudo, timestamp = 0})
+    local affected = self.db:query("user/setBan", {pseudo = pseudo, timestamp = 0}).affected_rows
     -- output
     if not client then print(affected == 0 and "no-op" or "player unbanned")
     else client:sendChatMessage(affected == 0 and "no-op" or "Joueur débanni.") end
@@ -905,16 +863,15 @@ function Server:__construct(cfg)
   -- DB
   local cfg_db = self.cfg.db
   self.db = DBManager(cfg_db.name, cfg_db.user, cfg_db.password, cfg_db.host, cfg_db.port)
+  require("queries")(self.db) -- prepare queries
 
   async(function()
     -- load vars
     local count = 0
-    local rows = self.db:query(q_get_vars)
-    if rows then
-      for i, row in ipairs(rows) do
-        self.vars[row.id] = row.value
-        count = count+1
-      end
+    local rows = self.db:query("server/getVars").rows
+    for i, row in ipairs(rows) do
+      self.vars[row.id] = row.value
+      count = count+1
     end
     print(count.." server vars loaded")
     -- init vars
@@ -923,10 +880,8 @@ function Server:__construct(cfg)
     end
     -- load free skins
     do
-      local rows = self.db:query(q_get_free_skins)
-      if rows then
-        for _, row in ipairs(rows) do self.free_skins[row.name] = true end
-      end
+      local rows = self.db:query("server/getFreeSkins").rows
+      for _, row in ipairs(rows) do self.free_skins[row.name] = true end
     end
   end)
 
@@ -944,7 +899,7 @@ end
 function Server:save()
   -- save vars
   for var in pairs(self.changed_vars) do
-    self.db:_query(q_set_var, {var, self.vars[var]})
+    self.db:_query("server/setVar", {var, self.vars[var]})
   end
   self.changed_vars = {}
 
@@ -1153,17 +1108,15 @@ function Server:loadTilesetData(id)
 end
 
 function Server:setVariable(id, value)
-  if type(value) == "string" or type(value) == "number" then
-    self.changed_vars[id] = true
-    self.vars[id] = value
-    -- mark swipe for all clients
-    for peer, client in pairs(self.clients) do client:markSwipe() end
-    -- call listeners
-    local listeners = self.var_listeners[id]
-    if listeners then
-      for callback in pairs(listeners) do
-        callback()
-      end
+  self.changed_vars[id] = true
+  self.vars[id] = tostring(value)
+  -- mark swipe for all clients
+  for peer, client in pairs(self.clients) do client:markSwipe() end
+  -- call listeners
+  local listeners = self.var_listeners[id]
+  if listeners then
+    for callback in pairs(listeners) do
+      callback()
     end
   end
 end

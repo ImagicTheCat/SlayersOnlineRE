@@ -18,42 +18,6 @@ end)
 -- server-side client
 local Client = class("Client", Player)
 
--- PRIVATE STATICS
-
-local q_login = "SELECT * FROM users WHERE pseudo = {1} AND password = UNHEX({2})"
-local q_get_vars = "SELECT id,value FROM users_vars WHERE user_id = {1}"
-local q_get_bool_vars = "SELECT id,value FROM users_bool_vars WHERE user_id = {1}"
-local q_set_var = "INSERT INTO users_vars(user_id, id, value) VALUES({1},{2},{3}) ON DUPLICATE KEY UPDATE value = {3}"
-local q_set_bool_var = "INSERT INTO users_bool_vars(user_id, id, value) VALUES({1},{2},{3}) ON DUPLICATE KEY UPDATE value = {3}"
-local q_set_config = "UPDATE users SET config = UNHEX({2}) WHERE id = {1}"
-local q_set_state = "UPDATE users SET state = UNHEX({2}) WHERE id = {1}"
-local q_set_data = [[
-  UPDATE users SET
-  level = {level},
-  alignment = {alignment},
-  reputation = {reputation},
-  gold = {gold},
-  chest_gold = {chest_gold},
-  xp = {xp},
-  strength_pts = {strength_pts},
-  dexterity_pts = {dexterity_pts},
-  constitution_pts = {constitution_pts},
-  magic_pts = {magic_pts},
-  remaining_pts = {remaining_pts},
-  weapon_slot = {weapon_slot},
-  shield_slot = {shield_slot},
-  helmet_slot = {helmet_slot},
-  armor_slot = {armor_slot}
-  WHERE id = {user_id}
-]]
-local q_prune_skins = [[
-  DELETE users_skins FROM users_skins
-  INNER JOIN users AS sharer ON users_skins.shared_by = sharer.id
-  INNER JOIN users AS self ON users_skins.user_id = self.id
-  WHERE users_skins.user_id = {1} AND self.guild != sharer.guild
-]]
-local q_get_skins = "SELECT name FROM users_skins WHERE user_id = {1}"
-
 -- STATICS
 
 function Client.makePacket(protocol, data)
@@ -188,75 +152,65 @@ function Client:onPacket(protocol, data)
         or type(data.password) ~= "string" then return end
       -- login request
       async(function()
-        local pass_hash = sha2.sha512(self.server.cfg.server_salt..data.pseudo..data.password)
-        local rows = self.server.db:query(q_login, {data.pseudo, pass_hash})
-        if rows and rows[1] then
+        local pass_hash = sha2.hex2bin(sha2.sha512(self.server.cfg.server_salt..data.pseudo..data.password))
+        local rows = self.server.db:query("user/login", {data.pseudo:sub(1,50), pass_hash}).rows
+        if rows[1] then
           local user_row = rows[1]
           -- check connected
-          if self.server.clients_by_id[tonumber(user_row.id)] then
+          if self.server.clients_by_id[user_row.id] then
             self:kick("Déjà connecté.")
             return
           end
           -- check banned
-          local ban_timestamp = tonumber(user_row.ban_timestamp)
+          local ban_timestamp = user_row.ban_timestamp
           if os.time() < ban_timestamp then
             self:kick("Banni jusqu'au "..os.date("!%d/%m/%Y %H:%M", ban_timestamp).." UTC.")
             return
           end
           -- accepted
-          self.user_id = tonumber(user_row.id) -- mark as logged
+          self.user_id = user_row.id -- mark as logged
           self.pseudo = user_row.pseudo
           self.server.clients_by_id[self.user_id] = self
           self.server.clients_by_pseudo[self.pseudo] = self
           -- load skin infos
           self.allowed_skins = {}
           --- prune invalid skins
-          self.server.db:query(q_prune_skins, {self.user_id})
+          self.server.db:query("user/pruneSkins", {self.user_id})
           --- load
           do
-            local rows = self.server.db:query(q_get_skins, {self.user_id})
-            if rows then
-              for _, row in ipairs(rows) do self.allowed_skins[row.name] = true end
-            end
+            local rows = self.server.db:query("user/getSkins", {self.user_id}).rows
+            for _, row in ipairs(rows) do self.allowed_skins[row.name] = true end
           end
           -- load user data
-          self.user_rank = tonumber(user_row.rank)
-          self.class = tonumber(user_row.class)
-          self.level = tonumber(user_row.level)
-          self.alignment = tonumber(user_row.alignment)
-          self.reputation = tonumber(user_row.reputation)
-          self.gold = tonumber(user_row.gold)
-          self.chest_gold = tonumber(user_row.chest_gold)
-          self.xp = tonumber(user_row.xp)
-          self.strength_pts = tonumber(user_row.strength_pts)
-          self.dexterity_pts = tonumber(user_row.dexterity_pts)
-          self.constitution_pts = tonumber(user_row.constitution_pts)
-          self.magic_pts = tonumber(user_row.magic_pts)
-          self.remaining_pts = tonumber(user_row.remaining_pts)
-          self.weapon_slot = tonumber(user_row.weapon_slot)
-          self.shield_slot = tonumber(user_row.shield_slot)
-          self.helmet_slot = tonumber(user_row.helmet_slot)
-          self.armor_slot = tonumber(user_row.armor_slot)
+          self.user_rank = user_row.rank
+          self.class = user_row.class
+          self.level = user_row.level
+          self.alignment = user_row.alignment
+          self.reputation = user_row.reputation
+          self.gold = user_row.gold
+          self.chest_gold = user_row.chest_gold
+          self.xp = user_row.xp
+          self.strength_pts = user_row.strength_pts
+          self.dexterity_pts = user_row.dexterity_pts
+          self.constitution_pts = user_row.constitution_pts
+          self.magic_pts = user_row.magic_pts
+          self.remaining_pts = user_row.remaining_pts
+          self.weapon_slot = user_row.weapon_slot
+          self.shield_slot = user_row.shield_slot
+          self.helmet_slot = user_row.helmet_slot
+          self.armor_slot = user_row.armor_slot
           self.guild = user_row.guild
-          self.guild_rank = tonumber(user_row.guild_rank)
+          self.guild_rank = user_row.guild_rank
           self.guild_rank_title = user_row.guild_rank_title
           local class_data = self.server.project.classes[self.class]
           self:setSounds(string.sub(class_data.attack_sound, 7), string.sub(class_data.hurt_sound, 7))
           --- config
           self:applyConfig(user_row.config and msgpack.unpack(user_row.config) or {}, true)
           --- vars
-          local rows = self.server.db:query(q_get_vars, {self.user_id})
-          if rows then
-            for i,row in ipairs(rows) do
-              self.vars[tonumber(row.id)] = tonumber(row.value)
-            end
-          end
-          rows = self.server.db:query(q_get_bool_vars, {self.user_id})
-          if rows then
-            for i,row in ipairs(rows) do
-              self.bool_vars[tonumber(row.id)] = tonumber(row.value)
-            end
-          end
+          local rows = self.server.db:query("user/getVars", {self.user_id}).rows
+          for _, row in ipairs(rows) do self.vars[row.id] = row.value end
+          rows = self.server.db:query("user/getBoolVars", {self.user_id}).rows
+          for _, row in ipairs(rows) do self.bool_vars[row.id] = row.value end
           --- inventories
           self.inventory = Inventory(self.user_id, 1, self.server.cfg.inventory_size)
           self.chest_inventory = Inventory(self.user_id, 2, self.server.cfg.chest_size)
@@ -1355,9 +1309,8 @@ end
 function Client:save()
   if self.user_id then
     -- base data
-    self.server.db:_query(q_set_data, {
+    self.server.db:_query("user/setData", {
       user_id = self.user_id,
-
       level = self.level,
       alignment = self.alignment,
       reputation = self.reputation,
@@ -1374,30 +1327,25 @@ function Client:save()
       helmet_slot = self.helmet_slot,
       armor_slot = self.armor_slot
     })
-
     -- vars
     for var in pairs(self.changed_vars) do
-      self.server.db:_query(q_set_var, {self.user_id, var, self.vars[var]})
+      self.server.db:_query("user/setVar", {self.user_id, var, self.vars[var]})
     end
     self.changed_vars = {}
-
     -- bool vars
     for var in pairs(self.changed_bool_vars) do
-      self.server.db:_query(q_set_bool_var, {self.user_id, var, self.bool_vars[var]})
+      self.server.db:_query("user/setBoolVar", {self.user_id, var, self.bool_vars[var]})
     end
     self.changed_bool_vars = {}
-
     -- inventories
     self.inventory:save(self.server.db)
     self.chest_inventory:save(self.server.db)
     self.spell_inventory:save(self.server.db)
-
     -- config
     if self.player_config_changed then
-      self.server.db:_query(q_set_config, {self.user_id, utils.hex(msgpack.pack(self.player_config))})
+      self.server.db:_query("user/setConfig", {self.user_id, msgpack.pack(self.player_config)})
       self.player_config_changed = false
     end
-
     -- state
     local state = {}
     if self.map then
@@ -1430,8 +1378,7 @@ function Client:save()
     state.blocked_defend = self.blocked_defend
     state.blocked_cast = self.blocked_cast
     state.blocked_chat = self.blocked_chat
-
-    self.server.db:_query(q_set_state, {self.user_id, utils.hex(msgpack.pack(state))})
+    self.server.db:_query("user/setState", {self.user_id, msgpack.pack(state)})
   end
 end
 
