@@ -71,12 +71,12 @@ local function thread(ch_in, ch_out, db, user, password, host, port)
       stmt.params_in:set(i, params[bparam])
     end
     -- execute
-    local ok = pcall(stmt.handle.exec, stmt.handle)
+    local ok = xpcall(stmt.handle.exec, error_handler, stmt.handle)
     while not ok and not ping() do -- disconnected ?
       -- re-connect and try again
       connect()
       stmt = statements[id] -- update statement reference
-      ok = pcall(stmt.handle.exec, stmt.handle)
+      ok = xpcall(stmt.handle.exec, error_handler, stmt.handle)
     end
     -- fetch result
     local r = {
@@ -101,6 +101,15 @@ local function thread(ch_in, ch_out, db, user, password, host, port)
     end
     return r
   end
+  local function raw_query(query)
+    -- execute
+    local ok = xpcall(con.query, error_handler, con, query)
+    while not ok and not ping() do -- disconnected ?
+      -- re-connect and try again
+      connect()
+      ok = xpcall(con.query, error_handler, con, query)
+    end
+  end
   -- Connect to DB.
   connect()
   -- Process commands.
@@ -114,6 +123,9 @@ local function thread(ch_in, ch_out, db, user, password, host, port)
       local ok, r = xpcall(query, error_handler, unpack(args))
       if not ok then io.stderr:write("<= query "..args[1].."\n") end
       ch_out:push(ok and msgpack.pack(r))
+    elseif cmd == "query-raw" then
+      local ok, r = xpcall(raw_query, error_handler, unpack(args))
+      if not ok then io.stderr:write("<= query-raw \""..args[1].."\"\n") end
     end
     -- next
     cmd, args = ch_in:pop()
@@ -129,9 +141,6 @@ function DBManager:__construct(db, user, password, host, port)
   self.queries = {} -- list of query callbacks, queue
   self.running = true
   self.txn = mutex()
-  self:prepare("startTransaction", "START TRANSACTION")
-  self:prepare("commit", "COMMIT")
-  self:prepare("rollback", "ROLLBACK")
 end
 
 -- Prepare a statement.
@@ -167,6 +176,13 @@ function DBManager:_query(id, params)
   table.insert(self.queries, false) -- dummy task
 end
 
+-- Raw query.
+-- No result, internally used for transactions. Some MariaDB servers don't
+-- support transaction queries in prepared statements.
+function DBManager:rawQuery(query)
+  self.ch_in:push("query-raw", msgpack.pack({query}))
+end
+
 local function txn_error_handler(err)
   io.stderr:write(debug.traceback("database TXN: "..err, 2).."\n")
 end
@@ -176,9 +192,9 @@ end
 -- return boolean status
 function DBManager:transactionWrap(f)
   self.txn:lock()
-  self:_query("startTransaction")
+  self:rawQuery("START TRANSACTION")
   local ok = xpcall(f, txn_error_handler)
-  if ok then self:_query("commit") else self:_query("rollback") end
+  if ok then self:rawQuery("COMMIT") else self:rawQuery("ROLLBACK") end
   self.txn:unlock()
   return ok
 end
