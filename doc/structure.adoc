@@ -1,4 +1,4 @@
-= Architecture
+= Structure
 
 This file is about how all the game data is managed.
 
