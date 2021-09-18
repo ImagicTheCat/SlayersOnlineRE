@@ -713,6 +713,9 @@ function Client:timerTick()
     for i,time in ipairs(self.timers) do
       self.timers[i] = time+1
     end
+    -- This make other swipes useless, because it will swipe at every
+    -- event/timer tick anyway. Since this may change, better to keep them.
+    self:markSwipe()
     -- reset last attacker
     self.last_attacker = nil
   end
@@ -1039,7 +1042,7 @@ function Client:onDisconnect()
     -- rollback by disabling async tasks. The server guarantees that no more
     -- packets from the client will be received and we can ignore this kind of task.
     if self.move_task then self.move_task:remove() end
-    if event.wait_task then event.wait_task:remove() end
+    event.wait_task = nil
     -- rollback
     event:rollback()
     self.running_event = nil

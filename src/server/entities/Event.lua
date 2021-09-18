@@ -298,6 +298,7 @@ function special_vars:Bloque(value)
   end
 end
 
+-- async
 function special_vars:CaseX(value)
   if value then
     self.client:moveToCell(tonumber(value) or self.client.cx, self.client.cy, true)
@@ -306,6 +307,7 @@ function special_vars:CaseX(value)
   end
 end
 
+-- async
 function special_vars:CaseY(value)
   if value then
     self.client:moveToCell(self.client.cx, tonumber(value) or self.client.cy, true)
@@ -959,7 +961,7 @@ function Event:__construct(client, data, page_index)
     if f then
       if value then
         -- save
-        if not self.transaction.special_vars[id] then
+        if not self.transaction.special_vars[id] and id ~= "CaseX" and id ~= "CaseY" then
           self.transaction.special_vars[id] = f(self)
         end
         -- set
@@ -978,7 +980,7 @@ function Event:__construct(client, data, page_index)
       local f = event_vars[id]
       if f then
         if value then self.client:markSwipe() end
-        return f(event, id, value)
+        return f(event, value)
       end
     end
   end
