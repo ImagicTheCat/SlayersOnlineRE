@@ -843,9 +843,7 @@ function Server:__construct(cfg)
     self:tick(dt)
   end)
 
-  self.save_task = itask(self.cfg.save_interval, function()
-    self:save()
-  end)
+  self.save_task = itask(self.cfg.save_interval, function() self:save() end)
 
   self.timer_task = itask(0.030, function()
     for peer, client in pairs(self.clients) do
@@ -896,15 +894,32 @@ function Server:__construct(cfg)
 end
 
 function Server:save()
-  -- save vars
-  for var in pairs(self.changed_vars) do
-    self.db:_query("server/setVar", {var, self.vars[var]})
-  end
-  self.changed_vars = {}
-  -- clients
-  for _, client in pairs(self.clients) do
-    client:save()
-  end
+  if self.saving then return false end
+  self.saving = true
+  async(function()
+    local start_time = clock()
+    local ok = self.db:transactionWrap(function()
+      -- save vars
+      for var in pairs(self.changed_vars) do
+        self.db:_query("server/setVar", {var, self.vars[var]})
+      end
+      self.changed_vars = {}
+      -- Save clients; fragment the task.
+      local clients = {}
+      for _, client in pairs(self.clients) do table.insert(clients, client) end
+      for _, client in ipairs(clients) do
+        client:save()
+        -- wait
+        local tnext = async()
+        task(0.001, tnext)
+        tnext:wait()
+      end
+    end)
+    local elapsed = clock()-start_time
+    print("server save: "..(ok and "commited" or "aborted").." ("..utils.round(elapsed, 3).."s)")
+    self.saving = false
+  end)
+  return true
 end
 
 -- async

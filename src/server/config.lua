@@ -2,7 +2,7 @@ return {
   host = "localhost:27505",
   max_clients = 100,
   tickrate = 60,
-  save_interval = 60, -- seconds
+  save_interval = 120, -- seconds
   debug = false, -- don't load maps on startup
   -- password salts
   client_salt = "<client_salt>",

@@ -769,10 +769,8 @@ function Client:eventTick()
       table.sort(events, function(a,b)
         return a.cx < b.cx or a.cx == b.cx and a.cy < b.cy
       end)
-
       -- stop movement
       self:setMoveForward(false)
-
       -- execute event
       local event = events[1]
       local condition = self.triggered_events[event]
@@ -1030,6 +1028,7 @@ function Client:onDisconnect()
     if event.wait_task then event.wait_task:remove() end
     -- rollback
     event:rollback()
+    self.running_event = nil
   end
   -- disconnect variable behavior
   local map_data = (self.map and self.map.data)
@@ -1040,21 +1039,24 @@ function Client:onDisconnect()
   end
   self:setGroup(nil)
   self:cancelTrade()
-  -- save
-  self:save()
-  if self.map then
-    self.map:removeEntity(self)
-  end
-  -- unreference
-  if self.user_id then
-    self.server.clients_by_id[self.user_id] = nil
-    self.server.clients_by_pseudo[self.pseudo] = nil
-    self.user_id = nil
-  end
-  -- quotas
-  self.packets_quota:stop()
-  self.data_quota:stop()
-  self.chat_quota:stop()
+  async(function()
+    -- save
+    self.server.db:transactionWrap(function() self:save() end)
+    -- remove player
+    if self.map then
+      self.map:removeEntity(self)
+    end
+    -- quotas
+    self.packets_quota:stop()
+    self.data_quota:stop()
+    self.chat_quota:stop()
+    -- unreference
+    if self.user_id then
+      self.server.clients_by_id[self.user_id] = nil
+      self.server.clients_by_pseudo[self.pseudo] = nil
+      self.user_id = nil
+    end
+  end)
 end
 
 -- override
@@ -1307,77 +1309,77 @@ function Client:checkItemRequirements(item)
 end
 
 function Client:save()
-  if self.user_id then
-    -- base data
-    self.server.db:_query("user/setData", {
-      user_id = self.user_id,
-      level = self.level,
-      alignment = self.alignment,
-      reputation = self.reputation,
-      gold = self.gold,
-      chest_gold = self.chest_gold,
-      xp = self.xp,
-      strength_pts = self.strength_pts,
-      dexterity_pts = self.dexterity_pts,
-      constitution_pts = self.constitution_pts,
-      magic_pts = self.magic_pts,
-      remaining_pts = self.remaining_pts,
-      weapon_slot = self.weapon_slot,
-      shield_slot = self.shield_slot,
-      helmet_slot = self.helmet_slot,
-      armor_slot = self.armor_slot
-    })
-    -- vars
-    for var in pairs(self.changed_vars) do
-      self.server.db:_query("user/setVar", {self.user_id, var, self.vars[var]})
-    end
-    self.changed_vars = {}
-    -- bool vars
-    for var in pairs(self.changed_bool_vars) do
-      self.server.db:_query("user/setBoolVar", {self.user_id, var, self.bool_vars[var]})
-    end
-    self.changed_bool_vars = {}
-    -- inventories
-    self.inventory:save(self.server.db)
-    self.chest_inventory:save(self.server.db)
-    self.spell_inventory:save(self.server.db)
-    -- config
-    if self.player_config_changed then
-      self.server.db:_query("user/setConfig", {self.user_id, msgpack.pack(self.player_config)})
-      self.player_config_changed = false
-    end
-    -- state
-    local state = {}
-    if self.map then
-      -- location
-      if self.map.data.disconnect_respawn then
-        local location = (self.respawn_point or self.server.cfg.spawn_location)
-        state.location = {
-          map = location.map,
-          x = location.cx*16,
-          y = location.cy*16
-        }
-      else
-        state.location = {
-          map = self.map.id,
-          x = self.x,
-          y = self.y
-        }
-      end
-      state.orientation = self.orientation
-    end
-    state.charaset = self.charaset
-    state.respawn_point = self.respawn_point
-    state.health = self.health
-    state.mana = self.mana
-    state.blocked = self.blocked
-    state.blocked_skin = self.blocked_skin
-    state.blocked_attack = self.blocked_attack
-    state.blocked_defend = self.blocked_defend
-    state.blocked_cast = self.blocked_cast
-    state.blocked_chat = self.blocked_chat
-    self.server.db:_query("user/setState", {self.user_id, msgpack.pack(state)})
+  if not self.user_id or self.running_event then return false end
+  -- base data
+  self.server.db:_query("user/setData", {
+    user_id = self.user_id,
+    level = self.level,
+    alignment = self.alignment,
+    reputation = self.reputation,
+    gold = self.gold,
+    chest_gold = self.chest_gold,
+    xp = self.xp,
+    strength_pts = self.strength_pts,
+    dexterity_pts = self.dexterity_pts,
+    constitution_pts = self.constitution_pts,
+    magic_pts = self.magic_pts,
+    remaining_pts = self.remaining_pts,
+    weapon_slot = self.weapon_slot,
+    shield_slot = self.shield_slot,
+    helmet_slot = self.helmet_slot,
+    armor_slot = self.armor_slot
+  })
+  -- vars
+  for var in pairs(self.changed_vars) do
+    self.server.db:_query("user/setVar", {self.user_id, var, self.vars[var]})
   end
+  self.changed_vars = {}
+  -- bool vars
+  for var in pairs(self.changed_bool_vars) do
+    self.server.db:_query("user/setBoolVar", {self.user_id, var, self.bool_vars[var]})
+  end
+  self.changed_bool_vars = {}
+  -- inventories
+  self.inventory:save(self.server.db)
+  self.chest_inventory:save(self.server.db)
+  self.spell_inventory:save(self.server.db)
+  -- config
+  if self.player_config_changed then
+    self.server.db:_query("user/setConfig", {self.user_id, msgpack.pack(self.player_config)})
+    self.player_config_changed = false
+  end
+  -- state
+  local state = {}
+  if self.map then
+    -- location
+    if self.map.data.disconnect_respawn then
+      local location = (self.respawn_point or self.server.cfg.spawn_location)
+      state.location = {
+        map = location.map,
+        x = location.cx*16,
+        y = location.cy*16
+      }
+    else
+      state.location = {
+        map = self.map.id,
+        x = self.x,
+        y = self.y
+      }
+    end
+    state.orientation = self.orientation
+  end
+  state.charaset = self.charaset
+  state.respawn_point = self.respawn_point
+  state.health = self.health
+  state.mana = self.mana
+  state.blocked = self.blocked
+  state.blocked_skin = self.blocked_skin
+  state.blocked_attack = self.blocked_attack
+  state.blocked_defend = self.blocked_defend
+  state.blocked_cast = self.blocked_cast
+  state.blocked_chat = self.blocked_chat
+  self.server.db:_query("user/setState", {self.user_id, msgpack.pack(state)})
+  return true
 end
 
 -- override
