@@ -1364,10 +1364,8 @@ function Client:save()
           y = self.y
         }
       end
-
       state.orientation = self.orientation
     end
-
     state.charaset = self.charaset
     state.respawn_point = self.respawn_point
     state.health = self.health
