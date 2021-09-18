@@ -895,20 +895,19 @@ function Server:__construct(cfg)
   self.console = effil.thread(console_main)(self.console_flags, self.console_channel)
 end
 
--- save check
 function Server:save()
   -- save vars
   for var in pairs(self.changed_vars) do
     self.db:_query("server/setVar", {var, self.vars[var]})
   end
   self.changed_vars = {}
-
   -- clients
   for _, client in pairs(self.clients) do
     client:save()
   end
 end
 
+-- async
 function Server:close()
   -- guard
   if self.task_close then return self.task_close:wait() end
