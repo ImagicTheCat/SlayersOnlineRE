@@ -1,5 +1,6 @@
 local effil = require("effil")
 local msgpack = require("MessagePack")
+local mutex = require("Luaseq").mutex
 
 -- Define async database interface.
 local DBManager = class("DBManager")
@@ -12,7 +13,7 @@ local function thread(ch_in, ch_out, db, user, password, host, port)
   ffi.cdef("unsigned int sleep(unsigned int nb_sec);")
   local C = ffi.C
   local function error_handler(err)
-    io.stderr:write(debug.traceback("DB: "..err, 2).."\n")
+    io.stderr:write(debug.traceback("database: "..err, 2).."\n")
   end
   local con
   local CONNECT_DELAY = 5 -- seconds
@@ -127,6 +128,10 @@ function DBManager:__construct(db, user, password, host, port)
   self.thread = effil.thread(thread)(self.ch_in, self.ch_out, db, user, password, host, port)
   self.queries = {} -- list of query callbacks, queue
   self.running = true
+  self.txn = mutex()
+  self:prepare("startTransaction", "START TRANSACTION")
+  self:prepare("commit", "COMMIT")
+  self:prepare("rollback", "ROLLBACK")
 end
 
 -- Prepare a statement.
@@ -160,6 +165,22 @@ end
 function DBManager:_query(id, params)
   self.ch_in:push("query", msgpack.pack({id, params or {}}))
   table.insert(self.queries, false) -- dummy task
+end
+
+local function txn_error_handler(err)
+  io.stderr:write(debug.traceback("database TXN: "..err, 2).."\n")
+end
+
+-- (async) Wrap code as SQL transaction. Mutex protected.
+-- COMMIT on success, ROLLBACK on error.
+-- return boolean status
+function DBManager:transactionWrap(f)
+  self.txn:lock()
+  self:_query("startTransaction")
+  local ok = xpcall(f, txn_error_handler)
+  if ok then self:_query("commit") else self:_query("rollback") end
+  self.txn:unlock()
+  return ok
 end
 
 function DBManager:tick()
