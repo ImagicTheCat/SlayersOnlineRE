@@ -132,6 +132,10 @@ function Client:__construct(server, peer)
   self:send(Client.makePacket(net.PROTOCOL, net)) -- send protocol
 end
 
+local function error_handler(err)
+  io.stderr:write(debug.traceback("client: "..err, 2).."\n")
+end
+
 function Client:onPacket(protocol, data)
   -- not logged
   if not self.user_id then
@@ -156,8 +160,9 @@ function Client:onPacket(protocol, data)
         local rows = self.server.db:query("user/login", {data.pseudo:sub(1,50), pass_hash}).rows
         if rows[1] then
           local user_row = rows[1]
+          local user_id = user_row.id
           -- check connected
-          if self.server.clients_by_id[user_row.id] then
+          if self.server.clients_by_id[user_id] then
             self:kick("Déjà connecté.")
             return
           end
@@ -167,160 +172,169 @@ function Client:onPacket(protocol, data)
             self:kick("Banni jusqu'au "..os.date("!%d/%m/%Y %H:%M", ban_timestamp).." UTC.")
             return
           end
-          -- accepted
-          self.user_id = user_row.id -- mark as logged
-          self.pseudo = user_row.pseudo
-          self.server.clients_by_id[self.user_id] = self
-          self.server.clients_by_pseudo[self.pseudo] = self
-          -- load skin infos
-          self.allowed_skins = {}
-          --- prune invalid skins
-          self.server.db:query("user/pruneSkins", {self.user_id})
-          --- load
-          do
-            local rows = self.server.db:query("user/getSkins", {self.user_id}).rows
-            for _, row in ipairs(rows) do self.allowed_skins[row.name] = true end
-          end
-          -- load user data
-          self.user_rank = user_row.rank
-          self.class = user_row.class
-          self.level = user_row.level
-          self.alignment = user_row.alignment
-          self.reputation = user_row.reputation
-          self.gold = user_row.gold
-          self.chest_gold = user_row.chest_gold
-          self.xp = user_row.xp
-          self.strength_pts = user_row.strength_pts
-          self.dexterity_pts = user_row.dexterity_pts
-          self.constitution_pts = user_row.constitution_pts
-          self.magic_pts = user_row.magic_pts
-          self.remaining_pts = user_row.remaining_pts
-          self.weapon_slot = user_row.weapon_slot
-          self.shield_slot = user_row.shield_slot
-          self.helmet_slot = user_row.helmet_slot
-          self.armor_slot = user_row.armor_slot
-          self.guild = user_row.guild
-          self.guild_rank = user_row.guild_rank
-          self.guild_rank_title = user_row.guild_rank_title
-          local class_data = self.server.project.classes[self.class]
-          self:setSounds(string.sub(class_data.attack_sound, 7), string.sub(class_data.hurt_sound, 7))
-          --- config
-          self:applyConfig(user_row.config and msgpack.unpack(user_row.config) or {}, true)
-          --- vars
-          local rows = self.server.db:query("user/getVars", {self.user_id}).rows
-          for _, row in ipairs(rows) do self.vars[row.id] = row.value end
-          rows = self.server.db:query("user/getBoolVars", {self.user_id}).rows
-          for _, row in ipairs(rows) do self.bool_vars[row.id] = row.value end
-          --- inventories
-          self.inventory = Inventory(self.user_id, 1, self.server.cfg.inventory_size)
-          self.chest_inventory = Inventory(self.user_id, 2, self.server.cfg.chest_size)
-          self.spell_inventory = Inventory(self.user_id, 3, self.server.cfg.spell_inventory_size)
-          self.inventory:load(self.server.db)
-          self.chest_inventory:load(self.server.db)
-          self.spell_inventory:load(self.server.db)
-          ---- on item update
-          function self.inventory.onItemUpdate(inv, id)
-            local data
-            local amount = inv.items[id]
-            local object = self.server.project.objects[id]
-            if object and amount then
-              data = Client.serializeItem(self.server, object, amount)
+          local ok = xpcall(function()
+            -- accepted
+            self.server.clients_by_id[user_id] = self
+            self.pseudo = user_row.pseudo
+            -- load skin infos
+            self.allowed_skins = {}
+            --- prune invalid skins
+            self.server.db:query("user/pruneSkins", {user_id})
+            --- load
+            do
+              local rows = self.server.db:query("user/getSkins", {user_id}).rows
+              for _, row in ipairs(rows) do self.allowed_skins[row.name] = true end
             end
-            self:send(Client.makePacket(net.INVENTORY_UPDATE_ITEMS, {{id,data}}))
-          end
-          ---- send inventory init items
-          do
-            local objects = self.server.project.objects
-            local items = {}
-            for id, amount in pairs(self.inventory.items) do
-              local object = objects[id]
-              if object then
-                table.insert(items, {id, Client.serializeItem(self.server, object, amount)})
+            -- load user data
+            self.user_rank = user_row.rank
+            self.class = user_row.class
+            self.level = user_row.level
+            self.alignment = user_row.alignment
+            self.reputation = user_row.reputation
+            self.gold = user_row.gold
+            self.chest_gold = user_row.chest_gold
+            self.xp = user_row.xp
+            self.strength_pts = user_row.strength_pts
+            self.dexterity_pts = user_row.dexterity_pts
+            self.constitution_pts = user_row.constitution_pts
+            self.magic_pts = user_row.magic_pts
+            self.remaining_pts = user_row.remaining_pts
+            self.weapon_slot = user_row.weapon_slot
+            self.shield_slot = user_row.shield_slot
+            self.helmet_slot = user_row.helmet_slot
+            self.armor_slot = user_row.armor_slot
+            self.guild = user_row.guild
+            self.guild_rank = user_row.guild_rank
+            self.guild_rank_title = user_row.guild_rank_title
+            local class_data = self.server.project.classes[self.class]
+            self:setSounds(string.sub(class_data.attack_sound, 7), string.sub(class_data.hurt_sound, 7))
+            --- config
+            self:applyConfig(user_row.config and msgpack.unpack(user_row.config) or {}, true)
+            --- vars
+            local rows = self.server.db:query("user/getVars", {user_id}).rows
+            for _, row in ipairs(rows) do self.vars[row.id] = row.value end
+            rows = self.server.db:query("user/getBoolVars", {user_id}).rows
+            for _, row in ipairs(rows) do self.bool_vars[row.id] = row.value end
+            --- inventories
+            self.inventory = Inventory(user_id, 1, self.server.cfg.inventory_size)
+            self.chest_inventory = Inventory(user_id, 2, self.server.cfg.chest_size)
+            self.spell_inventory = Inventory(user_id, 3, self.server.cfg.spell_inventory_size)
+            self.inventory:load(self.server.db)
+            self.chest_inventory:load(self.server.db)
+            self.spell_inventory:load(self.server.db)
+            ---- on item update
+            function self.inventory.onItemUpdate(inv, id)
+              local data
+              local amount = inv.items[id]
+              local object = self.server.project.objects[id]
+              if object and amount then
+                data = Client.serializeItem(self.server, object, amount)
               end
+              self:send(Client.makePacket(net.INVENTORY_UPDATE_ITEMS, {{id,data}}))
             end
-            self:send(Client.makePacket(net.INVENTORY_UPDATE_ITEMS, items))
-          end
-          ---- on chest item update
-          function self.chest_inventory.onItemUpdate(inv, id)
-            if not self.chest_task then return end -- chest isn't open
-            local data
-            local amount = inv.items[id]
-            local object = self.server.project.objects[id]
-            if object and amount then
-              data = Client.serializeItem(self.server, object, amount)
-            end
-            self:send(Client.makePacket(net.CHEST_UPDATE_ITEMS, {{id,data}}))
-          end
-          ---- on spell item update
-          function self.spell_inventory.onItemUpdate(inv, id)
-            local data
-            local amount = inv.items[id]
-            local spell = self.server.project.spells[id]
-            if spell and amount then
-              data = Client.serializeSpell(self.server, spell, amount)
-            end
-            self:send(Client.makePacket(net.SPELL_INVENTORY_UPDATE_ITEMS, {{id,data}}))
-          end
-          ---- send spell inventory init items
-          do
-            local spells = self.server.project.spells
-            local items = {}
-            for id, amount in pairs(self.spell_inventory.items) do
-              local spell = spells[id]
-              if spell then
-                table.insert(items, {id, Client.serializeSpell(self.server, spell, amount)})
+            ---- send inventory init items
+            do
+              local objects = self.server.project.objects
+              local items = {}
+              for id, amount in pairs(self.inventory.items) do
+                local object = objects[id]
+                if object then
+                  table.insert(items, {id, Client.serializeItem(self.server, object, amount)})
+                end
               end
+              self:send(Client.makePacket(net.INVENTORY_UPDATE_ITEMS, items))
             end
-            self:send(Client.makePacket(net.SPELL_INVENTORY_UPDATE_ITEMS, items))
+            ---- on chest item update
+            function self.chest_inventory.onItemUpdate(inv, id)
+              if not self.chest_task then return end -- chest isn't open
+              local data
+              local amount = inv.items[id]
+              local object = self.server.project.objects[id]
+              if object and amount then
+                data = Client.serializeItem(self.server, object, amount)
+              end
+              self:send(Client.makePacket(net.CHEST_UPDATE_ITEMS, {{id,data}}))
+            end
+            ---- on spell item update
+            function self.spell_inventory.onItemUpdate(inv, id)
+              local data
+              local amount = inv.items[id]
+              local spell = self.server.project.spells[id]
+              if spell and amount then
+                data = Client.serializeSpell(self.server, spell, amount)
+              end
+              self:send(Client.makePacket(net.SPELL_INVENTORY_UPDATE_ITEMS, {{id,data}}))
+            end
+            ---- send spell inventory init items
+            do
+              local spells = self.server.project.spells
+              local items = {}
+              for id, amount in pairs(self.spell_inventory.items) do
+                local spell = spells[id]
+                if spell then
+                  table.insert(items, {id, Client.serializeSpell(self.server, spell, amount)})
+                end
+              end
+              self:send(Client.makePacket(net.SPELL_INVENTORY_UPDATE_ITEMS, items))
+            end
+            --- state
+            local state = user_row.state and msgpack.unpack(user_row.state) or {}
+            ---- charaset
+            if state.charaset then
+              self:setCharaset(state.charaset)
+            end
+            ---- location
+            local map, x, y
+            if state.location then
+              map = self.server:getMap(state.location.map)
+              x,y = state.location.x, state.location.y
+            end
+            if state.orientation then
+              self:setOrientation(state.orientation)
+            end
+            ---- misc
+            self.respawn_point = state.respawn_point
+            self.blocked = state.blocked
+            self.blocked_skin = state.blocked_skin
+            self.blocked_attack = state.blocked_attack
+            self.blocked_defend = state.blocked_defend
+            self.blocked_cast = state.blocked_cast
+            self.blocked_chat = state.blocked_chat
+            -- default spawn
+            if not map then
+              local spawn_location = self.server.cfg.spawn_location
+              map = self.server:getMap(spawn_location.map)
+              x,y = spawn_location.cx*16, spawn_location.cy*16
+            end
+            if map then map:addEntity(self) end
+            self:teleport(x,y)
+            -- compute characteristics, send/init stats
+            self:updateCharacteristics()
+            self:setHealth(state.health or self.max_health)
+            self:setMana(state.mana or self.max_mana)
+            self:setXP(self.xp) -- update level/XP
+            self:send(Client.makePacket(net.STATS_UPDATE, {
+              gold = self.gold,
+              alignment = self.alignment,
+              name = self.pseudo,
+              class = class_data.name,
+              level = self.level,
+              points = self.remaining_pts,
+              reputation = self.reputation,
+              mana = self.mana,
+              inventory_size = self.inventory.max
+            }))
+            -- mark as logged
+          end, error_handler)
+          if ok then -- login completed
+            self.server.clients_by_pseudo[self.pseudo] = self
+            self.user_id = user_id
+            self:sendChatMessage("Identifié.")
+          else -- login error
+            self.server.clients_by_id[user_id] = nil
+            print("<= login error for user#"..user_id.." \""..user_row.pseudo.."\"")
+            self:kick("Erreur du serveur.")
           end
-          --- state
-          local state = user_row.state and msgpack.unpack(user_row.state) or {}
-          ---- charaset
-          if state.charaset then
-            self:setCharaset(state.charaset)
-          end
-          ---- location
-          local map, x, y
-          if state.location then
-            map = self.server:getMap(state.location.map)
-            x,y = state.location.x, state.location.y
-          end
-          if state.orientation then
-            self:setOrientation(state.orientation)
-          end
-          ---- misc
-          self.respawn_point = state.respawn_point
-          self.blocked = state.blocked
-          self.blocked_skin = state.blocked_skin
-          self.blocked_attack = state.blocked_attack
-          self.blocked_defend = state.blocked_defend
-          self.blocked_cast = state.blocked_cast
-          self.blocked_chat = state.blocked_chat
-          -- default spawn
-          if not map then
-            local spawn_location = self.server.cfg.spawn_location
-            map = self.server:getMap(spawn_location.map)
-            x,y = spawn_location.cx*16, spawn_location.cy*16
-          end
-          if map then map:addEntity(self) end
-          self:teleport(x,y)
-          -- compute characteristics, send/init stats
-          self:updateCharacteristics()
-          self:setHealth(state.health or self.max_health)
-          self:setMana(state.mana or self.max_mana)
-          self:setXP(self.xp) -- update level/XP
-          self:send(Client.makePacket(net.STATS_UPDATE, {
-            gold = self.gold,
-            alignment = self.alignment,
-            name = self.pseudo,
-            class = class_data.name,
-            level = self.level,
-            points = self.remaining_pts,
-            reputation = self.reputation,
-            mana = self.mana,
-            inventory_size = self.inventory.max
-          }))
-          self:sendChatMessage("Identifié.")
         else -- login failed
           self:sendChatMessage("Identification échouée.")
           -- send motd (start login)
@@ -1051,9 +1065,9 @@ function Client:onDisconnect()
     self.data_quota:stop()
     self.chat_quota:stop()
     -- unreference
+    if self.pseudo then self.server.clients_by_pseudo[self.pseudo] = nil end
     if self.user_id then
       self.server.clients_by_id[self.user_id] = nil
-      self.server.clients_by_pseudo[self.pseudo] = nil
       self.user_id = nil
     end
   end)
