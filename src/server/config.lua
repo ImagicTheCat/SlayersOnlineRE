@@ -2,7 +2,9 @@ return {
   host = "localhost:27505",
   max_clients = 100,
   tickrate = 60,
-  save_interval = 120, -- seconds
+  -- Used to decrease event computations (prefer 1/x fractions, where x is an integer).
+  event_frequency_factor = 1,
+  save_period = 120, -- seconds
   -- password salts
   client_salt = "<client_salt>",
   server_salt = "<server_salt>",

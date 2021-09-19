@@ -708,17 +708,6 @@ function Client:sendChatMessage(msg)
 end
 
 function Client:timerTick()
-  if self.user_id then
-    -- increment timers
-    for i,time in ipairs(self.timers) do
-      self.timers[i] = time+1
-    end
-    -- This make other swipes useless, because it will swipe at every
-    -- event/timer tick anyway. Since this may change, better to keep them.
-    self:markSwipe()
-    -- reset last attacker
-    self.last_attacker = nil
-  end
 end
 
 function Client:minuteTick()
@@ -736,7 +725,21 @@ local function event_error_handler(err)
 end
 
 -- event handling
-function Client:eventTick()
+function Client:eventTick(timer_ticks)
+  -- Timer increments.
+  if self.user_id then
+    -- increment timers
+    for i,time in ipairs(self.timers) do
+      self.timers[i] = time+timer_ticks
+    end
+    -- This make other swipes useless, because it will swipe at every
+    -- event/timer tick anyway. Since this may change, better to keep them.
+    self:markSwipe()
+  end
+  -- Misc.
+  -- reset last attacker
+  self.last_attacker = nil
+  -- Event loop.
   if self.map and not self.running_event then
     local radius = Event.TRIGGER_RADIUS
     -- swipe events for page changes
