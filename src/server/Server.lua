@@ -830,10 +830,8 @@ function Server:__construct(cfg)
   self.motd = self.cfg.motd
   self.groups = {} -- player groups, map of id => map of client
   self.free_skins = {} -- set of skin names
-
   self.last_time = clock()
-
-  -- register tick callback
+  -- server tick
   self.tick_task = itask(1/self.cfg.tickrate, function()
     local time = clock()
     local dt = time-self.last_time
@@ -841,22 +839,21 @@ function Server:__construct(cfg)
 
     self:tick(dt)
   end)
-
-  self.save_task = itask(self.cfg.save_interval, function() self:save() end)
-
-  self.timer_task = itask(0.030, function()
+  self.save_task = itask(self.cfg.save_period, function() self:save() end)
+  -- event/timer tick
+  local event_period = 0.03*1/self.cfg.event_frequency_factor
+  local event_timer_ticks = math.floor(1/self.cfg.event_frequency_factor)
+  self.timer_task = itask(event_period, function()
     for peer, client in pairs(self.clients) do
-      client:timerTick()
-      client:eventTick()
+      client:eventTick(event_timer_ticks)
     end
   end)
-
+  -- minute tick
   self.minute_task = itask(60, function()
     for peer, client in pairs(self.clients) do
       client:minuteTick()
     end
   end)
-
   -- DB
   local cfg_db = self.cfg.db
   self.db = DBManager(cfg_db.name, cfg_db.user, cfg_db.password, cfg_db.host, cfg_db.port)
