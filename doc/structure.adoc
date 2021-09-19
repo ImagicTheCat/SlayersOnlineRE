@@ -2,9 +2,14 @@
 
 This file is about how all the game data is managed.
 
-== Project data
+== Server resources and data
 
 The server needs all the Slayers Online project files in `resources/project/`.
+
+Cache files are located into the `cache/` directory.
+
+.Cache
+`cache/maps/`:: Compiled map events (Lua bytecode). It is a manual cache; if a map is updated the file must be deleted. The whole cache must be deleted if the code generation changes.
 
 == Client resources
 
