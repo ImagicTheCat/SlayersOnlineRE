@@ -77,3 +77,9 @@ CREATE TABLE users_skins(
   CONSTRAINT fk_users_skins_users FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT fk_users_skins_sharedby FOREIGN KEY(shared_by) REFERENCES users(id) ON DELETE CASCADE
 );
+
+CREATE TABLE server_commands(
+  id INTEGER UNSIGNED AUTO_INCREMENT,
+  command TEXT,
+  CONSTRAINT pk_server_commands PRIMARY KEY(id)
+);
