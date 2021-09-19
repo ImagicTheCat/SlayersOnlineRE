@@ -292,7 +292,6 @@ commands.compile = {0, function(self, client, args)
   if client then return end
   if #args < 6 then return true end
   --
-  if self.cfg.debug then self:loadMapData(args[2]) end
   local map = self.project.maps[args[2]]
   if map then
     local x, y = tonumber(args[3]) or 0, tonumber(args[4]) or 0
@@ -813,12 +812,12 @@ function Server:__construct(cfg)
   print("- "..self.project.mob_count.." mobs loaded")
   print("- "..self.project.spell_count.." spells loaded")
   self.project.tilesets = {} -- map of id => tileset data
+  -- make directories
+  os.execute("mkdir -p cache/maps/")
   -- load maps data
-  if not self.cfg.debug then
-    print("load maps data...")
-    for id in pairs(self.project.maps) do self:loadMapData(id) end
-    print("maps data loaded")
-  end
+  print("load maps data...")
+  for id in pairs(self.project.maps) do self:loadMapData(id) end
+  print("maps data loaded")
   --
   self.clients = {} -- map of peer => client
   self.clients_by_id = {} -- map of user id => logged client
@@ -1049,7 +1048,20 @@ function Server:loadMapData(id)
       map.tileset_id = string.sub(map.tileset, 9, string.len(map.tileset)-4)
       map.tileset_data = self:loadTilesetData(map.tileset_id)
       map.loaded = (map.tiledata and map.events and map.mob_areas and map.tileset_data)
-      -- Compile events.
+      -- Compile events (with on disk caching).
+      -- load cache
+      local cache = {}
+      local cache_modified = false
+      local cache_file = io.open("cache/maps/"..id)
+      if cache_file then
+        local data = cache_file:read("*a")
+        cache_file:close()
+        if data then
+          local ok, cache_data = pcall(msgpack.unpack, data)
+          if ok then cache = cache_data end
+        end
+      end
+      --- compile
       local header = "local state, var, bool_var, server_var, special_var, func_var, event_var, func, inventory = ...; local S, N, R = S, N, R;"
       local function sanitize_result(v)
         if v ~= v then return 0
@@ -1075,23 +1087,67 @@ function Server:loadMapData(id)
         setfenv(f, env)
         page.commands_func = f
       end
-      for _, event in ipairs(map.events or {}) do
+      for event_index, event in ipairs(map.events or {}) do
+        -- event cache
+        local event_cache = cache[event_index]
+        if not event_cache then event_cache = {}; cache[event_index] = event_cache end
         for page_index, page in ipairs(event.pages) do
-          local err = compileConditions(page,
-            map.name.."("..event.x..","..event.y..") P"..page_index.." CD")
-          if err then
-            print("ERROR compiling conditions map \""..map.name.."\" event ("..event.x..","..event.y..") P"..page_index)
-            print(err)
-            print()
+          -- page cache
+          local page_cache = event_cache[page_index]
+          if not page_cache then page_cache = {}; event_cache[page_index] = page_cache end
+          do -- conditions
+            local chunkname = map.name.."("..event.x..","..event.y..") P"..page_index.." CD"
+            if page_cache.conditions_func then -- from cache
+              local f = loadstring(page_cache.conditions_func, chunkname)
+              if f then
+                setfenv(f, env)
+                page.conditions_func = f
+                page.conditions_flags = page_cache.conditions_flags
+              else
+                print("ERROR loading from cache conditions map \""..map.name.."\" event ("..event.x..","..event.y..") P"..page_index)
+              end
+            else -- compile
+              local err = compileConditions(page, chunkname)
+              if err then
+                print("ERROR compiling conditions map \""..map.name.."\" event ("..event.x..","..event.y..") P"..page_index)
+                print(err)
+                print()
+              else -- update cache
+                page_cache.conditions_func = string.dump(page.conditions_func)
+                page_cache.conditions_flags = page.conditions_flags
+                cache_modified = true
+              end
+            end
           end
-          local err = compileCommands(page,
-            map.name.."("..event.x..","..event.y..") P"..page_index.." EV")
-          if err then
-            print("ERROR compiling commands map \""..map.name.."\" event ("..event.x..","..event.y..") P"..page_index)
-            print(err)
-            print()
+          do -- commands
+            local chunkname = map.name.."("..event.x..","..event.y..") P"..page_index.." EV"
+            if page_cache.commands_func then -- from cache
+              local f = loadstring(page_cache.commands_func, chunkname)
+              if f then
+                setfenv(f, env)
+                page.commands_func = f
+              else
+                print("ERROR loading from cache commands map \""..map.name.."\" event ("..event.x..","..event.y..") P"..page_index)
+              end
+            else -- compile
+              local err = compileCommands(page, chunkname)
+              if err then
+                print("ERROR compiling commands map \""..map.name.."\" event ("..event.x..","..event.y..") P"..page_index)
+                print(err)
+                print()
+              else -- update cache
+                page_cache.commands_func = string.dump(page.commands_func)
+                cache_modified = true
+              end
+            end
           end
         end
+      end
+      if cache_modified then -- save cache
+        local f = io.open("cache/maps/"..id, "w")
+        if not f then error("couldn't create cache file for map \""..id.."\"") end
+        f:write(msgpack.pack(cache))
+        f:close()
       end
     end
   end
