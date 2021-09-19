@@ -5,6 +5,8 @@ return function(db)
   local utint = "TINYINT UNSIGNED"
   local pseudo_t, password_t = "VARCHAR(50)", "BINARY(64)"
   -- server
+  db:prepare("server/getCommands", "SELECT command FROM server_commands ORDER BY id")
+  db:prepare("server/clearCommands", "DELETE FROM server_commands")
   db:prepare("server/setVar", "INSERT INTO server_vars(id, value) VALUES({1}, {2}) ON DUPLICATE KEY UPDATE value = {2}", {"VARCHAR(200)", "TEXT(65535)"})
   db:prepare("server/getVars", "SELECT id, value FROM server_vars")
   db:prepare("user/createAccount", [[

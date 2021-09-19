@@ -830,35 +830,11 @@ function Server:__construct(cfg)
   self.motd = self.cfg.motd
   self.groups = {} -- player groups, map of id => map of client
   self.free_skins = {} -- set of skin names
-  self.last_time = clock()
-  -- server tick
-  self.tick_task = itask(1/self.cfg.tickrate, function()
-    local time = clock()
-    local dt = time-self.last_time
-    self.last_time = time
-
-    self:tick(dt)
-  end)
-  self.save_task = itask(self.cfg.save_period, function() self:save() end)
-  -- event/timer tick
-  local event_period = 0.03*1/self.cfg.event_frequency_factor
-  local event_timer_ticks = math.floor(1/self.cfg.event_frequency_factor)
-  self.timer_task = itask(event_period, function()
-    for peer, client in pairs(self.clients) do
-      client:eventTick(event_timer_ticks)
-    end
-  end)
-  -- minute tick
-  self.minute_task = itask(60, function()
-    for peer, client in pairs(self.clients) do
-      client:minuteTick()
-    end
-  end)
   -- DB
   local cfg_db = self.cfg.db
   self.db = DBManager(cfg_db.name, cfg_db.user, cfg_db.password, cfg_db.host, cfg_db.port)
   require("queries")(self.db) -- prepare queries
-
+  -- Loading.
   async(function()
     -- load vars
     local count = 0
@@ -878,15 +854,40 @@ function Server:__construct(cfg)
       for _, row in ipairs(rows) do self.free_skins[row.name] = true end
     end
   end)
-
   -- create host
   self.host = enet.host_create(self.cfg.host, self.cfg.max_clients)
   print("listening to \""..self.cfg.host.."\"...")
-
   -- console thread
   self.console_flags = effil.table({ running = true })
   self.console_channel = effil.channel()
   self.console = effil.thread(console_main)(self.console_flags, self.console_channel)
+  -- Timers.
+  do
+    local last_time = clock()
+    -- server tick
+    self.tick_task = itask(1/self.cfg.tickrate, function()
+      local time = clock()
+      local dt = time-last_time
+      last_time = time
+      self:tick(dt)
+    end)
+  end
+  self.save_task = itask(self.cfg.save_period, function() self:save() end)
+  -- event/timer tick
+  local event_period = 0.03*1/self.cfg.event_frequency_factor
+  local event_timer_ticks = math.floor(1/self.cfg.event_frequency_factor)
+  self.timer_task = itask(event_period, function()
+    for peer, client in pairs(self.clients) do
+      client:eventTick(event_timer_ticks)
+    end
+  end)
+  -- minute tick
+  self.minute_task = itask(60, function()
+    self:fetchCommands()
+    for peer, client in pairs(self.clients) do
+      client:minuteTick()
+    end
+  end)
 end
 
 function Server:save()
@@ -951,7 +952,6 @@ function Server:tick(dt)
   -- console
   while self.console_channel:size() > 0 do
     local line = self.console_channel:pop()
-
     -- parse command
     local args = Server.parseCommand(line)
     if #args > 0 then
@@ -1009,6 +1009,22 @@ function Server:getMap(id)
     else print("couldn't load \""..id.."\" map data") end
   end
   return map
+end
+
+-- Fetch database commands and execute them.
+function Server:fetchCommands()
+  async(function()
+    local r = self.db:query("server/getCommands")
+    if not r then return end
+    -- execute commands
+    for _, row in ipairs(r.rows) do
+      -- parse command
+      print("DB> "..row.command)
+      local args = Server.parseCommand(row.command)
+      if #args > 0 then self:processCommand(nil, args) end
+    end
+    self.db:_query("server/clearCommands")
+  end)
 end
 
 -- client: client or nil from server console
