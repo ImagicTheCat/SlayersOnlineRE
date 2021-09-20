@@ -1,4 +1,3 @@
-local IdManager = require("app.lib.IdManager")
 local Client = require("app.Client")
 local net = require("app.protocol")
 local Mob = require("app.entities.Mob")
@@ -22,7 +21,7 @@ Map.Type = {
 function Map:__construct(server, id, data)
   self.server = server
   self.id = id
-  self.ids = IdManager()
+  self.id_gen = 0
   self.data = data -- map data
   self.entities = {} -- map of entity => id
   self.entities_by_id = {} -- map of id => entity
@@ -118,7 +117,8 @@ function Map:addEntity(entity)
 
   if not entity.client or self.clients[entity.client] then -- unbound or bound to existing client
     -- reference
-    local id = self.ids:gen()
+    local id = self.id_gen
+    self.id_gen = self.id_gen+1
     self.entities[entity] = id
     self.entities_by_id[id] = entity
     entity.id = id
@@ -155,7 +155,6 @@ function Map:removeEntity(entity)
     local id = entity.id
 
     -- unreference
-    self.ids:free(id)
     entity.id = nil
     entity.map = nil
     self.entities[entity] = nil
