@@ -1,8 +1,8 @@
-local net = require("protocol")
+local net = require("app.protocol")
 
 local Client
 timer(0.001, function() -- deferred modules
-  Client = require("Client")
+  Client = require("app.Client")
 end)
 
 local Entity = class("Entity")

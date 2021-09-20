@@ -1,6 +1,6 @@
-local entities = require("entities.entities")
-local TextureAtlas = require("TextureAtlas")
-local LivingEntity = require("entities.LivingEntity")
+local entities = require("app.entities.entities")
+local LivingEntity = require("app.entities.LivingEntity")
+local TextureAtlas = require("app.TextureAtlas")
 
 local Map = class("Map")
 

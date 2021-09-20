@@ -1,7 +1,7 @@
 local Widget = require("ALGUI.Widget")
-local Window = require("gui.Window")
-local GridInterface = require("gui.GridInterface")
-local Text = require("gui.Text")
+local Window = require("app.gui.Window")
+local GridInterface = require("app.gui.GridInterface")
+local Text = require("app.gui.Text")
 
 local Inventory = class("Inventory", Widget)
 

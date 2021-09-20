@@ -1,18 +1,18 @@
 local msgpack = require("MessagePack")
-local net = require("protocol")
-local Quota = require("Quota")
-local Player = require("entities.Player")
-local Event = require("entities.Event")
-local Mob = require("entities.Mob")
-local utils = require("lib.utils")
 local sha2 = require("sha2")
-local client_version = require("client_version")
-local Inventory = require("Inventory")
-local XPtable = require("XPtable")
+local net = require("app.protocol")
+local Quota = require("app.Quota")
+local Player = require("app.entities.Player")
+local Event = require("app.entities.Event")
+local Mob = require("app.entities.Mob")
+local utils = require("app.lib.utils")
+local client_version = require("app.client_version")
+local Inventory = require("app.Inventory")
+local XPtable = require("app.XPtable")
 -- deferred require
 local Map
 timer(0.01, function()
-  Map = require("Map")
+  Map = require("app.Map")
 end)
 
 -- server-side client

@@ -1,4 +1,4 @@
-local LivingEntity = require("entities.LivingEntity")
+local LivingEntity = require("app.entities.LivingEntity")
 
 local Mob = class("Mob", LivingEntity)
 

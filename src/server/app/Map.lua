@@ -1,8 +1,8 @@
-local IdManager = require("lib.IdManager")
-local Client = require("Client")
-local net = require("protocol")
-local Mob = require("entities.Mob")
-local utils = require("lib.utils")
+local IdManager = require("app.lib.IdManager")
+local Client = require("app.Client")
+local net = require("app.protocol")
+local Mob = require("app.entities.Mob")
+local utils = require("app.lib.utils")
 
 local Map = class("Map")
 
