@@ -601,17 +601,13 @@ end
 function M.compileConditions(instructions)
   local p = setmetatable({flags = {}}, {__index = Parser})
   local lines = {}
-  local first = true -- first significant instruction flag
   for i, instruction in ipairs(instructions) do
     local ok, r = pcall(compileCondition, p, instruction)
     if not ok then return nil, "CD:"..i..":"..instruction.."\n"..r end
     -- match an editor line with a Lua line
-    if r then
-      table.insert(lines, (first and "" or "and ")..r)
-      first = false
-    else table.insert(lines, "") end
+    table.insert(lines, r and "and "..r or "")
   end
-  return "return "..table.concat(lines, "\n"), p.flags
+  return "return true "..table.concat(lines, "\n"), p.flags
 end
 
 -- Compile command instruction to Lua code.
