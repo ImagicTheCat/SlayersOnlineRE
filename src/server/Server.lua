@@ -1111,13 +1111,13 @@ function Server:loadMapData(id)
           do -- conditions
             local chunkname = map.name.."("..event.x..","..event.y..") P"..page_index.." CD"
             if page_cache.conditions_func then -- from cache
-              local f = loadstring(page_cache.conditions_func, chunkname)
+              local f, err = loadstring(page_cache.conditions_func, chunkname)
               if f then
                 setfenv(f, env)
                 page.conditions_func = f
                 page.conditions_flags = page_cache.conditions_flags
               else
-                print("ERROR loading from cache conditions map \""..map.name.."\" event ("..event.x..","..event.y..") P"..page_index)
+                print("ERROR loading from cache conditions map \""..map.name.."\" event ("..event.x..","..event.y..") P"..page_index..": "..err)
               end
             else -- compile
               local err = compileConditions(page, chunkname)
@@ -1135,12 +1135,12 @@ function Server:loadMapData(id)
           do -- commands
             local chunkname = map.name.."("..event.x..","..event.y..") P"..page_index.." EV"
             if page_cache.commands_func then -- from cache
-              local f = loadstring(page_cache.commands_func, chunkname)
+              local f, err = loadstring(page_cache.commands_func, chunkname)
               if f then
                 setfenv(f, env)
                 page.commands_func = f
               else
-                print("ERROR loading from cache commands map \""..map.name.."\" event ("..event.x..","..event.y..") P"..page_index)
+                print("ERROR loading from cache commands map \""..map.name.."\" event ("..event.x..","..event.y..") P"..page_index..": "..err)
               end
             else -- compile
               local err = compileCommands(page, chunkname)
@@ -1193,8 +1193,6 @@ end
 function Server:setVariable(id, value)
   self.changed_vars[id] = true
   self.vars[id] = tostring(value)
-  -- mark swipe for all clients
-  for peer, client in pairs(self.clients) do client:markSwipe() end
   -- call listeners
   local listeners = self.var_listeners[id]
   if listeners then

@@ -782,7 +782,6 @@ function command_functions:ChangeSkin(path)
     x = 0, y = 0,
     w = 24, h = 32
   })
-  self.client:markSwipe()
 end
 
 function command_functions:Message(msg)
@@ -966,7 +965,6 @@ function Event:__construct(client, data, page_index)
         end
         -- set
         f(self, value)
-        self.client:markSwipe()
       else return f(self) end
     end
   end
@@ -979,7 +977,6 @@ function Event:__construct(client, data, page_index)
     if event then
       local f = event_vars[id]
       if f then
-        if value then self.client:markSwipe() end
         return f(event, value)
       end
     end
@@ -1193,13 +1190,14 @@ function Event:onMapChange()
       self.trigger_task = true
       -- task iteration
       local function iteration()
-        task(0.03, function()
+        task(0.5, function()
             if self.trigger_task then
               self:trigger("auto")
               iteration()
             end
         end)
       end
+      self:trigger("auto")
       iteration()
     elseif self.trigger_auto_once then
       self:trigger("auto_once")
