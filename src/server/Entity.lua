@@ -1,7 +1,7 @@
 local net = require("protocol")
 
 local Client
-task(0.001, function() -- deferred modules
+timer(0.001, function() -- deferred modules
   Client = require("Client")
 end)
 

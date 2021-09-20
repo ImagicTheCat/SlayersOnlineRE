@@ -11,7 +11,7 @@ local Inventory = require("Inventory")
 local XPtable = require("XPtable")
 -- deferred require
 local Map
-task(0.01, function()
+timer(0.01, function()
   Map = require("Map")
 end)
 
@@ -93,7 +93,7 @@ function Client:__construct(server, peer)
   self.triggered_events = {} -- map of event => trigger condition
   -- self.running_event
   self.to_swipe = false
-  self.swipe_timer = itask(0.5, function() self.to_swipe = true end)
+  self.swipe_timer = itimer(0.5, function() self.to_swipe = true end)
 
   self.vars = {} -- map of id (number)  => value (number)
   self.var_listeners = {} -- map of id (number) => map of callback
@@ -1033,7 +1033,7 @@ function Client:onDisconnect()
     -- Make sure the event coroutine will not continue its execution before the
     -- rollback by disabling async tasks. The server guarantees that no more
     -- packets from the client will be received and we can ignore this kind of task.
-    if self.move_task then self.move_task:remove() end
+    if self.move_timer then self.move_timer:remove() end
     event.wait_task = nil
     -- rollback
     event:rollback()
@@ -1215,7 +1215,7 @@ function Client:castSpell(id)
 
       -- cast spell
       self:act("cast", cast_duration)
-      task(cast_duration, function()
+      timer(cast_duration, function()
         self:emitHint({{0.77,0.18,1}, spell.name})
         target:applySpell(self, spell)
       end)
@@ -1592,7 +1592,7 @@ function Client:onDeath()
   self:setGhost(true)
 
   -- respawn after a while
-  task(5, function() self:respawn() end)
+  timer(5, function() self:respawn() end)
 end
 
 function Client:respawn()

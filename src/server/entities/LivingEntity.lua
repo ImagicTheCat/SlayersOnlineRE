@@ -3,7 +3,7 @@ local utils = require("lib.utils")
 local cfg = require("config")
 -- deferred
 local Client
-task(0.01, function()
+timer(0.01, function()
   Client = require("Client")
 end)
 
@@ -330,10 +330,10 @@ function LivingEntity:setMoveForward(move_forward)
     if self.move_forward then
       self.move_time = clock()
 
-      if self.move_task then self.move_task:remove() end
-      if self.move_final_task then self.move_final_task:remove() end
+      if self.move_timer then self.move_timer:remove() end
+      if self.move_final_timer then self.move_final_timer:remove() end
 
-      self.move_task = itask(1/cfg.tickrate, function()
+      self.move_timer = itimer(1/cfg.tickrate, function()
         local dt = clock()-self.move_time
         local speed = LivingEntity.pixelSpeed(self.speed)
         if self.acting then speed = speed/2 end -- slow movement when acting
@@ -373,10 +373,10 @@ function LivingEntity:setMoveForward(move_forward)
         end
       end)
     else
-      self.move_task:remove()
-      self.move_task = nil
+      self.move_timer:remove()
+      self.move_timer = nil
       -- final teleport
-      self.move_final_task = task(0.25, function()
+      self.move_final_timer = timer(0.25, function()
         self:teleport(self.x, self.y) -- end position
       end)
     end
@@ -400,9 +400,9 @@ function LivingEntity:moveToCell(cx, cy, blocking)
   local time = clock()
   local x, y = self.x, self.y
 
-  if self.move_task then self.move_task:remove() end
+  if self.move_timer then self.move_timer:remove() end
 
-  self.move_task = itask(1/cfg.tickrate, function()
+  self.move_timer = itimer(1/cfg.tickrate, function()
     local progress = (clock()-time)/duration
     if progress <= 1 then
       self.x = utils.lerp(x, cx*16, progress)
@@ -410,8 +410,8 @@ function LivingEntity:moveToCell(cx, cy, blocking)
       self:updateCell()
     else -- end
       self:teleport(cx*16, cy*16)
-      self.move_task:remove()
-      self.move_task = nil
+      self.move_timer:remove()
+      self.move_timer = nil
       if blocking then
         r()
       end
@@ -445,7 +445,7 @@ function LivingEntity:act(action, duration)
 
     -- do animation
     self:broadcastPacket("act", {self.acting, duration})
-    task(duration, function() self.acting = false end)
+    timer(duration, function() self.acting = false end)
   end
 end
 

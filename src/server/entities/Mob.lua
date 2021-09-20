@@ -2,7 +2,7 @@ local LivingEntity = require("entities.LivingEntity")
 local utils = require("lib.utils")
 -- deferred
 local Player
-task(0.01, function()
+timer(0.01, function()
   Player = require("entities.Player")
 end)
 
@@ -55,13 +55,13 @@ function Mob:__construct(data, area)
   -- self.target -- player aggro
 end
 
--- (re)launch/do AI task
+-- (re)launch/do AI timer
 -- (starts a unique loop, will call itself again)
 function Mob:doAI()
   if self.map then
-    if self.ai_task then -- remove previous task if not done
-      self.ai_task:remove()
-      self.ai_task = nil
+    if self.ai_timer then -- remove previous timer if not done
+      self.ai_timer:remove()
+      self.ai_timer = nil
     end
 
     if self.target and self.target.ghost then self.target = nil end -- lose target if ghost
@@ -71,7 +71,7 @@ function Mob:doAI()
     end
 
     local aggro = (self.target and self.target.map == self.map)
-    self.ai_task = task(utils.randf(1, 5)/self.speed*(aggro and 0.25 or 1.5), function()
+    self.ai_timer = timer(utils.randf(1, 5)/self.speed*(aggro and 0.25 or 1.5), function()
       if self.map then
         if aggro then -- aggro mode
           local dcx, dcy = self.target.cx-self.cx, self.target.cy-self.cy
@@ -123,7 +123,7 @@ function Mob:doAI()
         end
 
         -- next AI tick
-        self.ai_task = nil
+        self.ai_timer = nil
         self:doAI()
       end
     end)
@@ -161,7 +161,7 @@ function Mob:onAttack(attacker)
       if not (self.target and self.target.map == self.map) or (amount and amount >= self.highest_damage_received) then
         self.highest_damage_received = amount or 0
         self.target = attacker
-        self:doAI() -- update task
+        self:doAI() -- update timer
       end
     end
 

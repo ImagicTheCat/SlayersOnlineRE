@@ -332,7 +332,7 @@ function Map:mobAreaSpawnTask(index)
 
     -- next call
     local duration = 1/(def.spawn_speed == 0 and 60 or def.spawn_speed)*60*utils.randf(0.80, 1)
-    task(duration, function()
+    timer(duration, function()
       self:mobAreaSpawnTask(index)
     end)
   end

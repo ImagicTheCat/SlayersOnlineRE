@@ -3,7 +3,7 @@ local LivingEntity = require("entities.LivingEntity")
 local Mob = require("entities.Mob")
 -- deferred require
 local Map, Client
-task(0.01, function()
+timer(0.01, function()
   Map = require("Map")
   Client = require("Client")
 end)
