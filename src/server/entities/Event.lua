@@ -6,7 +6,7 @@ local XPtable = require("XPtable")
 local net = require("protocol")
 -- deferred
 local Client
-task(0.01, function()
+timer(0.01, function()
   Client = require("Client")
 end)
 
@@ -891,7 +891,7 @@ function command_functions:Attente(amount)
   amount = tonumber(amount) or 0
   if amount > 0 then
     self.wait_task = async()
-    task(amount*0.03, function()
+    timer(amount*0.03, function()
       local r = self.wait_task
       if r then
         self.wait_task = nil
@@ -1132,9 +1132,9 @@ end
 -- (starts a unique loop, will call itself again)
 function Event:moveAI()
   local atype = Event.Animation[self.animation_type]
-  if self.map and not self.move_ai_task and
+  if self.map and not self.move_ai_timer and
       (atype == "character_random" or atype == "character_follow") then
-    self.move_ai_task = task(utils.randf(1, 5)/self.speed*(atype == "character_follow" and 0.25 or 1.5), function()
+    self.move_ai_timer = timer(utils.randf(1, 5)/self.speed*(atype == "character_follow" and 0.25 or 1.5), function()
       if not self.client.running_event and self.map then -- prevent movement when an event is in execution
         if Event.Animation[self.animation_type] == "character_follow" then -- follow mode
           local dcx, dcy = self.client.cx-self.cx, self.client.cy-self.cy
@@ -1165,7 +1165,7 @@ function Event:moveAI()
         end
       end
       -- next AI tick
-      self.move_ai_task = nil
+      self.move_ai_timer = nil
       self:moveAI()
     end)
   end
@@ -1190,7 +1190,7 @@ function Event:onMapChange()
       self.trigger_task = true
       -- task iteration
       local function iteration()
-        task(0.5, function()
+        timer(0.5, function()
             if self.trigger_task then
               self:trigger("auto")
               iteration()

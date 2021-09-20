@@ -16,33 +16,29 @@ function clock()
   return ev.Loop.default:now()
 end
 
--- execute callback after delay (seconds)
--- return task (task:remove() to prevent callback)
-function task(delay, cb)
+-- Execute callback after delay (seconds).
+-- return timer (timer:remove() to prevent callback)
+function timer(delay, cb)
   local timer = ev.Timer.new(function(loop, timer, revents)
     cb()
     timer:stop(loop)
   end, delay)
-
   function timer:remove()
     self:stop(ev.Loop.default)
   end
-
   timer:start(ev.Loop.default)
   return timer
 end
 
--- execute callback with interval (seconds)
--- return task (task:remove() to stop interval)
-function itask(delay, cb)
+-- Execute callback with period (seconds).
+-- return timer (timer:remove() to stop interval)
+function itimer(delay, cb)
   local timer = ev.Timer.new(function(loop, timer, revents)
     cb()
   end, delay, delay)
-
   function timer:remove()
     self:stop(ev.Loop.default)
   end
-
   timer:start(ev.Loop.default)
   return timer
 end

@@ -865,24 +865,24 @@ function Server:__construct(cfg)
   do
     local last_time = clock()
     -- server tick
-    self.tick_task = itask(1/self.cfg.tickrate, function()
+    self.tick_timer = itimer(1/self.cfg.tickrate, function()
       local time = clock()
       local dt = time-last_time
       last_time = time
       self:tick(dt)
     end)
   end
-  self.save_task = itask(self.cfg.save_period, function() self:save() end)
+  self.save_timer = itimer(self.cfg.save_period, function() self:save() end)
   -- event/timer tick
   local event_period = 0.03*1/self.cfg.event_frequency_factor
   local event_timer_ticks = math.floor(1/self.cfg.event_frequency_factor)
-  self.timer_task = itask(event_period, function()
+  self.event_timer = itimer(event_period, function()
     for peer, client in pairs(self.clients) do
       client:eventTick(event_timer_ticks)
     end
   end)
   -- minute tick
-  self.minute_task = itask(60, function()
+  self.minute_timer = itimer(60, function()
     self:fetchCommands()
     for peer, client in pairs(self.clients) do
       client:minuteTick()
@@ -908,7 +908,7 @@ function Server:save()
         client:save()
         -- wait
         local tnext = async()
-        task(0.001, tnext)
+        timer(0.001, tnext)
         tnext:wait()
       end
     end)
@@ -925,10 +925,10 @@ function Server:close()
   if self.task_close then return self.task_close:wait() end
   self.task_close = async()
 
-  self.timer_task:remove()
-  self.minute_task:remove()
+  self.event_timer:remove()
+  self.minute_timer:remove()
   self.console_flags.running = false
-  self.save_task:remove()
+  self.save_timer:remove()
 
   -- disconnect clients
   for peer, client in pairs(self.clients) do
@@ -939,7 +939,7 @@ function Server:close()
   self:save()
   self.host:flush()
   self.db:close()
-  self.tick_task:remove()
+  self.tick_timer:remove()
 
   print("shutdown.")
 

@@ -21,17 +21,17 @@ function Quota:add(value)
 end
 
 function Quota:start()
-  if self.task then return end -- already started
-  self.task = itask(self.period, function()
+  if self.timer then return end -- already started
+  self.timer = itimer(self.period, function()
     self.value = 0
     self.exceeded = false
   end)
 end
 
 function Quota:stop()
-  if self.task then
-    self.task:remove()
-    self.task = nil
+  if self.timer then
+    self.timer:remove()
+    self.timer = nil
   end
 end
 
