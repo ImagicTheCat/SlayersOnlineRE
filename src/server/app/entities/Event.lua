@@ -1,13 +1,13 @@
-local utils = require("lib.utils")
-local Entity = require("Entity")
-local Mob = require("entities.Mob")
-local LivingEntity = require("entities.LivingEntity")
-local XPtable = require("XPtable")
-local net = require("protocol")
+local utils = require("app.lib.utils")
+local Entity = require("app.Entity")
+local Mob = require("app.entities.Mob")
+local LivingEntity = require("app.entities.LivingEntity")
+local XPtable = require("app.XPtable")
+local net = require("app.protocol")
 -- deferred
 local Client
 timer(0.01, function()
-  Client = require("Client")
+  Client = require("app.Client")
 end)
 
 local Event = class("Event", LivingEntity)

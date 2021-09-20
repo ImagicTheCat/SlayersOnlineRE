@@ -1,19 +1,19 @@
 local msgpack = require("MessagePack")
-local utils = require("lib.utils")
 local sha2 = require("sha2")
+local utils = require("app.lib.utils")
 
 local ResourceManager = class("ResourceManager")
 
 function ResourceManager:__construct(client)
   self.client = client
   -- create HTTP thread
-  self.http_thread = love.thread.newThread("thread_http.lua")
+  self.http_thread = love.thread.newThread("app/thread_http.lua")
   self.http_cin = love.thread.newChannel()
   self.http_cout = love.thread.newChannel()
   self.http_thread:start(self.http_cin, self.http_cout)
   self.http_tasks = {}
   -- create I/O/Compute thread
-  self.ioc_thread = love.thread.newThread("thread_ioc.lua")
+  self.ioc_thread = love.thread.newThread("app/thread_ioc.lua")
   self.ioc_cin = love.thread.newChannel()
   self.ioc_cout = love.thread.newChannel()
   self.ioc_thread:start(self.ioc_cin, self.ioc_cout)

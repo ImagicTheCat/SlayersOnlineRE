@@ -1,11 +1,11 @@
-local net = require("protocol")
-local LivingEntity = require("entities.LivingEntity")
-local Mob = require("entities.Mob")
+local net = require("app.protocol")
+local LivingEntity = require("app.entities.LivingEntity")
+local Mob = require("app.entities.Mob")
 -- deferred require
 local Map, Client
 timer(0.01, function()
-  Map = require("Map")
-  Client = require("Client")
+  Map = require("app.Map")
+  Client = require("app.Client")
 end)
 
 local Player = class("Player", LivingEntity)

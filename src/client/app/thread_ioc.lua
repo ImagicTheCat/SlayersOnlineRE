@@ -1,6 +1,6 @@
 -- I/O/Compute thread
 local sha2 = require("sha2")
-local utils = require("lib.utils")
+local utils = require("app.lib.utils")
 
 local cin, cout = ...
 while true do

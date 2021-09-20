@@ -1,10 +1,10 @@
-local utils = require("lib.utils")
 local Widget = require("ALGUI.Widget")
-local Window = require("gui.Window")
-local GridInterface = require("gui.GridInterface")
-local Text = require("gui.Text")
-local TextInput = require("gui.TextInput")
-local Inventory = require("gui.Inventory")
+local utils = require("app.lib.utils")
+local Window = require("app.gui.Window")
+local GridInterface = require("app.gui.GridInterface")
+local Text = require("app.gui.Text")
+local TextInput = require("app.gui.TextInput")
+local Inventory = require("app.gui.Inventory")
 
 local Shop = class("Shop", Widget)
 

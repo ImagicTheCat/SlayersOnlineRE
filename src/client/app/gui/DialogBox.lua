@@ -1,6 +1,6 @@
-local Window = require("gui.Window")
-local GridInterface = require("gui.GridInterface")
-local Text = require("gui.Text")
+local Window = require("app.gui.Window")
+local GridInterface = require("app.gui.GridInterface")
+local Text = require("app.gui.Text")
 
 local DialogBox = class("Inventory", Window)
 

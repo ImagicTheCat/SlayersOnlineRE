@@ -44,7 +44,7 @@ function itimer(delay, cb)
 end
 
 -- create server
-local Server = require("Server")
+local Server = require("app.Server")
 
 server = Server(config) -- global
 

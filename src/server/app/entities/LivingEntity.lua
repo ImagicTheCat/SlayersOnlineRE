@@ -1,10 +1,10 @@
-local Entity = require("Entity")
-local utils = require("lib.utils")
+local Entity = require("app.Entity")
+local utils = require("app.lib.utils")
 local cfg = require("config")
 -- deferred
 local Client
 timer(0.01, function()
-  Client = require("Client")
+  Client = require("app.Client")
 end)
 
 local LivingEntity = class("LivingEntity", Entity)

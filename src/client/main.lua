@@ -7,8 +7,7 @@ local Luaseq = require("Luaseq")
 async = Luaseq.async
 local Scheduler = require("ELScheduler")
 
-local Client = require("Client")
-
+local Client = require("app.Client")
 local cfg = require("config")
 
 function love.threaderror(thread, err)

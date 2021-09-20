@@ -1,15 +1,15 @@
 local effil = require("effil")
 local enet = require("enet")
-local msgpack = require("MessagePack")
-local Client = require("Client")
-local Map = require("Map")
-local utils = require("lib.utils")
-local Deserializer = require("Deserializer")
 local vips = require("vips")
 local sha2 = require("sha2")
-local DBManager = require("DBManager")
-local net = require("protocol")
-local EventCompiler = require("EventCompiler")
+local msgpack = require("MessagePack")
+local Client = require("app.Client")
+local Map = require("app.Map")
+local utils = require("app.lib.utils")
+local Deserializer = require("app.Deserializer")
+local DBManager = require("app.DBManager")
+local net = require("app.protocol")
+local EventCompiler = require("app.EventCompiler")
 
 -- optional require
 local profiler
@@ -833,7 +833,7 @@ function Server:__construct(cfg)
   -- DB
   local cfg_db = self.cfg.db
   self.db = DBManager(cfg_db.name, cfg_db.user, cfg_db.password, cfg_db.host, cfg_db.port)
-  require("queries")(self.db) -- prepare queries
+  require("app.queries")(self.db) -- prepare queries
   -- Loading.
   async(function()
     -- load vars

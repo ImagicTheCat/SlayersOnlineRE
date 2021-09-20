@@ -1,5 +1,5 @@
 local Base = require("ALGUI.ext.GUI")
-local TextInput = require("gui.TextInput")
+local TextInput = require("app.gui.TextInput")
 
 local GUI = class("GUI", Base)
 
