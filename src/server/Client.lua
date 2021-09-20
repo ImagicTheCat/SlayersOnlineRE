@@ -774,9 +774,9 @@ function Client:eventTick(timer_ticks)
       end
     end
     if #events > 0 then
-      -- sort ascending top-left
+      -- sort ascending top-left (line by line)
       table.sort(events, function(a,b)
-        return a.cx < b.cx or a.cx == b.cx and a.cy < b.cy
+        return a.cy < b.cy or a.cy == b.cy and a.cx < b.cx
       end)
       -- stop movement
       self:setMoveForward(false)
