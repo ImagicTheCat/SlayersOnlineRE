@@ -91,8 +91,9 @@ function Client:__construct(server, peer)
   self.entities = {} -- bound map entities, map of entity
   self.events_by_name = {} -- map of name => event entity
   self.triggered_events = {} -- map of event => trigger condition
-  self.to_swipe = false
   -- self.running_event
+  self.to_swipe = false
+  self.swipe_timer = itask(0.5, function() self.to_swipe = true end)
 
   self.vars = {} -- map of id (number)  => value (number)
   self.var_listeners = {} -- map of id (number) => map of callback
@@ -716,62 +717,51 @@ function Client:minuteTick()
   end
 end
 
--- Produce an event swipe at the next event tick.
--- Should be called when variables change.
-function Client:markSwipe() self.to_swipe = true end
-
 local function event_error_handler(err)
   io.stderr:write(debug.traceback("event: "..err, 2).."\n")
 end
 
+-- Update events (page selection).
+function Client:swipeEvents()
+  local events = {}
+  for entity in pairs(self.entities) do
+    if class.is(entity, Event) then table.insert(events, entity) end
+  end
+  -- swipe events for page changes
+  for _, event in ipairs(events) do
+    local page_index = event:selectPage()
+    if page_index ~= event.page_index then -- reload event
+      -- remove
+      self.map:removeEntity(event)
+      -- re-create
+      local nevent = Event(self, event.data, page_index)
+      self.map:addEntity(nevent)
+      nevent:teleport(event.x, event.y)
+    end
+  end
+end
+
 -- event handling
 function Client:eventTick(timer_ticks)
-  -- Timer increments.
-  if self.user_id then
-    -- increment timers
-    for i,time in ipairs(self.timers) do
-      self.timers[i] = time+timer_ticks
-    end
-    -- This make other swipes useless, because it will swipe at every
-    -- event/timer tick anyway. Since this may change, better to keep them.
-    self:markSwipe()
-  end
-  -- Misc.
-  -- reset last attacker
-  self.last_attacker = nil
-  -- Event loop.
   if self.map and not self.running_event then
-    local radius = Event.TRIGGER_RADIUS
-    -- swipe events for page changes
-    if self.to_swipe then
-      self.to_swipe = false
-      local cx = self.cx+utils.round(self.view_shift[1]/16)
-      local cy = self.cy+utils.round(self.view_shift[2]/16)
-      for x=cx-radius, cx+radius do
-        for y=cy-radius, cy+radius do
-          local cell = self.map:getCell(x,y)
-          if cell then
-            for entity in pairs(cell) do
-              if class.is(entity, Event) then
-                local event = entity
-                local page_index = event:selectPage()
-                if page_index ~= event.page_index then -- reload event
-                  -- remove
-                  self.map:removeEntity(event)
-                  -- re-create
-                  local nevent = Event(self, event.data, page_index)
-                  self.map:addEntity(nevent)
-                  nevent:teleport(event.x, event.y)
-                end
-              end
-            end
-          end
-        end
+    -- Timer increments.
+    if self.user_id then
+      -- increment timers
+      for i,time in ipairs(self.timers) do
+        self.timers[i] = time+timer_ticks
       end
     end
-    -- execute next visible/top-left event
+    -- Misc.
+    -- reset last attacker
+    self.last_attacker = nil
+    -- Swipe events.
+    if self.to_swipe then
+      self.to_swipe = false
+      self:swipeEvents()
+    end
+    -- Execute next visible/top-left event.
     local events = {}
-    local max_delta = radius*16
+    local max_delta = Event.TRIGGER_RADIUS*16
     for event, condition in pairs(self.triggered_events) do
       if condition == "auto" or condition == "auto_once" then
         local dx = math.abs(event.cx*16-(self.cx*16+self.view_shift[1]))
@@ -783,7 +773,6 @@ function Client:eventTick(timer_ticks)
         table.insert(events, event)
       end
     end
-
     if #events > 0 then
       -- sort ascending top-left
       table.sort(events, function(a,b)
@@ -1057,6 +1046,7 @@ function Client:onDisconnect()
       self.server:setVariable(map_data.svar, map_data.sval)
     end
   end
+  self.swipe_timer:remove()
   self:setGroup(nil)
   self:cancelTrade()
   async(function()
@@ -1101,7 +1091,6 @@ end
 -- override
 function Client:onCellChange()
   if self.map then
-    self:markSwipe()
     local cell = self.map:getCell(self.cx, self.cy)
     if cell then
       -- event contact check
@@ -1301,9 +1290,6 @@ function Client:updateCharacteristics(dry)
     self:setHealth(self.health)
     self:setMana(self.mana)
 
-    -- trigger vars
-    self:markSwipe()
-
     self:send(Client.makePacket(net.STATS_UPDATE, {
       strength = self.strength,
       dexterity = self.dexterity,
@@ -1405,13 +1391,11 @@ end
 -- override
 function Client:setOrientation(orientation)
   Player.setOrientation(self, orientation)
-  self:markSwipe()
 end
 
 -- override
 function Client:setHealth(health)
   Player.setHealth(self, health)
-  self:markSwipe()
   self:send(Client.makePacket(net.STATS_UPDATE, {health = self.health, max_health = self.max_health}))
   self:sendGroupUpdate()
 end
@@ -1419,13 +1403,11 @@ end
 -- override
 function Client:setMana(mana)
   Player.setMana(self, mana)
-  self:markSwipe()
   self:send(Client.makePacket(net.STATS_UPDATE, {mana = self.mana, max_mana = self.max_mana}))
 end
 
 function Client:setGold(gold)
   self.gold = math.max(0,gold)
-  self:markSwipe()
   self:send(Client.makePacket(net.STATS_UPDATE, {gold = self.gold}))
 end
 
@@ -1444,8 +1426,6 @@ function Client:setXP(xp)
     self:setRemainingPoints(self.remaining_pts+new_points)
   end
 
-  self:markSwipe()
-
   self:send(Client.makePacket(net.STATS_UPDATE, {
     xp = self.xp,
     current_xp = XPtable[self.level] or 0,
@@ -1458,20 +1438,17 @@ end
 
 function Client:setAlignment(alignment)
   self.alignment = utils.clamp(alignment, 0, 100)
-  self:markSwipe()
   self:send(Client.makePacket(net.STATS_UPDATE, {alignment = self.alignment}))
   self:broadcastPacket("update_alignment", self.alignment)
 end
 
 function Client:setReputation(reputation)
   self.reputation = reputation
-  self:markSwipe()
   self:send(Client.makePacket(net.STATS_UPDATE, {reputation = self.reputation}))
 end
 
 function Client:setRemainingPoints(remaining_pts)
   self.remaining_pts = math.max(0, remaining_pts)
-  self:markSwipe()
   self:send(Client.makePacket(net.STATS_UPDATE, {points = self.remaining_pts}))
 end
 
@@ -1576,7 +1553,6 @@ end
 
 function Client:onPlayerKill()
   self.kill_player = 1
-  self:markSwipe()
 end
 
 -- override
@@ -1719,7 +1695,6 @@ function Client:setVariable(vtype, id, value)
 
     vars[id] = value
     changed_vars[id] = true
-    self:markSwipe()
 
     -- call listeners
     local listeners = var_listeners[id]
