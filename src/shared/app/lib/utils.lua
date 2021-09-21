@@ -169,7 +169,18 @@ function utils.fn(n, sign)
   else return formatted end
 end
 
-
 function utils.pack(...) return {..., n = select("#", ...)} end
+
+-- Reverse map.
+-- Build a table with (k,v) pairs and (v,k) pairs.
+-- v: (optional) override value for all (v,k) pairs
+function utils.rmap(t, v)
+  local nt = {}
+  for mk, mv in pairs(t) do
+    nt[mk] = mv
+    nt[mv] = (v ~= nil and v or mk)
+  end
+  return nt
+end
 
 return utils
