@@ -3,22 +3,6 @@ local utils = require("app.lib.utils")
 
 local Event = class("Event", LivingEntity)
 
--- STATICS
-
-Event.Position = {
-  [0] = "dynamic",
-  "front",
-  "back"
-}
-
-Event.Animation = {
-  [0] = "static",
-  "static_character",
-  "character_random",
-  "visual_effect",
-  "character_follow"
-}
-
 -- METHODS
 
 function Event:__construct(data)
@@ -37,10 +21,9 @@ function Event:__construct(data)
 
   self.active = data.active
 
-  local ptype = Event.Position[data.position_type]
-  if ptype == "back" then
+  if data.position_type == "back" then
     self.draw_order = -1
-  elseif ptype == "front" then
+  elseif data.position_type == "front" then
     self.draw_order = 1
   end
 end
@@ -50,8 +33,8 @@ function Event:onPacket(action, data)
   LivingEntity.onPacket(self, action, data)
 
   if action == "teleport" then
-    local atype = Event.Animation[self.animation_type]
-    if atype ~= "character_random" and atype ~= "character_follow" then
+    local atype = self.animation_type
+    if atype ~= "character-random" and atype ~= "character-follow" then
       -- Prevent erasing anim_x for moving events.
       self.anim_x = self.animation_number
     end
@@ -76,7 +59,7 @@ function Event:tick(dt)
   LivingEntity.tick(self, dt)
 
   if self.active then
-    if Event.Animation[self.animation_type] == "visual_effect" then -- effect
+    if self.animation_type == "visual-effect" then -- effect
       self.anim_index = math.floor(scheduler.time/self.anim_interval)%(self.anim_wc*self.anim_hc)
       self.anim_x = self.anim_index%self.anim_wc
       self.anim_y = math.floor(self.anim_index/self.anim_wc)

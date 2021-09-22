@@ -1,5 +1,6 @@
 local struct = require("struct")
 local iconv = require("iconv")
+local utils = require("app.lib.utils")
 
 local Deserializer = class("Deserializer")
 
@@ -12,13 +13,32 @@ function Deserializer.readString(file, padding_size)
   return str
 end
 
+local MAP_TYPES = {
+  [0] = "safe",
+  "PvE",
+  "PvP",
+  "PvE-PvP",
+  "PvP-noreput",
+  "PvP-noreput-pot"
+}
+
+local MAP_EFFECTS = {
+  [0] = "none",
+  "dark-cave",
+  "night",
+  "heat",
+  "rain",
+  "snow",
+  "fog"
+}
+
 -- return map {}
---- type: int (Map.Type)
 function Deserializer.readProjectEntry(file)
   local map = {}
-
   map.name = Deserializer.readString(file, 50)
-  map.type, map.effect = struct.unpack("BB", file:read(2))
+  local type, effect = struct.unpack("BB", file:read(2))
+  map.type = MAP_TYPES[type]
+  map.effect = MAP_EFFECTS[effect]
   map.background = Deserializer.readString(file, 50)
   map.music = Deserializer.readString(file, 50)
   map.tileset = Deserializer.readString(file, 50)
@@ -27,13 +47,11 @@ function Deserializer.readProjectEntry(file)
   map.disconnect_respawn = (struct.unpack("B", file:read(1)) > 0)
   map.si_v, map.v_c = struct.unpack("<i2 i2", file:read(4))
   map.svar, map.sval = Deserializer.readString(file, 255), Deserializer.readString(file, 255)
-
   return map
 end
 
 function Deserializer.readProjectClassEntry(file)
   local cls = {}
-
   cls.name = Deserializer.readString(file, 50)
   cls.attack_sound = Deserializer.readString(file, 255)
   cls.hurt_sound = Deserializer.readString(file, 255)
@@ -44,27 +62,28 @@ function Deserializer.readProjectClassEntry(file)
   cls.strength, cls.dexterity, cls.constitution, cls.magic = struct.unpack("<i4 i4 i4 i4", file:read(4*4))
   cls.off_index, cls.def_index, cls.pow_index, cls.health_index, cls.mag_index = struct.unpack("<I2 I2 I2 I2 I2", file:read(5*2))
   file:seek("cur",2)
-
   return cls
 end
 
+local OBJECT_TYPES = {
+  [0] = "usable",
+  "one-handed-weapon",
+  "two-handed-weapon",
+  "helmet",
+  "armor",
+  "shield",
+  "quest-item",
+  "magic-book"
+}
+
 -- return object {}
---- type: int
----- 0: usable
----- 1: one-handed weapon
----- 2: two-handed weapon
----- 3: helmet
----- 4: armor
----- 5: shield
----- 6: quest item
----- 7: magic book
 --- usable_class: index (1-based)
 function Deserializer.readProjectObjectEntry(file)
   local obj = {}
-
   obj.name = Deserializer.readString(file, 50)
   obj.description = Deserializer.readString(file, 50)
   obj.usable_class, obj.type, obj.spell = struct.unpack("<I2 I2 I2", file:read(2*3))
+  obj.type = OBJECT_TYPES[obj.type]
   obj.price = struct.unpack("<I4", file:read(4))
   obj.mod_strength, obj.mod_dexterity, obj.mod_constitution, obj.mod_magic = struct.unpack("<I2 I2 I2 I2", file:read(2*4))
   obj.mod_attack_a, obj.mod_attack_b, obj.mod_defense = struct.unpack("<i2 i2 i2", file:read(2*3))
@@ -72,15 +91,22 @@ function Deserializer.readProjectObjectEntry(file)
   obj.mod_hp, obj.mod_mp = struct.unpack("<i4 i4", file:read(4*2))
   obj.req_strength, obj.req_dexterity, obj.req_constitution, obj.req_magic, obj.req_level = struct.unpack("<I2 I2 I2 I2 I2", file:read(2*5))
   file:seek("cur", 2)
-
   return obj
 end
 
+
+local MOB_TYPES = {
+  [0] = "defensive",
+  "aggressive",
+  "static",
+  "breakable"
+}
+
 function Deserializer.readProjectMobEntry(file)
   local mob = {}
-
   mob.name = Deserializer.readString(file, 50)
   mob.type, mob.level = struct.unpack("BB", file:read(2))
+  mob.type = MOB_TYPES[mob.type]
   mob.charaset = Deserializer.readString(file, 100)
   mob.attack_sound = Deserializer.readString(file, 100)
   mob.hurt_sound = Deserializer.readString(file, 100)
@@ -93,41 +119,45 @@ function Deserializer.readProjectMobEntry(file)
   mob.xp_min, mob.xp_max, mob.gold_min, mob.gold_max = struct.unpack("<I4 I4 I4 I4", file:read(4*4))
   mob.loot_object, mob.loot_chance = struct.unpack("<I2 I2", file:read(2*2))
   mob.var_id, mob.var_increment = struct.unpack("<i2 I2", file:read(2*2))
-
   mob.spells = {}
   -- 10 spells id
   for i=1,10 do
     mob.spells[i] = {struct.unpack("<I2", file:read(2))}
   end
-
   -- 10 spells number
   for i=1,10 do
     mob.spells[i][2] = struct.unpack("<I2", file:read(2))
   end
-
   mob.obstacle = (struct.unpack("B", file:read(1)) > 0)
   file:seek("cur", 3)
-
   return mob
 end
 
+local SPELL_TYPES = {
+  [0] = "unique",
+  "fireball",
+  "AOE",
+  "teleport",
+  "resurrect",
+  "jump-attack",
+  "sneak-attack"
+}
+
+local SPELL_TARGET_TYPES = {
+  [0] = "player",
+  "mob-player",
+  "self",
+  "area"
+}
+
+local SPELL_POSITION_TYPES = {
+  [0] = "above",
+  "dynamic"
+}
+
 -- return spell {}
---- target_type:
----- 0: player
----- 1: mob (and player)
----- 2: self
----- 3: area
---- type:
----- 0: unique target
----- 1: fireball
----- 2: AOE
----- 3: teleport
----- 4: resurrect
----- 5: jump attack
----- 6: sneak attack
 function Deserializer.readProjectSpellEntry(file)
   local spell = {}
-
   spell.name = Deserializer.readString(file, 50)
   spell.description = Deserializer.readString(file, 50)
   spell.set = Deserializer.readString(file, 255)
@@ -140,17 +170,33 @@ function Deserializer.readProjectSpellEntry(file)
   file:seek("cur", 2)
   spell.x, spell.y, spell.w, spell.h, spell.opacity = struct.unpack("<i4 i4 I4 I4 I4", file:read(4*5))
   spell.position_type, spell.anim_duration = struct.unpack("<I2 I2", file:read(2*2))
+  spell.position_type = SPELL_POSITION_TYPES[spell.position_type]
   spell.usable_class, spell.type = struct.unpack("<I2 I2", file:read(2*2))
   spell.mp, spell.req_level, spell.target_type, spell.cast_duration = struct.unpack("<I4 I2 I2 I2", file:read(4+2*3))
-
+  spell.type = SPELL_TYPES[spell.type]
+  spell.target_type = SPELL_TARGET_TYPES[spell.target_type]
   file:seek("cur", 2)
-
   return spell
 end
 
+local EVENT_ANIMATION_TYPES = utils.rmap{
+  [0] = "static",
+  "static-character",
+  "character-random",
+  "visual-effect",
+  "character-follow"
+}
+
+Deserializer.EVENT_ANIMATION_TYPES = EVENT_ANIMATION_TYPES
+
+local EVENT_POSITION_TYPES = {
+  [0] = "dynamic",
+  "front",
+  "back"
+}
+
 function Deserializer.readMapEventEntry(file)
   local event = {}
-
   event.name = Deserializer.readString(file, 50)
   event.set = Deserializer.readString(file, 256)
   event.x = struct.unpack("B", file:read(1))
@@ -165,7 +211,7 @@ function Deserializer.readMapEventEntry(file)
   event.obstacle = struct.unpack("B", file:read(1)) > 0
   event.transparent = struct.unpack("B", file:read(1)) > 0
   event.follow = struct.unpack("B", file:read(1)) > 0
-  event.animation_type = struct.unpack("B", file:read(1))
+  event.animation_type = EVENT_ANIMATION_TYPES[struct.unpack("B", file:read(1))]
   file:seek("cur", 1)
   event.animation_mod = struct.unpack("B", file:read(1)) -- (follow stop, anim top-down, look at)
   file:seek("cur", 1)
@@ -173,18 +219,17 @@ function Deserializer.readMapEventEntry(file)
   file:seek("cur", 1)
   event.w = struct.unpack("<I2", file:read(2))
   event.h = struct.unpack("<I2", file:read(2))
-  event.position_type = struct.unpack("B", file:read(1))
+  event.position_type = EVENT_POSITION_TYPES[struct.unpack("B", file:read(1))]
   file:seek("cur", 1)
   event.animation_number = struct.unpack("<I2", file:read(2)) -- (animation number, anim left-right)
-
   file:seek("cur", 2)
-
   return event
 end
 
+-- return area {}
+--- type: -1 no spawn, >= 0 mob id
 function Deserializer.readMapMobAreaEntry(file)
   local area = {}
-
   area.x1, area.x2, area.y1, area.y2 = struct.unpack("<I4 I4 I4 I4", file:read(4*4))
   file:seek("cur", 4)
   area.max_mobs, area.type = struct.unpack("<I4 i4", file:read(4*2))
@@ -192,7 +237,6 @@ function Deserializer.readMapMobAreaEntry(file)
   area.spawn_speed = struct.unpack("<I4", file:read(4))
   area.server_var = Deserializer.readString(file, 255)
   area.server_var_expr = Deserializer.readString(file, 255)
-
   return area
 end
 

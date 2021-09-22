@@ -115,7 +115,7 @@ function Client:__construct(cfg)
   self.stats = {}
 
   self.textures = {} -- map of texture path => image
-  self.map_effect = 0
+  self.map_effect = "none"
 
   self.sound_sources = {} -- list of source
   self.sounds = {} -- map of path => sound data
@@ -384,22 +384,18 @@ function Client:tick(dt)
 
     event = self.host:service()
   end
-
   -- resource manager
   self.rsc_manager:tick(dt)
-
   -- map
   if self.map then
     self.map:tick(dt)
     -- effect
-    if self.map_effect == 4 and self.fx_rain then -- rain
+    if self.map_effect == "rain" and self.fx_rain then
       self.fx_rain:update(dt)
-    elseif self.map_effect == 5 and self.fx_snow then -- rain
+    elseif self.map_effect == "snow" and self.fx_snow then
       self.fx_snow:update(dt)
     end
   end
-
-
   -- movement input
   local control = "up"
   if self.orientation == 1 then control = "right"
@@ -758,7 +754,7 @@ function Client:onPacket(protocol, data)
     else self:sendPacket(net.DIALOG_RESULT) end -- busy, cancel
   elseif protocol == net.MAP_EFFECT then
     self.map_effect = data
-    if self.map_effect == 4 and not self.fx_rain then -- rain init
+    if self.map_effect == "rain" and not self.fx_rain then
       async(function()
         if self.rsc_manager:requestResource("textures/sets/pluie.png") then
           self.fx_rain = love.graphics.newParticleSystem(self:loadTexture("resources/textures/sets/pluie.png"))
@@ -770,7 +766,7 @@ function Client:onPacket(protocol, data)
           self.fx_rain:start()
         else print("failed to load resource \"pluie.png\"") end
       end)
-    elseif self.map_effect == 5 and not self.fx_snow then -- snow init
+    elseif self.map_effect == "snow" and not self.fx_snow then
       async(function()
         if self.rsc_manager:requestResource("textures/sets/neige.png") then
           self.fx_snow = love.graphics.newParticleSystem(self:loadTexture("resources/textures/sets/neige.png"))
@@ -784,7 +780,7 @@ function Client:onPacket(protocol, data)
           self.fx_snow:start()
         else print("failed to load resource \"neige.png\"") end
       end)
-    elseif self.map_effect == 6 and not self.fx_fog then -- fog init
+    elseif self.map_effect == "fog" and not self.fx_fog then
       async(function()
         if self.rsc_manager:requestResource("textures/sets/brouillard.png") then
           self.fx_fog = {}
@@ -1345,33 +1341,33 @@ function Client:draw()
     love.graphics.pop()
 
     -- effect
-    if self.map_effect == 1 then -- dark cave
+    if self.map_effect == "dark-cave" then
       love.graphics.setBlendMode("multiply", "premultiplied")
       love.graphics.setColor(0.4,0.4,0.4)
       love.graphics.rectangle("fill", 0, 0, w, h)
       love.graphics.setColor(1,1,1)
       love.graphics.setBlendMode("alpha")
-    elseif self.map_effect == 2 then -- night
+    elseif self.map_effect == "night" then
       love.graphics.setBlendMode("multiply", "premultiplied")
       love.graphics.setColor(0,0.4,1)
       love.graphics.rectangle("fill", 0, 0, w, h)
       love.graphics.setColor(1,1,1)
       love.graphics.setBlendMode("alpha")
-    elseif self.map_effect == 3 then -- heat
+    elseif self.map_effect == "heat" then
       love.graphics.setBlendMode("add")
       love.graphics.setColor(1,0.1,0.1,0.5)
       love.graphics.rectangle("fill", 0, 0, w, h)
       love.graphics.setColor(1,1,1)
       love.graphics.setBlendMode("alpha")
-    elseif self.map_effect == 4 then -- rain
+    elseif self.map_effect == "rain" then
       if self.fx_rain then
         love.graphics.draw(self.fx_rain, w, -32*self.world_scale, 0, self.world_scale)
       end
-    elseif self.map_effect == 5 then -- snow
+    elseif self.map_effect == "snow" then
       if self.fx_snow then
         love.graphics.draw(self.fx_snow, 0, -32*self.world_scale, 0, self.world_scale)
       end
-    elseif self.map_effect == 6 then -- fog
+    elseif self.map_effect == "fog" then
       if self.fx_fog then
         local tw, ws = self.fx_fog.tex:getWidth(), self.world_scale
         local x = -((math.floor(scheduler.time*self.fx_fog.speed*ws)%(tw*ws)))

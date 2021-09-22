@@ -5,17 +5,6 @@ local utils = require("app.lib.utils")
 
 local Map = class("Map")
 
--- STATICS
-
-Map.Type = {
-  SAFE = 0,
-  PVE = 1,
-  PVP = 2,
-  PVE_PVP = 3,
-  PVP_NOREPUT = 4,
-  PVP_NOREPUT_POT = 5
-}
-
 -- METHODS
 
 function Map:__construct(server, id, data)

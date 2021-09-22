@@ -24,6 +24,14 @@ function Client.makePacket(protocol, data)
   return msgpack.pack({protocol, data})
 end
 
+local EQUIPABLE_ITEM_TYPES = utils.rmap({
+  "one-handed-weapon",
+  "two-handed-weapon",
+  "helmet",
+  "armor",
+  "shield"
+}, true)
+
 -- serialize inventory item data
 function Client.serializeItem(server, item, amount)
   local data = {
@@ -45,12 +53,10 @@ function Client.serializeItem(server, item, amount)
     mod_attack_a = (item.mod_attack_a ~= 0 and item.mod_attack_a or nil),
     mod_attack_b = (item.mod_attack_b ~= 0 and item.mod_attack_b or nil)
   }
-
-  if item.type == 0 then data.usable = true end
-  if item.type >= 1 and item.type <= 5 then data.equipable = true end
+  data.usable = (item.type == "usable")
+  data.equipable = EQUIPABLE_ITEM_TYPES[item.type]
   local class_data = server.project.classes[item.usable_class]
   if class_data then data.req_class = class_data.name end
-
   return data
 end
 
@@ -476,7 +482,7 @@ function Client:onPacket(protocol, data)
       local id = tonumber(data) or 0
       local item = self.server.project.objects[id]
       -- valid and equipable
-      if item and item.type >= 1 and item.type <= 5 and self:checkItemRequirements(item) then
+      if item and EQUIPABLE_ITEM_TYPES[item.type] and self:checkItemRequirements(item) then
         -- compute preview delta
         local old_ch = {
           strength = self.strength,
@@ -495,20 +501,20 @@ function Client:onPacket(protocol, data)
         local old_armor = self.armor_slot
 
         --- update slots
-        if item.type == 1 then -- one-handed weapon
+        if item.type == "one-handed-weapon" then
           self.weapon_slot = id
-        elseif item.type == 2 then -- two-handed weapon
+        elseif item.type == "two-handed-weapon" then
           self.weapon_slot = id
           self.shield_slot = 0
-        elseif item.type == 3 then -- helmet
+        elseif item.type == "helmet" then
           self.helmet_slot = id
-        elseif item.type == 4 then -- armor
+        elseif item.type == "armor" then
           self.armor_slot = id
-        elseif item.type == 5 then -- shield
+        elseif item.type == "shield" then
           self.shield_slot = id
           -- check for two-handed weapon
           local weapon = self.server.project.objects[self.weapon_slot]
-          if weapon and weapon.type == 2 then
+          if weapon and weapon.type == "two-handed-weapon" then
             self.weapon_slot = 0
           end
         end
@@ -558,26 +564,26 @@ function Client:onPacket(protocol, data)
           -- equip item
           if dialog_r == 1 and self:checkItemRequirements(item) and self.inventory:take(id,true) then
             local done = true
-            if item.type == 1 then -- one-handed weapon
+            if item.type == "one-handed-weapon" then
               if self.weapon_slot > 0 then self.inventory:put(self.weapon_slot) end
               self.weapon_slot = id
-            elseif item.type == 2 then -- two-handed weapon
+            elseif item.type == "two-handed-weapon" then
               if self.weapon_slot > 0 then self.inventory:put(self.weapon_slot) end
               if self.shield_slot > 0 then self.inventory:put(self.shield_slot) end
               self.weapon_slot = id
               self.shield_slot = 0
-            elseif item.type == 3 then -- helmet
+            elseif item.type == "helmet" then
               if self.helmet_slot > 0 then self.inventory:put(self.helmet_slot) end
               self.helmet_slot = id
-            elseif item.type == 4 then -- armor
+            elseif item.type == "armor" then
               if self.armor_slot > 0 then self.inventory:put(self.armor_slot) end
               self.armor_slot = id
-            elseif item.type == 5 then -- shield
+            elseif item.type == "shield" then
               if self.shield_slot > 0 then self.inventory:put(self.shield_slot) end
               self.shield_slot = id
               -- check for two-handed weapon
               local weapon = self.server.project.objects[self.weapon_slot]
-              if weapon and weapon.type == 2 then
+              if weapon and weapon.type == "two-handed-weapon" then
                 self.inventory:put(self.weapon_slot)
                 self.weapon_slot = 0
               end
@@ -625,7 +631,7 @@ function Client:onPacket(protocol, data)
           local ok = false
           if data.type == "item" then -- check item bind
             local item = self.server.project.objects[id]
-            if item and item.type == 0 then ok = true end
+            if item and item.type == "usable" then ok = true end
           elseif data.type == "spell" then -- check spell bind
             local spell = self.server.project.spells[id]
             if spell then ok = true end
@@ -1114,9 +1120,9 @@ function Client:onAttack(attacker)
     self:damage(attacker:computeAttack(self))
     return true
   elseif class.is(attacker, Player) then -- player
-    if self.map.data.type == Map.Type.PVE then return false end -- PVE only check
+    if self.map.data.type == "PvE" then return false end -- PVE only check
     if self.group and self.group == attacker.group then return false end -- group check
-    if self.map.data.type == Map.Type.PVE_PVP -- PVE/PVP guild/group check
+    if self.map.data.type == "PvE-PvP" -- PVE/PVP guild/group check
       and self.guild and self.guild == attacker.guild -- same guild
       and self.group == attacker.group then return false end -- same group or none
     if math.abs(self.level-attacker.level) >= 10 then return false end -- level check
@@ -1124,7 +1130,7 @@ function Client:onAttack(attacker)
     self.last_attacker = attacker
     -- alignment loss
     local amount = attacker:computeAttack(self)
-    if amount and self.map.data.type == Map.Type.PVE_PVP then
+    if amount and self.map.data.type == "PvE-PvP" then
       attacker:setAlignment(attacker.alignment-5)
       attacker:emitHint("-5 alignement")
     end
@@ -1157,7 +1163,7 @@ end
 -- return true on success
 function Client:useItem(id)
   local item = self.server.project.objects[id]
-  if item and item.type == 0 and self.inventory:take(id) then
+  if item and item.type == "usable" and self.inventory:take(id) then
     self:setHealth(self.health+item.mod_hp)
     self:setMana(self.mana+item.mod_mp)
     self:act("use", 1)
@@ -1195,13 +1201,13 @@ function Client:castSpell(id)
     async(function()
       -- acquire target
       local target
-      if spell.target_type == 0 then -- player
+      if spell.target_type == "player" then
         target = self:requestPickTarget("player", 7)
-      elseif spell.target_type == 1 then -- mob
+      elseif spell.target_type == "mob-player" then
         target = self:requestPickTarget("mob", 7)
-      elseif spell.target_type == 2 then -- self
+      elseif spell.target_type == "self" then
         target = self
-      elseif spell.target_type == 3 then -- area
+      elseif spell.target_type == "area" then
         target = self
         -- TODO
       end
@@ -1558,7 +1564,7 @@ end
 -- override
 function Client:onDeath()
   -- XP loss (1%)
-  if self.map and self.map.data.type == Map.Type.PVE or self.map.data.type == Map.Type.PVE_PVP then
+  if self.map and self.map.data.type == "PvE" or self.map.data.type == "PvE-PvP" then
     local new_xp = math.floor(self.xp*0.99)
     local delta = new_xp-self.xp
     if delta < 0 then self:emitHint({{0,0.9,1}, utils.fn(delta, true)}) end
@@ -1577,7 +1583,7 @@ function Client:onDeath()
     end
 
     -- reputation
-    if self.map and self.map.data.type == Map.Type.PVP then
+    if self.map and self.map.data.type == "PvP" then
       local reputation_amount = math.floor(self.level*0.1)
       if reputation_amount > 0 then
         self.last_attacker:setReputation(self.last_attacker.reputation+reputation_amount)
@@ -1622,14 +1628,6 @@ function Client:respawn()
   end
 end
 
--- effect: int
---- 0: none
---- 1: dark cave
---- 2: night
---- 3: heat
---- 4: rain
---- 5: snow
---- 6: fog
 function Client:setMapEffect(effect)
   self.map_effect = effect
   self:send(Client.makePacket(net.MAP_EFFECT, effect))
@@ -1638,12 +1636,12 @@ end
 -- restriction checks
 
 function Client:canAttack()
-  if self.map and self.map.data.type == Map.Type.SAFE then return false end
+  if self.map and self.map.data.type == "safe" then return false end
   return not self.running_event and not self.acting and not self.ghost and not self.blocked_attack
 end
 
 function Client:canDefend()
-  if self.map and self.map.data.type == Map.Type.SAFE then return false end
+  if self.map and self.map.data.type == "safe" then return false end
   return not self.running_event and not self.acting and not self.ghost and not self.blocked_defend
 end
 
@@ -1651,7 +1649,7 @@ end
 function Client:canCast(id)
   local spell = self.server.project.spells[id]
   if not spell then return false end
-  if self.map and self.map.data.type == Map.Type.SAFE and spell.target_type ~= 2 then return false end
+  if self.map and self.map.data.type == "safe" and spell.target_type ~= "self" then return false end
   return not self.running_event and not self.acting and not self.ghost and not self.blocked_cast
 end
 
@@ -1668,7 +1666,7 @@ function Client:canInteract()
 end
 
 function Client:canUseItem()
-  if self.map and self.map.data.type == Map.Type.PVP or self.map.data.type == Map.Type.PVP_NOREPUT then
+  if self.map and self.map.data.type == "PvP" or self.map.data.type == "PvP-noreput" then
     return false
   end
   return not self.running_event and not self.acting and not self.ghost and self.alignment > 20
@@ -1679,9 +1677,9 @@ function Client:canChangeSkin()
 end
 
 function Client:canChangeGroup()
-  return not (self.map.data.type == Map.Type.PVP --
-    or self.map.data.type == Map.Type.PVP_NOREPUT --
-    or self.map.data.type == Map.Type.PVP_NOREPUT_POT)
+  return not (self.map.data.type == "PvP" --
+    or self.map.data.type == "PvP-noreput" --
+    or self.map.data.type == "PvP-noreput-pot")
 end
 
 -- variables

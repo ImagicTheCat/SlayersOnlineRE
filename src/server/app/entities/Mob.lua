@@ -10,13 +10,6 @@ local Mob = class("Mob", LivingEntity)
 
 -- STATICS
 
-Mob.Type = {
-  DEFENSIVE = 0,
-  AGGRESSIVE = 1,
-  STATIC = 2,
-  BREAKABLE = 3
-}
-
 -- METHODS
 
 -- data: mob data
@@ -66,7 +59,7 @@ function Mob:doAI()
 
     if self.target and self.target.ghost then self.target = nil end -- lose target if ghost
     -- lose target if aggressive and the target is gone
-    if self.data.type == Mob.Type.AGGRESSIVE and self.target and self.target.map ~= self.map then
+    if self.data.type == "aggressive" and self.target and self.target.map ~= self.map then
       self.target = nil
     end
 
@@ -76,7 +69,7 @@ function Mob:doAI()
         if aggro then -- aggro mode
           local dcx, dcy = self.target.cx-self.cx, self.target.cy-self.cy
           if math.abs(dcx)+math.abs(dcy) > 1 then -- too far, seek target
-            if self.data.type ~= Mob.Type.STATIC then -- move to target
+            if self.data.type ~= "static" then -- move to target
               local dx, dy = utils.sign(dcx), utils.sign(dcy)
               if dx ~= 0 and math.abs(dcx) > math.abs(dy) and self:isCellPassable(self.cx+dx, self.cy) then
                 self:moveToCell(self.cx+dx, self.cy)
@@ -90,7 +83,7 @@ function Mob:doAI()
           end
         else -- idle mode
           -- random movement
-          if self.data.type ~= Mob.Type.STATIC and self.data.type ~= Mob.Type.BREAKABLE then
+          if self.data.type ~= "static" and self.data.type ~= "breakable" then
             local ok
             local ncx, ncy
             -- search for a passable cell
@@ -108,7 +101,7 @@ function Mob:doAI()
             end
           end
 
-          if not aggro and self.data.type == Mob.Type.AGGRESSIVE then -- find target
+          if not aggro and self.data.type == "aggressive" then -- find target
             -- target nearest player
             if next(self.map.clients) then
               local players = {}
@@ -156,7 +149,7 @@ function Mob:onAttack(attacker)
     self.last_attacker = attacker
     local amount = attacker:computeAttack(self)
 
-    if self.data.type ~= Mob.Type.BREAKABLE then -- update target
+    if self.data.type ~= "breakable" then -- update target
       -- update target if without target or on max damage
       if not (self.target and self.target.map == self.map) or (amount and amount >= self.highest_damage_received) then
         self.highest_damage_received = amount or 0
@@ -208,7 +201,7 @@ end
 function Mob:onMapChange()
   LivingEntity.onMapChange(self)
 
-  if self.map and self.data.type ~= Mob.Type.BREAKABLE then
+  if self.map and self.data.type ~= "breakable" then
     self:doAI()
   end
 end

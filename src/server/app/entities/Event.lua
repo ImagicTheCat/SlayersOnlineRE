@@ -4,6 +4,7 @@ local Mob = require("app.entities.Mob")
 local LivingEntity = require("app.entities.LivingEntity")
 local XPtable = require("app.XPtable")
 local net = require("app.protocol")
+local Deserializer = require("app.Deserializer")
 -- deferred
 local Client
 timer(0.01, function()
@@ -16,13 +17,11 @@ local Event = class("Event", LivingEntity)
 
 Event.TRIGGER_RADIUS = 15 -- visibility/trigger radius in cells
 
-Event.Animation = {
-  [0] = "static",
-  "static_character",
-  "character_random",
-  "visual_effect",
-  "character_follow"
-}
+local ORIENTED_ANIMATION_TYPES = utils.rmap({
+  "static",
+  "static-character",
+  "character-random"
+}, true)
 
 -- PRIVATE METHODS
 
@@ -554,26 +553,20 @@ end
 
 function event_vars:TypeAnim(value)
   if value then
-    self.animation_type = (tonumber(value) or 0)
-
+    value = tonumber(value) or 0
+    self.animation_type = Deserializer.EVENT_ANIMATION_TYPES[value] or "static"
     -- update
-    local data = {
-      animation_type = self.animation_type
-    }
-
-    if self.animation_type <= 2 then
+    local data = {animation_type = self.animation_type}
+    if ORIENTED_ANIMATION_TYPES[self.animation_type] then
       self:setOrientation(self.page.animation_mod)
     end
-
-    if Event.Animation[self.animation_type] ~= "visual_effect" then
+    if self.animation_type ~= "visual-effect" then
       data.animation_number = self.animation_number
     else
       data.animation_wc = math.max(self.page.animation_number, 1)
       data.animation_hc = math.max(self.page.animation_mod, 1)
     end
-
     self:moveAI() -- re-launch move random behavior
-
     self:broadcastPacket("ch_animation_type", data)
   else
     return self.animation_type
@@ -1014,7 +1007,7 @@ function Event:__construct(client, data, page_index)
   self.animation_number = self.page.animation_number
   self.speed = self.page.speed
   self:setGhost(self.page.transparent)
-  if self.animation_type <= 2 then
+  if ORIENTED_ANIMATION_TYPES[self.animation_type] then
     self.orientation = self.page.animation_mod
   end
 end
@@ -1059,8 +1052,8 @@ end
 function Event:execute(condition)
   --print("EXECUTE", condition, self.map.id, self.cx, self.cy, self.page_index)
   if condition == "interact" then
-    local atype = Event.Animation[self.animation_type]
-    if atype == "character_random" or atype == "static_character" then
+    local atype = self.animation_type
+    if atype == "character-random" or atype == "static-character" then
       -- look at player
       local orientation = LivingEntity.vectorOrientation(self.client.x-self.x, self.client.y-self.y)
       self:setOrientation(orientation)
@@ -1115,7 +1108,7 @@ function Event:serializeNet()
   data.animation_type = self.animation_type
   data.position_type = self.page.position_type
 
-  if Event.Animation[self.animation_type] ~= "visual_effect" then
+  if self.animation_type ~= "visual-effect" then
     data.orientation = self.orientation
     data.animation_number = self.animation_number
   else
@@ -1131,12 +1124,12 @@ end
 -- randomly move the event if type is "character_random"
 -- (starts a unique loop, will call itself again)
 function Event:moveAI()
-  local atype = Event.Animation[self.animation_type]
+  local atype = self.animation_type
   if self.map and not self.move_ai_timer and
-      (atype == "character_random" or atype == "character_follow") then
-    self.move_ai_timer = timer(utils.randf(1, 5)/self.speed*(atype == "character_follow" and 0.25 or 1.5), function()
+      (atype == "character-random" or atype == "character-follow") then
+    self.move_ai_timer = timer(utils.randf(1, 5)/self.speed*(atype == "character-follow" and 0.25 or 1.5), function()
       if not self.client.running_event and self.map then -- prevent movement when an event is in execution
-        if Event.Animation[self.animation_type] == "character_follow" then -- follow mode
+        if self.animation_type == "character-follow" then -- follow mode
           local dcx, dcy = self.client.cx-self.cx, self.client.cy-self.cy
           if math.abs(dcx)+math.abs(dcy) > 1 then -- too far, move to target
             local dx, dy = utils.sign(dcx), utils.sign(dcy)
