@@ -728,8 +728,6 @@ function Client:__construct(server, peer)
   self.events_by_name = {} -- map of name => event entity
   self.triggered_events = {} -- map of event => trigger condition
   -- self.running_event
-  self.to_swipe = false
-  self.swipe_timer = itimer(0.5, function() self.to_swipe = true end)
 
   self.vars = {} -- map of id (number)  => value (number)
   self.var_listeners = {} -- map of id (number) => map of callback
@@ -829,11 +827,6 @@ function Client:eventTick(timer_ticks)
     -- Misc.
     -- reset last attacker
     self.last_attacker = nil
-    -- Swipe events.
-    if self.to_swipe then
-      self.to_swipe = false
-      self:swipeEvents()
-    end
     -- Execute next visible/top-left event.
     local events = {}
     local max_delta = Event.TRIGGER_RADIUS*16
@@ -862,7 +855,11 @@ function Client:eventTick(timer_ticks)
       self.running_event = event
       async(function()
         local ok = xpcall(event.execute, event_error_handler, event, condition)
-        if not ok then event:rollback() end -- rollback on error
+        if ok then -- events state invalidated, swipe
+          self:swipeEvents()
+        else -- rollback on error
+          event:rollback()
+        end
         self.running_event = nil
         self:setMoveForward(self.move_forward_input) -- resume movement
       end)
@@ -1121,7 +1118,6 @@ function Client:onDisconnect()
       self.server:setVariable(map_data.svar, map_data.sval)
     end
   end
-  self.swipe_timer:remove()
   self:setGroup(nil)
   self:cancelTrade()
   async(function()
@@ -1759,10 +1755,8 @@ function Client:setVariable(vtype, id, value)
     local vars = (vtype == "bool" and self.bool_vars or self.vars)
     local var_listeners = (vtype == "bool" and self.bool_var_listeners or self.var_listeners)
     local changed_vars = (vtype == "bool" and self.changed_bool_vars or self.changed_vars)
-
     vars[id] = value
     changed_vars[id] = true
-
     -- call listeners
     local listeners = var_listeners[id]
     if listeners then
