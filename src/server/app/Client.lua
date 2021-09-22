@@ -1751,23 +1751,23 @@ end
 
 -- vtype: string, "bool" (boolean) or "var" (integer)
 function Client:setVariable(vtype, id, value)
-  if type(id) == "number" and type(value) == "number" then
-    local vars = (vtype == "bool" and self.bool_vars or self.vars)
-    local var_listeners = (vtype == "bool" and self.bool_var_listeners or self.var_listeners)
-    local changed_vars = (vtype == "bool" and self.changed_bool_vars or self.changed_vars)
-    vars[id] = value
-    changed_vars[id] = true
-    -- call listeners
-    local listeners = var_listeners[id]
-    if listeners then
-      for callback in pairs(listeners) do
-        callback()
-      end
+  id, value = tonumber(id) or 0, tonumber(value) or 0
+  local vars = (vtype == "bool" and self.bool_vars or self.vars)
+  local var_listeners = (vtype == "bool" and self.bool_var_listeners or self.var_listeners)
+  local changed_vars = (vtype == "bool" and self.changed_bool_vars or self.changed_vars)
+  vars[id] = value
+  changed_vars[id] = true
+  -- call listeners
+  local listeners = var_listeners[id]
+  if listeners then
+    for callback in pairs(listeners) do
+      callback()
     end
   end
 end
 
 function Client:getVariable(vtype, id)
+  id = tonumber(id) or 0
   local vars = (vtype == "bool" and self.bool_vars or self.vars)
   return vars[id] or 0
 end

@@ -1191,8 +1191,9 @@ function Server:loadTilesetData(id)
 end
 
 function Server:setVariable(id, value)
+  id, value = tostring(id), tostring(value)
   self.changed_vars[id] = true
-  self.vars[id] = tostring(value)
+  self.vars[id] = value
   -- call listeners
   local listeners = self.var_listeners[id]
   if listeners then
@@ -1203,7 +1204,7 @@ function Server:setVariable(id, value)
 end
 
 function Server:getVariable(id)
-  return self.vars[id] or 0
+  return self.vars[tostring(id)] or 0
 end
 
 function Server:listenVariable(id, callback)
