@@ -20,6 +20,10 @@ local Client = class("Client", Player)
 
 -- STATICS
 
+local function error_handler(err)
+  io.stderr:write(debug.traceback("client: "..err, 2).."\n")
+end
+
 function Client.makePacket(protocol, data)
   return msgpack.pack({protocol, data})
 end
@@ -67,6 +71,632 @@ function Client.serializeSpell(server, spell, amount)
     name = spell.name,
     description = spell.description
   }
+end
+
+-- Packet handlers.
+local packet = {}
+
+function packet:VERSION_CHECK(data)
+  if self.user_id or self.valid then return end
+  if type(data) == "string" and data == client_version then
+    self.valid = true
+    -- send motd (start login)
+    self:send(Client.makePacket(net.MOTD_LOGIN, {
+      motd = self.server.motd,
+      salt = self.server.cfg.client_salt
+    }))
+  else
+    self:kick("Version du client incompatible avec le serveur, téléchargez la dernière version pour résoudre le problème.")
+  end
+end
+function packet:LOGIN(data)
+  if self.user_id or not self.valid then return end
+  -- check inputs
+  if type(data) ~= "table" or type(data.pseudo) ~= "string"
+    or type(data.password) ~= "string" then return end
+  -- login request
+  async(function()
+    local pass_hash = sha2.hex2bin(sha2.sha512(self.server.cfg.server_salt..data.pseudo..data.password))
+    local rows = self.server.db:query("user/login", {data.pseudo:sub(1,50), pass_hash}).rows
+    if rows[1] then
+      local user_row = rows[1]
+      local user_id = user_row.id
+      -- check connected
+      if self.server.clients_by_id[user_id] then
+        self:kick("Déjà connecté.")
+        return
+      end
+      -- check banned
+      local ban_timestamp = user_row.ban_timestamp
+      if os.time() < ban_timestamp then
+        self:kick("Banni jusqu'au "..os.date("!%d/%m/%Y %H:%M", ban_timestamp).." UTC.")
+        return
+      end
+      local ok = xpcall(function()
+        -- accepted
+        self.server.clients_by_id[user_id] = self
+        self.pseudo = user_row.pseudo
+        -- load skin infos
+        self.allowed_skins = {}
+        --- prune invalid skins
+        self.server.db:query("user/pruneSkins", {user_id})
+        --- load
+        do
+          local rows = self.server.db:query("user/getSkins", {user_id}).rows
+          for _, row in ipairs(rows) do self.allowed_skins[row.name] = true end
+        end
+        -- load user data
+        self.user_rank = user_row.rank
+        self.class = user_row.class
+        self.level = user_row.level
+        self.alignment = user_row.alignment
+        self.reputation = user_row.reputation
+        self.gold = user_row.gold
+        self.chest_gold = user_row.chest_gold
+        self.xp = user_row.xp
+        self.strength_pts = user_row.strength_pts
+        self.dexterity_pts = user_row.dexterity_pts
+        self.constitution_pts = user_row.constitution_pts
+        self.magic_pts = user_row.magic_pts
+        self.remaining_pts = user_row.remaining_pts
+        self.weapon_slot = user_row.weapon_slot
+        self.shield_slot = user_row.shield_slot
+        self.helmet_slot = user_row.helmet_slot
+        self.armor_slot = user_row.armor_slot
+        self.guild = user_row.guild
+        self.guild_rank = user_row.guild_rank
+        self.guild_rank_title = user_row.guild_rank_title
+        local class_data = self.server.project.classes[self.class]
+        self:setSounds(string.sub(class_data.attack_sound, 7), string.sub(class_data.hurt_sound, 7))
+        --- config
+        self:applyConfig(user_row.config and msgpack.unpack(user_row.config) or {}, true)
+        --- vars
+        local rows = self.server.db:query("user/getVars", {user_id}).rows
+        for _, row in ipairs(rows) do self.vars[row.id] = row.value end
+        rows = self.server.db:query("user/getBoolVars", {user_id}).rows
+        for _, row in ipairs(rows) do self.bool_vars[row.id] = row.value end
+        --- inventories
+        self.inventory = Inventory(user_id, 1, self.server.cfg.inventory_size)
+        self.chest_inventory = Inventory(user_id, 2, self.server.cfg.chest_size)
+        self.spell_inventory = Inventory(user_id, 3, self.server.cfg.spell_inventory_size)
+        self.inventory:load(self.server.db)
+        self.chest_inventory:load(self.server.db)
+        self.spell_inventory:load(self.server.db)
+        ---- on item update
+        function self.inventory.onItemUpdate(inv, id)
+          local data
+          local amount = inv.items[id]
+          local object = self.server.project.objects[id]
+          if object and amount then
+            data = Client.serializeItem(self.server, object, amount)
+          end
+          self:send(Client.makePacket(net.INVENTORY_UPDATE_ITEMS, {{id,data}}))
+        end
+        ---- send inventory init items
+        do
+          local objects = self.server.project.objects
+          local items = {}
+          for id, amount in pairs(self.inventory.items) do
+            local object = objects[id]
+            if object then
+              table.insert(items, {id, Client.serializeItem(self.server, object, amount)})
+            end
+          end
+          self:send(Client.makePacket(net.INVENTORY_UPDATE_ITEMS, items))
+        end
+        ---- on chest item update
+        function self.chest_inventory.onItemUpdate(inv, id)
+          if not self.chest_task then return end -- chest isn't open
+          local data
+          local amount = inv.items[id]
+          local object = self.server.project.objects[id]
+          if object and amount then
+            data = Client.serializeItem(self.server, object, amount)
+          end
+          self:send(Client.makePacket(net.CHEST_UPDATE_ITEMS, {{id,data}}))
+        end
+        ---- on spell item update
+        function self.spell_inventory.onItemUpdate(inv, id)
+          local data
+          local amount = inv.items[id]
+          local spell = self.server.project.spells[id]
+          if spell and amount then
+            data = Client.serializeSpell(self.server, spell, amount)
+          end
+          self:send(Client.makePacket(net.SPELL_INVENTORY_UPDATE_ITEMS, {{id,data}}))
+        end
+        ---- send spell inventory init items
+        do
+          local spells = self.server.project.spells
+          local items = {}
+          for id, amount in pairs(self.spell_inventory.items) do
+            local spell = spells[id]
+            if spell then
+              table.insert(items, {id, Client.serializeSpell(self.server, spell, amount)})
+            end
+          end
+          self:send(Client.makePacket(net.SPELL_INVENTORY_UPDATE_ITEMS, items))
+        end
+        --- state
+        local state = user_row.state and msgpack.unpack(user_row.state) or {}
+        ---- charaset
+        if state.charaset then
+          self:setCharaset(state.charaset)
+        end
+        ---- location
+        local map, x, y
+        if state.location then
+          map = self.server:getMap(state.location.map)
+          x,y = state.location.x, state.location.y
+        end
+        if state.orientation then
+          self:setOrientation(state.orientation)
+        end
+        ---- misc
+        self.respawn_point = state.respawn_point
+        self.blocked = state.blocked
+        self.blocked_skin = state.blocked_skin
+        self.blocked_attack = state.blocked_attack
+        self.blocked_defend = state.blocked_defend
+        self.blocked_cast = state.blocked_cast
+        self.blocked_chat = state.blocked_chat
+        -- default spawn
+        if not map then
+          local spawn_location = self.server.cfg.spawn_location
+          map = self.server:getMap(spawn_location.map)
+          x,y = spawn_location.cx*16, spawn_location.cy*16
+        end
+        if map then map:addEntity(self) end
+        self:teleport(x,y)
+        -- compute characteristics, send/init stats
+        self:updateCharacteristics()
+        self:setHealth(state.health or self.max_health)
+        self:setMana(state.mana or self.max_mana)
+        self:setXP(self.xp) -- update level/XP
+        self:send(Client.makePacket(net.STATS_UPDATE, {
+          gold = self.gold,
+          alignment = self.alignment,
+          name = self.pseudo,
+          class = class_data.name,
+          level = self.level,
+          points = self.remaining_pts,
+          reputation = self.reputation,
+          mana = self.mana,
+          inventory_size = self.inventory.max
+        }))
+        -- mark as logged
+      end, error_handler)
+      if ok then -- login completed
+        self.server.clients_by_pseudo[self.pseudo] = self
+        self.user_id = user_id
+        self:sendChatMessage("Identifié.")
+      else -- login error
+        self.server.clients_by_id[user_id] = nil
+        print("<= login error for user#"..user_id.." \""..user_row.pseudo.."\"")
+        self:kick("Erreur du serveur.")
+      end
+    else -- login failed
+      self:sendChatMessage("Identification échouée.")
+      -- send motd (start login)
+      self:send(Client.makePacket(net.MOTD_LOGIN, {
+        motd = self.server.motd,
+        salt = self.server.cfg.client_salt
+      }))
+    end
+  end)
+end
+function packet:INPUT_ORIENTATION(data)
+  if not self.user_id then return end
+  if self:canMove() then self:setOrientation(tonumber(data) or 0) end
+end
+function packet:INPUT_MOVE_FORWARD(data)
+  if not self.user_id then return end
+  -- update input state (used to stop/resume movements correctly)
+  self.move_forward_input = not not data
+  if self:canMove() then self:setMoveForward(self.move_forward_input) end
+end
+function packet:INPUT_ATTACK(data)
+  if not self.user_id then return end
+  if self:canAttack() then self:act("attack", 1) end
+end
+function packet:INPUT_DEFEND(data)
+  if not self.user_id then return end
+  if self:canDefend() then self:act("defend", 1) end
+end
+function packet:INPUT_INTERACT(data)
+  if not self.user_id then return end
+  if self:canInteract() then self:interact() end
+end
+function packet:INPUT_CHAT(data)
+  if not self.user_id then return end
+  if type(data) == "string" and string.len(data) > 0 and string.len(data) < 1000 then
+    if string.sub(data, 1, 1) == "/" then -- parse command
+      local args = self.server.parseCommand(string.sub(data, 2))
+      if #args > 0 then
+        self.server:processCommand(self, args)
+      end
+    elseif self:canChat() then -- message
+      self:mapChat(data)
+    end
+  else
+    self:sendChatMessage("Message trop long.")
+  end
+end
+function packet:EVENT_MESSAGE_SKIP(data)
+  if not self.user_id then return end
+  local r = self.message_task
+  if r then
+    self.message_task = nil
+    r()
+  end
+end
+function packet:EVENT_INPUT_QUERY_ANSWER(data)
+  if not self.user_id then return end
+  local r = self.input_query_task
+  if r and type(data) == "number" then
+    self.input_query_task = nil
+    r(data)
+  end
+end
+function packet:EVENT_INPUT_STRING_ANSWER(data)
+  if not self.user_id then return end
+  local r = self.input_string_task
+  if r and type(data) == "string" then
+    self.input_string_task = nil
+    r(data)
+  end
+end
+function packet:CHEST_CLOSE(data)
+  if not self.user_id then return end
+  local r = self.chest_task
+  if r then
+    self.chest_task = nil
+    r()
+  end
+end
+function packet:SHOP_CLOSE(data)
+  if not self.user_id then return end
+  local r = self.shop_task
+  if r then
+    self.shop_task = nil
+    r()
+  end
+end
+function packet:GOLD_STORE(data)
+  if not self.user_id then return end
+  local amount = tonumber(data) or 0
+  if self.chest_task and amount <= self.gold then
+    self.chest_gold = self.chest_gold+amount
+    self.gold = self.gold-amount
+    self:send(Client.makePacket(net.STATS_UPDATE, {gold = self.gold, chest_gold = self.chest_gold}))
+  end
+end
+function packet:GOLD_WITHDRAW(data)
+  if not self.user_id then return end
+  local amount = tonumber(data) or 0
+  if self.chest_task and amount <= self.chest_gold then
+    self.chest_gold = self.chest_gold-amount
+    self.gold = self.gold+amount
+    self:send(Client.makePacket(net.STATS_UPDATE, {gold = self.gold, chest_gold = self.chest_gold}))
+  end
+end
+function packet:ITEM_STORE(data)
+  if not self.user_id then return end
+  local id = tonumber(data) or 0
+  if self.chest_task and self.inventory:take(id, true) and self.chest_inventory:put(id) then
+    self.inventory:take(id)
+  end
+end
+function packet:ITEM_WITHDRAW(data)
+  if not self.user_id then return end
+  local id = tonumber(data) or 0
+  if self.chest_task and self.chest_inventory:take(id, true) and self.inventory:put(id) then
+    self.chest_inventory:take(id)
+  end
+end
+function packet:ITEM_BUY(data)
+  if not self.user_id then return end
+  if self.shop_task and type(data) == "table" then
+    local id, amount = tonumber(data[1]) or 0, tonumber(data[2]) or 0
+    local item = self.server.project.objects[id]
+    if item and amount > 0 then
+      if item.price*amount <= self.gold then
+        for i=1,amount do -- buy one by one
+          if self.inventory:put(id) then
+            self.gold = self.gold-item.price
+          else break end
+        end
+        self:send(Client.makePacket(net.STATS_UPDATE, {gold = self.gold}))
+      end
+    end
+  end
+end
+function packet:ITEM_SELL(data)
+  if not self.user_id then return end
+  local id = tonumber(data) or 0
+  local item = self.server.project.objects[id]
+  if self.shop_task and item then
+    if self.inventory:take(id) then
+      self.gold = self.gold+math.ceil(item.price*0.1)
+      self:send(Client.makePacket(net.STATS_UPDATE, {gold = self.gold}))
+    end
+  end
+end
+function packet:ITEM_USE(data)
+  if not self.user_id then return end
+  local id = tonumber(data) or 0
+  if self:canUseItem() then self:useItem(id) end
+end
+function packet:ITEM_TRASH(data)
+  if not self.user_id then return end
+  local id = tonumber(data) or 0
+  self.inventory:take(id)
+end
+function packet:SPEND_CHARACTERISTIC_POINT(data)
+  if not self.user_id then return end
+  if self.remaining_pts > 0 then
+    local done = true
+    if data == "strength" then
+      self.strength_pts = self.strength_pts+1
+    elseif data == "dexterity" then
+      self.dexterity_pts = self.dexterity_pts+1
+    elseif data == "constitution" then
+      self.constitution_pts = self.constitution_pts+1
+    else done = false end
+
+    if done then
+      self:setRemainingPoints(self.remaining_pts-1)
+      self:updateCharacteristics()
+    end
+  end
+end
+function packet:ITEM_EQUIP(data)
+  if not self.user_id then return end
+  local id = tonumber(data) or 0
+  local item = self.server.project.objects[id]
+  -- valid and equipable
+  if item and EQUIPABLE_ITEM_TYPES[item.type] and self:checkItemRequirements(item) then
+    -- compute preview delta
+    local old_ch = {
+      strength = self.strength,
+      dexterity = self.dexterity,
+      constitution = self.constitution,
+      magic = self.magic,
+      attack = self.ch_attack,
+      defense = self.ch_defense,
+      min_damage = self.min_damage,
+      max_damage = self.max_damage
+    }
+
+    local old_weapon = self.weapon_slot
+    local old_shield = self.shield_slot
+    local old_helmet = self.helmet_slot
+    local old_armor = self.armor_slot
+
+    --- update slots
+    if item.type == "one-handed-weapon" then
+      self.weapon_slot = id
+    elseif item.type == "two-handed-weapon" then
+      self.weapon_slot = id
+      self.shield_slot = 0
+    elseif item.type == "helmet" then
+      self.helmet_slot = id
+    elseif item.type == "armor" then
+      self.armor_slot = id
+    elseif item.type == "shield" then
+      self.shield_slot = id
+      -- check for two-handed weapon
+      local weapon = self.server.project.objects[self.weapon_slot]
+      if weapon and weapon.type == "two-handed-weapon" then
+        self.weapon_slot = 0
+      end
+    end
+
+    --- get new characteristics
+    self:updateCharacteristics(true) -- dry
+    local new_ch = {
+      strength = self.strength,
+      dexterity = self.dexterity,
+      constitution = self.constitution,
+      magic = self.magic,
+      attack = self.ch_attack,
+      defense = self.ch_defense,
+      min_damage = self.min_damage,
+      max_damage = self.max_damage
+    }
+
+    --- revert slots
+    self.weapon_slot = old_weapon
+    self.shield_slot = old_shield
+    self.helmet_slot = old_helmet
+    self.armor_slot = old_armor
+    self:updateCharacteristics(true) -- dry revert
+
+    --- compute
+    local deltas = {}
+    for k,v in pairs(old_ch) do deltas[k] = new_ch[k]-old_ch[k] end
+
+    -- show delta / request
+    async(function()
+      local fdeltas = {} -- formatted
+      local append = function(new_ch, deltas, prop, title) -- format prop
+        if deltas[prop] ~= 0 then
+          table.insert(fdeltas, "  "..title..": "..utils.fn(deltas[prop], true).." ("..utils.fn(new_ch[prop])..")")
+        end
+      end
+      append(new_ch, deltas, "strength", "Force")
+      append(new_ch, deltas, "dexterity", "Dextérité")
+      append(new_ch, deltas, "constitution", "Constitution")
+      append(new_ch, deltas, "magic", "Magie")
+      append(new_ch, deltas, "attack", "Attaque")
+      append(new_ch, deltas, "defense", "Défense")
+      append(new_ch, deltas, "min_damage", "Dégâts min")
+      append(new_ch, deltas, "max_damage", "Dégâts max")
+
+      local dialog_r = self:requestDialog({"Équiper ", {0,1,0.5} , item.name, {1,1,1}, " ?\n"..table.concat(fdeltas, "\n")}, {"Équiper"}, true)
+      -- equip item
+      if dialog_r == 1 and self:checkItemRequirements(item) and self.inventory:take(id,true) then
+        local done = true
+        if item.type == "one-handed-weapon" then
+          if self.weapon_slot > 0 then self.inventory:put(self.weapon_slot) end
+          self.weapon_slot = id
+        elseif item.type == "two-handed-weapon" then
+          if self.weapon_slot > 0 then self.inventory:put(self.weapon_slot) end
+          if self.shield_slot > 0 then self.inventory:put(self.shield_slot) end
+          self.weapon_slot = id
+          self.shield_slot = 0
+        elseif item.type == "helmet" then
+          if self.helmet_slot > 0 then self.inventory:put(self.helmet_slot) end
+          self.helmet_slot = id
+        elseif item.type == "armor" then
+          if self.armor_slot > 0 then self.inventory:put(self.armor_slot) end
+          self.armor_slot = id
+        elseif item.type == "shield" then
+          if self.shield_slot > 0 then self.inventory:put(self.shield_slot) end
+          self.shield_slot = id
+          -- check for two-handed weapon
+          local weapon = self.server.project.objects[self.weapon_slot]
+          if weapon and weapon.type == "two-handed-weapon" then
+            self.inventory:put(self.weapon_slot)
+            self.weapon_slot = 0
+          end
+        else done = false end
+
+        if done then
+          self.inventory:take(id)
+          self:updateCharacteristics()
+        end
+      end
+    end)
+  end
+end
+function packet:SLOT_UNEQUIP(data)
+  if not self.user_id then return end
+  local done = true
+  if data == "helmet" then
+    if self.helmet_slot > 0 and self.inventory:put(self.helmet_slot) then
+      self.helmet_slot = 0
+    end
+  elseif data == "armor" then
+    if self.armor_slot > 0 and self.inventory:put(self.armor_slot) then
+      self.armor_slot = 0
+    end
+  elseif data == "weapon" then
+    if self.weapon_slot > 0 and self.inventory:put(self.weapon_slot) then
+      self.weapon_slot = 0
+    end
+  elseif data == "shield" then
+    if self.shield_slot > 0 and self.inventory:put(self.shield_slot) then
+      self.shield_slot = 0
+    end
+  else done = false end
+  if done then self:updateCharacteristics() end
+end
+function packet:SCROLL_END(data)
+  if not self.user_id then return end
+  local r = self.scroll_task
+  if r then
+    self.scroll_task = nil
+    r()
+  end
+end
+function packet:QUICK_ACTION_BIND(data)
+  if not self.user_id then return end
+  if type(data) == "table" and type(data.type) == "string" --
+      and type(data.n) == "number" and data.n >= 1 and data.n <= 3 then
+    local id = tonumber(data.id)
+    if id then -- bind
+      local ok = false
+      if data.type == "item" then -- check item bind
+        local item = self.server.project.objects[id]
+        if item and item.type == "usable" then ok = true end
+      elseif data.type == "spell" then -- check spell bind
+        local spell = self.server.project.spells[id]
+        if spell then ok = true end
+      end
+      if ok then
+        self:applyConfig({quick_actions = {[data.n] = {type = data.type, id = id}}})
+      end
+    else -- unbind
+      self:applyConfig({quick_actions = {[data.n] = {type = "item", id = 0}}})
+    end
+  end
+end
+function packet:TARGET_PICK(data)
+  if not self.user_id then return end
+  local r = self.pick_target_task
+  if r then
+    self.pick_target_task = nil
+    local id = tonumber(data)
+    if id and self.map then
+      r(self.map.entities_by_id[id])
+    else
+      r()
+    end
+  end
+end
+function packet:SPELL_CAST(data)
+  if not self.user_id then return end
+  local id = tonumber(data) or 0
+  if self:canCast(id) then self:castSpell(id) end
+end
+function packet:TRADE_SEEK(data)
+  if not self.user_id then return end
+  async(function()
+    -- pick target
+    local entity = self:requestPickTarget("player", 7)
+    if entity then
+      if not entity.ignores.trade then
+        self:sendChatMessage("Requête envoyée.")
+        -- open dialog
+        local dialog_r = entity:requestDialog({{0,1,0.5}, self.pseudo, {1,1,1}, " souhaite lancer un échange avec vous."}, {"Accepter"})
+        if dialog_r == 1 then
+          if not (self.map == entity.map and self:openTrade(entity)) then
+            self:sendChatMessage("Échange impossible.")
+            entity:sendChatMessage("Échange impossible.")
+          end
+        else
+          self:sendChatMessage("Joueur occupé / échange refusé.")
+        end
+      else self:sendChatMessage("Joueur occupé.") end
+    else
+      self:sendChatMessage("Cible invalide.")
+    end
+  end)
+end
+function packet:TRADE_SET_GOLD(data)
+  if not self.user_id then return end
+  if self.trade and not self.trade.locked then
+    self:setTradeGold(tonumber(data) or 0)
+  end
+end
+function packet:TRADE_PUT_ITEM(data)
+  if not self.user_id then return end
+  local id = tonumber(data) or 0
+  if self.trade and not self.trade.locked and self.inventory:take(id) then
+    self.trade.inventory:put(id)
+    self.trade.peer:setTradeLock(false)
+  end
+end
+function packet:TRADE_TAKE_ITEM(data)
+  if not self.user_id then return end
+  local id = tonumber(data) or 0
+  if self.trade and not self.trade.locked and self.trade.inventory:take(id) then
+    self.inventory:put(id)
+    self.trade.peer:setTradeLock(false)
+  end
+end
+function packet:TRADE_LOCK(data)
+  if not self.user_id then return end
+  self:setTradeLock(true)
+end
+function packet:TRADE_CLOSE(data)
+  if not self.user_id then return end
+  self:cancelTrade()
+end
+function packet:DIALOG_RESULT(data)
+  if not self.user_id then return end
+  if self.dialog_task then self.dialog_task(tonumber(data)) end
 end
 
 -- METHODS
@@ -139,570 +769,9 @@ function Client:__construct(server, peer)
   self:send(Client.makePacket(net.PROTOCOL, net)) -- send protocol
 end
 
-local function error_handler(err)
-  io.stderr:write(debug.traceback("client: "..err, 2).."\n")
-end
-
 function Client:onPacket(protocol, data)
-  -- not logged
-  if not self.user_id then
-    if not self.valid and protocol == net.VERSION_CHECK then -- check client version
-      if type(data) == "string" and data == client_version then
-        self.valid = true
-        -- send motd (start login)
-        self:send(Client.makePacket(net.MOTD_LOGIN, {
-          motd = self.server.motd,
-          salt = self.server.cfg.client_salt
-        }))
-      else
-        self:kick("Version du client incompatible avec le serveur, téléchargez la dernière version pour résoudre le problème.")
-      end
-    elseif self.valid and protocol == net.LOGIN then -- login
-      -- check inputs
-      if type(data) ~= "table" or type(data.pseudo) ~= "string"
-        or type(data.password) ~= "string" then return end
-      -- login request
-      async(function()
-        local pass_hash = sha2.hex2bin(sha2.sha512(self.server.cfg.server_salt..data.pseudo..data.password))
-        local rows = self.server.db:query("user/login", {data.pseudo:sub(1,50), pass_hash}).rows
-        if rows[1] then
-          local user_row = rows[1]
-          local user_id = user_row.id
-          -- check connected
-          if self.server.clients_by_id[user_id] then
-            self:kick("Déjà connecté.")
-            return
-          end
-          -- check banned
-          local ban_timestamp = user_row.ban_timestamp
-          if os.time() < ban_timestamp then
-            self:kick("Banni jusqu'au "..os.date("!%d/%m/%Y %H:%M", ban_timestamp).." UTC.")
-            return
-          end
-          local ok = xpcall(function()
-            -- accepted
-            self.server.clients_by_id[user_id] = self
-            self.pseudo = user_row.pseudo
-            -- load skin infos
-            self.allowed_skins = {}
-            --- prune invalid skins
-            self.server.db:query("user/pruneSkins", {user_id})
-            --- load
-            do
-              local rows = self.server.db:query("user/getSkins", {user_id}).rows
-              for _, row in ipairs(rows) do self.allowed_skins[row.name] = true end
-            end
-            -- load user data
-            self.user_rank = user_row.rank
-            self.class = user_row.class
-            self.level = user_row.level
-            self.alignment = user_row.alignment
-            self.reputation = user_row.reputation
-            self.gold = user_row.gold
-            self.chest_gold = user_row.chest_gold
-            self.xp = user_row.xp
-            self.strength_pts = user_row.strength_pts
-            self.dexterity_pts = user_row.dexterity_pts
-            self.constitution_pts = user_row.constitution_pts
-            self.magic_pts = user_row.magic_pts
-            self.remaining_pts = user_row.remaining_pts
-            self.weapon_slot = user_row.weapon_slot
-            self.shield_slot = user_row.shield_slot
-            self.helmet_slot = user_row.helmet_slot
-            self.armor_slot = user_row.armor_slot
-            self.guild = user_row.guild
-            self.guild_rank = user_row.guild_rank
-            self.guild_rank_title = user_row.guild_rank_title
-            local class_data = self.server.project.classes[self.class]
-            self:setSounds(string.sub(class_data.attack_sound, 7), string.sub(class_data.hurt_sound, 7))
-            --- config
-            self:applyConfig(user_row.config and msgpack.unpack(user_row.config) or {}, true)
-            --- vars
-            local rows = self.server.db:query("user/getVars", {user_id}).rows
-            for _, row in ipairs(rows) do self.vars[row.id] = row.value end
-            rows = self.server.db:query("user/getBoolVars", {user_id}).rows
-            for _, row in ipairs(rows) do self.bool_vars[row.id] = row.value end
-            --- inventories
-            self.inventory = Inventory(user_id, 1, self.server.cfg.inventory_size)
-            self.chest_inventory = Inventory(user_id, 2, self.server.cfg.chest_size)
-            self.spell_inventory = Inventory(user_id, 3, self.server.cfg.spell_inventory_size)
-            self.inventory:load(self.server.db)
-            self.chest_inventory:load(self.server.db)
-            self.spell_inventory:load(self.server.db)
-            ---- on item update
-            function self.inventory.onItemUpdate(inv, id)
-              local data
-              local amount = inv.items[id]
-              local object = self.server.project.objects[id]
-              if object and amount then
-                data = Client.serializeItem(self.server, object, amount)
-              end
-              self:send(Client.makePacket(net.INVENTORY_UPDATE_ITEMS, {{id,data}}))
-            end
-            ---- send inventory init items
-            do
-              local objects = self.server.project.objects
-              local items = {}
-              for id, amount in pairs(self.inventory.items) do
-                local object = objects[id]
-                if object then
-                  table.insert(items, {id, Client.serializeItem(self.server, object, amount)})
-                end
-              end
-              self:send(Client.makePacket(net.INVENTORY_UPDATE_ITEMS, items))
-            end
-            ---- on chest item update
-            function self.chest_inventory.onItemUpdate(inv, id)
-              if not self.chest_task then return end -- chest isn't open
-              local data
-              local amount = inv.items[id]
-              local object = self.server.project.objects[id]
-              if object and amount then
-                data = Client.serializeItem(self.server, object, amount)
-              end
-              self:send(Client.makePacket(net.CHEST_UPDATE_ITEMS, {{id,data}}))
-            end
-            ---- on spell item update
-            function self.spell_inventory.onItemUpdate(inv, id)
-              local data
-              local amount = inv.items[id]
-              local spell = self.server.project.spells[id]
-              if spell and amount then
-                data = Client.serializeSpell(self.server, spell, amount)
-              end
-              self:send(Client.makePacket(net.SPELL_INVENTORY_UPDATE_ITEMS, {{id,data}}))
-            end
-            ---- send spell inventory init items
-            do
-              local spells = self.server.project.spells
-              local items = {}
-              for id, amount in pairs(self.spell_inventory.items) do
-                local spell = spells[id]
-                if spell then
-                  table.insert(items, {id, Client.serializeSpell(self.server, spell, amount)})
-                end
-              end
-              self:send(Client.makePacket(net.SPELL_INVENTORY_UPDATE_ITEMS, items))
-            end
-            --- state
-            local state = user_row.state and msgpack.unpack(user_row.state) or {}
-            ---- charaset
-            if state.charaset then
-              self:setCharaset(state.charaset)
-            end
-            ---- location
-            local map, x, y
-            if state.location then
-              map = self.server:getMap(state.location.map)
-              x,y = state.location.x, state.location.y
-            end
-            if state.orientation then
-              self:setOrientation(state.orientation)
-            end
-            ---- misc
-            self.respawn_point = state.respawn_point
-            self.blocked = state.blocked
-            self.blocked_skin = state.blocked_skin
-            self.blocked_attack = state.blocked_attack
-            self.blocked_defend = state.blocked_defend
-            self.blocked_cast = state.blocked_cast
-            self.blocked_chat = state.blocked_chat
-            -- default spawn
-            if not map then
-              local spawn_location = self.server.cfg.spawn_location
-              map = self.server:getMap(spawn_location.map)
-              x,y = spawn_location.cx*16, spawn_location.cy*16
-            end
-            if map then map:addEntity(self) end
-            self:teleport(x,y)
-            -- compute characteristics, send/init stats
-            self:updateCharacteristics()
-            self:setHealth(state.health or self.max_health)
-            self:setMana(state.mana or self.max_mana)
-            self:setXP(self.xp) -- update level/XP
-            self:send(Client.makePacket(net.STATS_UPDATE, {
-              gold = self.gold,
-              alignment = self.alignment,
-              name = self.pseudo,
-              class = class_data.name,
-              level = self.level,
-              points = self.remaining_pts,
-              reputation = self.reputation,
-              mana = self.mana,
-              inventory_size = self.inventory.max
-            }))
-            -- mark as logged
-          end, error_handler)
-          if ok then -- login completed
-            self.server.clients_by_pseudo[self.pseudo] = self
-            self.user_id = user_id
-            self:sendChatMessage("Identifié.")
-          else -- login error
-            self.server.clients_by_id[user_id] = nil
-            print("<= login error for user#"..user_id.." \""..user_row.pseudo.."\"")
-            self:kick("Erreur du serveur.")
-          end
-        else -- login failed
-          self:sendChatMessage("Identification échouée.")
-          -- send motd (start login)
-          self:send(Client.makePacket(net.MOTD_LOGIN, {
-            motd = self.server.motd,
-            salt = self.server.cfg.client_salt
-          }))
-        end
-      end)
-    end
-  else -- logged
-    if protocol == net.INPUT_ORIENTATION then
-      if self:canMove() then self:setOrientation(tonumber(data) or 0) end
-    elseif protocol == net.INPUT_MOVE_FORWARD then
-      -- update input state (used to stop/resume movements correctly)
-      self.move_forward_input = not not data
-      if self:canMove() then self:setMoveForward(self.move_forward_input) end
-    elseif protocol == net.INPUT_ATTACK then
-      if self:canAttack() then self:act("attack", 1) end
-    elseif protocol == net.INPUT_DEFEND then
-      if self:canDefend() then self:act("defend", 1) end
-    elseif protocol == net.INPUT_INTERACT then
-      if self:canInteract() then self:interact() end
-    elseif protocol == net.INPUT_CHAT then
-      if type(data) == "string" and string.len(data) > 0 and string.len(data) < 1000 then
-        if string.sub(data, 1, 1) == "/" then -- parse command
-          local args = self.server.parseCommand(string.sub(data, 2))
-          if #args > 0 then
-            self.server:processCommand(self, args)
-          end
-        elseif self:canChat() then -- message
-          self:mapChat(data)
-        end
-      else
-        self:sendChatMessage("Message trop long.")
-      end
-    elseif protocol == net.EVENT_MESSAGE_SKIP then
-      local r = self.message_task
-      if r then
-        self.message_task = nil
-        r()
-      end
-    elseif protocol == net.EVENT_INPUT_QUERY_ANSWER then
-      local r = self.input_query_task
-      if r and type(data) == "number" then
-        self.input_query_task = nil
-        r(data)
-      end
-    elseif protocol == net.EVENT_INPUT_STRING_ANSWER then
-      local r = self.input_string_task
-      if r and type(data) == "string" then
-        self.input_string_task = nil
-        r(data)
-      end
-    elseif protocol == net.CHEST_CLOSE then
-      local r = self.chest_task
-      if r then
-        self.chest_task = nil
-        r()
-      end
-    elseif protocol == net.SHOP_CLOSE then
-      local r = self.shop_task
-      if r then
-        self.shop_task = nil
-        r()
-      end
-    elseif protocol == net.GOLD_STORE then
-      local amount = tonumber(data) or 0
-      if self.chest_task and amount <= self.gold then
-        self.chest_gold = self.chest_gold+amount
-        self.gold = self.gold-amount
-        self:send(Client.makePacket(net.STATS_UPDATE, {gold = self.gold, chest_gold = self.chest_gold}))
-      end
-    elseif protocol == net.GOLD_WITHDRAW then
-      local amount = tonumber(data) or 0
-      if self.chest_task and amount <= self.chest_gold then
-        self.chest_gold = self.chest_gold-amount
-        self.gold = self.gold+amount
-        self:send(Client.makePacket(net.STATS_UPDATE, {gold = self.gold, chest_gold = self.chest_gold}))
-      end
-    elseif protocol == net.ITEM_STORE then
-      local id = tonumber(data) or 0
-      if self.chest_task and self.inventory:take(id, true) and self.chest_inventory:put(id) then
-        self.inventory:take(id)
-      end
-    elseif protocol == net.ITEM_WITHDRAW then
-      local id = tonumber(data) or 0
-      if self.chest_task and self.chest_inventory:take(id, true) and self.inventory:put(id) then
-        self.chest_inventory:take(id)
-      end
-    elseif protocol == net.ITEM_BUY then
-      if self.shop_task and type(data) == "table" then
-        local id, amount = tonumber(data[1]) or 0, tonumber(data[2]) or 0
-        local item = self.server.project.objects[id]
-        if item and amount > 0 then
-          if item.price*amount <= self.gold then
-            for i=1,amount do -- buy one by one
-              if self.inventory:put(id) then
-                self.gold = self.gold-item.price
-              else break end
-            end
-            self:send(Client.makePacket(net.STATS_UPDATE, {gold = self.gold}))
-          end
-        end
-      end
-    elseif protocol == net.ITEM_SELL then
-      local id = tonumber(data) or 0
-      local item = self.server.project.objects[id]
-      if self.shop_task and item then
-        if self.inventory:take(id) then
-          self.gold = self.gold+math.ceil(item.price*0.1)
-          self:send(Client.makePacket(net.STATS_UPDATE, {gold = self.gold}))
-        end
-      end
-    elseif protocol == net.ITEM_USE then
-      local id = tonumber(data) or 0
-      if self:canUseItem() then self:useItem(id) end
-    elseif protocol == net.ITEM_TRASH then
-      local id = tonumber(data) or 0
-      self.inventory:take(id)
-    elseif protocol == net.SPEND_CHARACTERISTIC_POINT then
-      if self.remaining_pts > 0 then
-        local done = true
-        if data == "strength" then
-          self.strength_pts = self.strength_pts+1
-        elseif data == "dexterity" then
-          self.dexterity_pts = self.dexterity_pts+1
-        elseif data == "constitution" then
-          self.constitution_pts = self.constitution_pts+1
-        else done = false end
-
-        if done then
-          self:setRemainingPoints(self.remaining_pts-1)
-          self:updateCharacteristics()
-        end
-      end
-    elseif protocol == net.ITEM_EQUIP then
-      local id = tonumber(data) or 0
-      local item = self.server.project.objects[id]
-      -- valid and equipable
-      if item and EQUIPABLE_ITEM_TYPES[item.type] and self:checkItemRequirements(item) then
-        -- compute preview delta
-        local old_ch = {
-          strength = self.strength,
-          dexterity = self.dexterity,
-          constitution = self.constitution,
-          magic = self.magic,
-          attack = self.ch_attack,
-          defense = self.ch_defense,
-          min_damage = self.min_damage,
-          max_damage = self.max_damage
-        }
-
-        local old_weapon = self.weapon_slot
-        local old_shield = self.shield_slot
-        local old_helmet = self.helmet_slot
-        local old_armor = self.armor_slot
-
-        --- update slots
-        if item.type == "one-handed-weapon" then
-          self.weapon_slot = id
-        elseif item.type == "two-handed-weapon" then
-          self.weapon_slot = id
-          self.shield_slot = 0
-        elseif item.type == "helmet" then
-          self.helmet_slot = id
-        elseif item.type == "armor" then
-          self.armor_slot = id
-        elseif item.type == "shield" then
-          self.shield_slot = id
-          -- check for two-handed weapon
-          local weapon = self.server.project.objects[self.weapon_slot]
-          if weapon and weapon.type == "two-handed-weapon" then
-            self.weapon_slot = 0
-          end
-        end
-
-        --- get new characteristics
-        self:updateCharacteristics(true) -- dry
-        local new_ch = {
-          strength = self.strength,
-          dexterity = self.dexterity,
-          constitution = self.constitution,
-          magic = self.magic,
-          attack = self.ch_attack,
-          defense = self.ch_defense,
-          min_damage = self.min_damage,
-          max_damage = self.max_damage
-        }
-
-        --- revert slots
-        self.weapon_slot = old_weapon
-        self.shield_slot = old_shield
-        self.helmet_slot = old_helmet
-        self.armor_slot = old_armor
-        self:updateCharacteristics(true) -- dry revert
-
-        --- compute
-        local deltas = {}
-        for k,v in pairs(old_ch) do deltas[k] = new_ch[k]-old_ch[k] end
-
-        -- show delta / request
-        async(function()
-          local fdeltas = {} -- formatted
-          local append = function(new_ch, deltas, prop, title) -- format prop
-            if deltas[prop] ~= 0 then
-              table.insert(fdeltas, "  "..title..": "..utils.fn(deltas[prop], true).." ("..utils.fn(new_ch[prop])..")")
-            end
-          end
-          append(new_ch, deltas, "strength", "Force")
-          append(new_ch, deltas, "dexterity", "Dextérité")
-          append(new_ch, deltas, "constitution", "Constitution")
-          append(new_ch, deltas, "magic", "Magie")
-          append(new_ch, deltas, "attack", "Attaque")
-          append(new_ch, deltas, "defense", "Défense")
-          append(new_ch, deltas, "min_damage", "Dégâts min")
-          append(new_ch, deltas, "max_damage", "Dégâts max")
-
-          local dialog_r = self:requestDialog({"Équiper ", {0,1,0.5} , item.name, {1,1,1}, " ?\n"..table.concat(fdeltas, "\n")}, {"Équiper"}, true)
-          -- equip item
-          if dialog_r == 1 and self:checkItemRequirements(item) and self.inventory:take(id,true) then
-            local done = true
-            if item.type == "one-handed-weapon" then
-              if self.weapon_slot > 0 then self.inventory:put(self.weapon_slot) end
-              self.weapon_slot = id
-            elseif item.type == "two-handed-weapon" then
-              if self.weapon_slot > 0 then self.inventory:put(self.weapon_slot) end
-              if self.shield_slot > 0 then self.inventory:put(self.shield_slot) end
-              self.weapon_slot = id
-              self.shield_slot = 0
-            elseif item.type == "helmet" then
-              if self.helmet_slot > 0 then self.inventory:put(self.helmet_slot) end
-              self.helmet_slot = id
-            elseif item.type == "armor" then
-              if self.armor_slot > 0 then self.inventory:put(self.armor_slot) end
-              self.armor_slot = id
-            elseif item.type == "shield" then
-              if self.shield_slot > 0 then self.inventory:put(self.shield_slot) end
-              self.shield_slot = id
-              -- check for two-handed weapon
-              local weapon = self.server.project.objects[self.weapon_slot]
-              if weapon and weapon.type == "two-handed-weapon" then
-                self.inventory:put(self.weapon_slot)
-                self.weapon_slot = 0
-              end
-            else done = false end
-
-            if done then
-              self.inventory:take(id)
-              self:updateCharacteristics()
-            end
-          end
-        end)
-      end
-    elseif protocol == net.SLOT_UNEQUIP then
-      local done = true
-      if data == "helmet" then
-        if self.helmet_slot > 0 and self.inventory:put(self.helmet_slot) then
-          self.helmet_slot = 0
-        end
-      elseif data == "armor" then
-        if self.armor_slot > 0 and self.inventory:put(self.armor_slot) then
-          self.armor_slot = 0
-        end
-      elseif data == "weapon" then
-        if self.weapon_slot > 0 and self.inventory:put(self.weapon_slot) then
-          self.weapon_slot = 0
-        end
-      elseif data == "shield" then
-        if self.shield_slot > 0 and self.inventory:put(self.shield_slot) then
-          self.shield_slot = 0
-        end
-      else done = false end
-
-      if done then self:updateCharacteristics() end
-    elseif protocol == net.SCROLL_END then
-      local r = self.scroll_task
-      if r then
-        self.scroll_task = nil
-        r()
-      end
-    elseif protocol == net.QUICK_ACTION_BIND then
-      if type(data) == "table" and type(data.type) == "string" --
-          and type(data.n) == "number" and data.n >= 1 and data.n <= 3 then
-        local id = tonumber(data.id)
-        if id then -- bind
-          local ok = false
-          if data.type == "item" then -- check item bind
-            local item = self.server.project.objects[id]
-            if item and item.type == "usable" then ok = true end
-          elseif data.type == "spell" then -- check spell bind
-            local spell = self.server.project.spells[id]
-            if spell then ok = true end
-          end
-          if ok then
-            self:applyConfig({quick_actions = {[data.n] = {type = data.type, id = id}}})
-          end
-        else -- unbind
-          self:applyConfig({quick_actions = {[data.n] = {type = "item", id = 0}}})
-        end
-      end
-    elseif protocol == net.TARGET_PICK then
-      local r = self.pick_target_task
-      if r then
-        self.pick_target_task = nil
-        local id = tonumber(data)
-        if id and self.map then
-          r(self.map.entities_by_id[id])
-        else
-          r()
-        end
-      end
-    elseif protocol == net.SPELL_CAST then
-      local id = tonumber(data) or 0
-      if self:canCast(id) then self:castSpell(id) end
-    elseif protocol == net.TRADE_SEEK then
-      async(function()
-        -- pick target
-        local entity = self:requestPickTarget("player", 7)
-        if entity then
-          if not entity.ignores.trade then
-            self:sendChatMessage("Requête envoyée.")
-            -- open dialog
-            local dialog_r = entity:requestDialog({{0,1,0.5}, self.pseudo, {1,1,1}, " souhaite lancer un échange avec vous."}, {"Accepter"})
-            if dialog_r == 1 then
-              if not (self.map == entity.map and self:openTrade(entity)) then
-                self:sendChatMessage("Échange impossible.")
-                entity:sendChatMessage("Échange impossible.")
-              end
-            else
-              self:sendChatMessage("Joueur occupé / échange refusé.")
-            end
-          else self:sendChatMessage("Joueur occupé.") end
-        else
-          self:sendChatMessage("Cible invalide.")
-        end
-      end)
-    elseif protocol == net.TRADE_SET_GOLD then
-      if self.trade and not self.trade.locked then
-        self:setTradeGold(tonumber(data) or 0)
-      end
-    elseif protocol == net.TRADE_PUT_ITEM then
-      local id = tonumber(data) or 0
-      if self.trade and not self.trade.locked and self.inventory:take(id) then
-        self.trade.inventory:put(id)
-        self.trade.peer:setTradeLock(false)
-      end
-    elseif protocol == net.TRADE_TAKE_ITEM then
-      local id = tonumber(data) or 0
-      if self.trade and not self.trade.locked and self.trade.inventory:take(id) then
-        self.inventory:put(id)
-        self.trade.peer:setTradeLock(false)
-      end
-    elseif protocol == net.TRADE_LOCK then
-      self:setTradeLock(true)
-    elseif protocol == net.TRADE_CLOSE then
-      self:cancelTrade()
-    elseif protocol == net.DIALOG_RESULT then
-      if self.dialog_task then self.dialog_task(tonumber(data)) end
-    end
-  end
+  local handler = packet[net[protocol]]
+  if handler then handler(self, data) end
 end
 
 -- unsequenced: unsequenced and unreliable if true/passed, reliable otherwise
