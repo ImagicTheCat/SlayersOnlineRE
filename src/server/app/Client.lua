@@ -638,7 +638,7 @@ end
 function packet:SPELL_CAST(data)
   if not self.user_id then return end
   local id = tonumber(data) or 0
-  if self:canCast(id) then self:castSpell(id) end
+  if self:canCast(id) then self:tryCastSpell(id) end
 end
 function packet:TRADE_SEEK(data)
   if not self.user_id then return end
@@ -1231,6 +1231,8 @@ function Client:useItem(id)
   if item and item.type == "usable" and self.inventory:take(id) then
     self:setHealth(self.health+item.mod_hp)
     self:setMana(self.mana+item.mod_mp)
+    local spell = server.project.spells[item.spell]
+    if spell then self:applySpell(self, spell) end
     self:act("use", 1)
     -- heal effect
     if item.mod_hp > 0 then
@@ -1250,8 +1252,8 @@ function Client:useItem(id)
   end
 end
 
--- try to cast a spell
-function Client:castSpell(id)
+-- Try to cast a spell.
+function Client:tryCastSpell(id)
   local spell = self.server.project.spells[id]
   if spell and self.spell_inventory.items[id] > 0 then -- check owned
     if spell.mp > self.mana then -- mana check
@@ -1276,20 +1278,12 @@ function Client:castSpell(id)
         target = self
         -- TODO
       end
-
       if not target then -- target check
         self:sendChatMessage("Cible invalide.")
         return
       end
-
-      local cast_duration = spell.cast_duration*0.03
-
-      -- cast spell
-      self:act("cast", cast_duration)
-      timer(cast_duration, function()
-        self:emitHint({{0.77,0.18,1}, spell.name})
-        target:applySpell(self, spell)
-      end)
+      self:setMana(self.mana-spell.mp)
+      self:castSpell(target, spell)
     end)
   end
 end

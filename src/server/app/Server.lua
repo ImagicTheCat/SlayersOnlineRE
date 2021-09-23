@@ -4,12 +4,14 @@ local vips = require("vips")
 local sha2 = require("sha2")
 local msgpack = require("MessagePack")
 local Client = require("app.Client")
+local LivingEntity = require("app.entities.LivingEntity")
 local Map = require("app.Map")
 local utils = require("app.lib.utils")
 local Deserializer = require("app.Deserializer")
 local DBManager = require("app.DBManager")
 local net = require("app.protocol")
 local EventCompiler = require("app.EventCompiler")
+local SpellCompiler = require("app.SpellCompiler")
 
 -- optional require
 local profiler
@@ -801,6 +803,34 @@ end
 
 -- METHODS
 
+local function compileSpells(self)
+  local header = "local state = ...;"
+  local function compile(compiler, str, chunkname) -- return f or nil
+    local code, err = compiler(str)
+    if not code then
+      print("ERROR compiling "..chunkname.."\n"..err.."\n")
+      return
+    end
+    --print("-- "..chunkname.." --\n"..str.."\n=>\n"..code.."\n--")
+    local f, err = loadstring(header..code, chunkname)
+    if not f then
+      print("ERROR compiling "..chunkname.."\n"..err.."\n-- Lua --\n"..code.."\n--------a\n-")
+      return
+    end
+    setfenv(f, LivingEntity.spell_env)
+    return f
+  end
+  local c_expr, c_stmts = SpellCompiler.compileExpression, SpellCompiler.compileStatements
+  for _, spell in ipairs(self.project.spells) do
+    local prefix = "spell("..spell.name.."):"
+    spell.area_func = compile(c_expr, spell.area_expr, prefix.."area")
+    spell.aggro_func = compile(c_expr, spell.aggro_expr, prefix.."aggro")
+    spell.duration_func = compile(c_expr, spell.duration_expr, prefix.."duration")
+    spell.hit_func = compile(c_expr, spell.hit_expr, prefix.."hit")
+    spell.effect_func = compile(c_stmts, spell.effect_expr, prefix.."effect")
+  end
+end
+
 function Server:__construct(cfg)
   self.cfg = cfg
   -- load project
@@ -812,6 +842,9 @@ function Server:__construct(cfg)
   print("- "..self.project.mob_count.." mobs loaded")
   print("- "..self.project.spell_count.." spells loaded")
   self.project.tilesets = {} -- map of id => tileset data
+  print("compile spells...")
+  compileSpells(self)
+  print("spell compiled")
   -- make directories
   os.execute("mkdir -p cache/maps/")
   -- load maps data
