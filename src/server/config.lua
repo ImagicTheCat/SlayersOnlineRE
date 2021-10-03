@@ -25,6 +25,7 @@ return {
   inventory_size = 100,
   spell_inventory_size = 100,
   chest_size = 1000,
+  respawn_delay = 10, -- seconds
   server_vars_init = { -- map of key => value
   },
   spawn_location = { -- default (re)spawn location

@@ -169,7 +169,7 @@ function utils.fn(n, sign)
   else return formatted end
 end
 
-function utils.pack(...) return {..., n = select("#", ...)} end
+function utils.pack(...) return {n = select("#", ...), ...} end
 
 -- Reverse map.
 -- Build a table with (k,v) pairs and (v,k) pairs.
@@ -181,6 +181,16 @@ function utils.rmap(t, v)
     nt[mv] = (v ~= nil and v or mk)
   end
   return nt
+end
+
+-- Compute direction vector from delta.
+function utils.dvec(dx, dy)
+  local g_x = math.abs(dx) > math.abs(dy)
+  if dy < 0 and not g_x then return 0,-1
+  elseif dx > 0 and g_x then return 1,0
+  elseif dy > 0 and not g_x then return 0,1
+  elseif dx < 0 and g_x then return -1,0
+  else return 0,0 end
 end
 
 return utils

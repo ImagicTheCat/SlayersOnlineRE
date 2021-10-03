@@ -3,9 +3,12 @@ local Entity = require("app.Entity")
 local XPtable = require("app.XPtable")
 local cfg = require("config")
 -- deferred
-local Client
+local Client, Projectile, Player, Mob
 timer(0.01, function()
   Client = require("app.Client")
+  Projectile = require("app.entities.Projectile")
+  Player = require("app.entities.Player")
+  Mob = require("app.entities.Mob")
 end)
 
 local LivingEntity = class("LivingEntity", Entity)
@@ -23,9 +26,6 @@ end
 -- return orientation
 function LivingEntity.vectorOrientation(dx, dy)
   local g_x = (math.abs(dx) > math.abs(dy))
-  dx = dx/math.abs(dx)
-  dy = dy/math.abs(dy)
-
   if dy < 0 and not g_x then return 0
   elseif dx > 0 and g_x then return 1
   elseif dy > 0 and not g_x then return 2
@@ -46,17 +46,17 @@ local function_vars = {}
 
 function function_vars:rand(max)
   if max then
-    return math.random(0, (tonumber(max) or 1)-1)
+    return math.random(0, (max or 1)-1)
   end
 end
 function function_vars:min(a, b)
   if a and b then
-    return math.min(tonumber(a) or 0, tonumber(b) or 0)
+    return math.min(a or 0, b or 0)
   end
 end
 function function_vars:max(a, b)
   if a and b then
-    return math.max(tonumber(a) or 0, tonumber(b) or 0)
+    return math.max(a or 0, b or 0)
   end
 end
 
@@ -66,34 +66,65 @@ end
 local caster_vars = {}
 
 function caster_vars:Force(value)
-  if not value then
-    return self.strength_pts or 0
+  if not value then return self.strength_pts or 0
+  else
+    if class.is(self, Client) then
+      self.strength_pts = value
+      self:updateCharacteristics()
+    end
   end
 end
 function caster_vars:Dext(value)
-  if not value then
-    return self.dexterity_pts or 0
+  if not value then return self.dexterity_pts or 0
+  else
+    if class.is(self, Client) then
+      self.dexterity_pts = value
+      self:updateCharacteristics()
+    end
   end
 end
 function caster_vars:Constit(value)
-  if not value then
-    return self.constitution_pts or 0
+  if not value then return self.constitution_pts or 0
+  else
+    if class.is(self, Client) then
+      self.constitution_pts = value
+      self:updateCharacteristics()
+    end
   end
 end
 function caster_vars:Magie(value)
-  if not value then
-    return self.magic_pts or 0
+  if not value then return self.magic_pts or 0
+  else
+    if class.is(self, Client) then
+      self.magic_pts = value
+      self:updateCharacteristics()
+    end
   end
 end
 function caster_vars:Attaque(value)
-  if not value then
-    return self.ch_attack
+  if not value then return self.ch_attack
+  else
+    self.ch_attack = value
+    if class.is(self, Client) then
+      self.client:send(Client.makePacket(net.STATS_UPDATE, {
+        attack = self.client.ch_attack,
+      }))
+    end
   end
 end
 function caster_vars:Defense(value)
-  if not value then
-    return self.ch_defense
+  if not value then return self.ch_defense
+  else
+    self.ch_defense = value
+    if class.is(self, Client) then
+      self.client:send(Client.makePacket(net.STATS_UPDATE, {
+        defense = self.client.ch_defense,
+      }))
+    end
   end
+end
+function caster_vars:Dommage(value)
+  if not value then return self.min_damage end
 end
 function caster_vars:Vie(value)
   if value then
@@ -107,16 +138,11 @@ function caster_vars:Vie(value)
   end
 end
 function caster_vars:VieMax(value)
-  if not value then
-    return self.max_health
-  end
+  if not value then return self.max_health end
 end
 function caster_vars:CurrentMag(value)
-  if value then
-    self:setMana(utils.computeExpression(value) or 0)
-  else
-    return self.mana
-  end
+  if value then self:setMana(value)
+  else return self.mana end
 end
 function caster_vars:MagMax(value)
   if not value then
@@ -124,25 +150,40 @@ function caster_vars:MagMax(value)
   end
 end
 function caster_vars:Alignement(value)
-  if not value then
-    return self.alignment or 0
+  if not value then return self.alignment or 0
+  else
+    if class.is(self, Client) then
+      local delta = value-self.alignment
+      self:emitHint(utils.fn(delta, true).." alignement")
+      self:setAlignment(value)
+    end
   end
 end
 function caster_vars:Reputation(value)
-  if not value then
-    return self.reputation or 0
+  if not value then return self.reputation or 0
+  else
+    if class.is(self, Client) then
+      local delta = value-self.alignment
+      self:emitHint(utils.fn(delta, true).." réputation")
+      self:setReputation(value)
+    end
   end
 end
 function caster_vars:Gold(value)
-  if not value then
-    return self.gold or 0
+  if not value then return self.gold or 0
+  else
+    if class.is(self, Client) then
+      local delta = value-self.gold
+      self:emitHint({{1,0.78,0}, utils.fn(delta, true)})
+      self:setGold(value)
+    end
   end
 end
 function caster_vars:Lvl(value)
   if not value then return self.level or 0
   else
     if class.is(self, Client) then
-      local xp = XPtable[tonumber(value) or 0]
+      local xp = XPtable[value]
       if xp then
         local delta = xp-self.xp
         self:emitHint({{0,0.9,1}, utils.fn(delta, true)})
@@ -154,46 +195,43 @@ end
 function caster_vars:CurrentXP(value)
   if not value then return self.xp or 0
   else
-    if class.is(self, Client) then self:setXP(value) end
-  end
-end
-function caster_vars:Dommage(value)
-  if not value then
-    return 0
+    if class.is(self, Client) then
+      local delta = value-self.xp
+      self:emitHint({{0,0.9,1}, utils.fn(delta, true)})
+      self:setXP(value)
+    end
   end
 end
 function caster_vars:HandDom(value)
-  if not value then
-    return 0
-  end
+  if not value then return 0 end
 end
 function caster_vars:IndOff(value)
   if not value then
-    local class_data = server.project.classes[self.class]
+    local class_data = class.is(self, Client) and server.project.classes[self.class]
     return class_data and class_data.off_index or 0
   end
 end
 function caster_vars:IndDef(value)
   if not value then
-    local class_data = server.project.classes[self.class]
+    local class_data = class.is(self, Client) and server.project.classes[self.class]
     return class_data and class_data.def_index or 0
   end
 end
 function caster_vars:IndPui(value)
   if not value then
-    local class_data = server.project.classes[self.class]
+    local class_data = class.is(self, Client) and server.project.classes[self.class]
     return class_data and class_data.pow_index or 0
   end
 end
 function caster_vars:IndVit(value)
   if not value then
-    local class_data = server.project.classes[self.class]
+    local class_data = class.is(self, Client) and server.project.classes[self.class]
     return class_data and class_data.health_index or 0
   end
 end
 function caster_vars:IndMag(value)
   if not value then
-    local class_data = server.project.classes[self.class]
+    local class_data = class.is(self, Client) and server.project.classes[self.class]
     return class_data and class_data.mag_index or 0
   end
 end
@@ -203,35 +241,17 @@ end
 --- value: nil on get mode
 local target_vars = {}
 
-function target_vars:Vie(value)
-  if value then
-    -- effect
-    local delta = value-self.health
-    if delta > 0 then self:emitHint({{0,1,0}, utils.fn(delta)})
-    elseif delta < 0 then self:broadcastPacket("damage", -delta) end
-    self:setHealth(value)
-  else
-    return self.health
-  end
-end
-function target_vars:Attaque(value)
-  if not value then
-    return self.ch_attack
-  end
-end
-function target_vars:Defense(value)
-  if not value then
-    return self.ch_defense
-  end
-end
+target_vars.Vie = caster_vars.Vie
+target_vars.Attaque = caster_vars.Attaque
+target_vars.Defense = caster_vars.Defense
+target_vars.Dommage = caster_vars.Dommage
+
 function target_vars:Bloque(value)
-  if not value then
-    return 0
-  end
-end
-function target_vars:Dommage(value)
-  if not value then
-    return 0
+  if not value then return self.spell_blocked and 1 or 0
+  else
+    if class.is(self, Client) or class.is(self, Mob) then
+      self.spell_blocked = value > 0
+    end
   end
 end
 
@@ -264,7 +284,9 @@ do -- Build spell execution environment.
   local function target_var(state, id, value)
     local f = target_vars[id]
     if f then
-      if value then f(state.target, value)
+      if value then
+        if id == "Bloque" then state.spell_block = true end
+        f(state.target, value)
       else return f(state.target) end
     end
   end
@@ -342,11 +364,16 @@ function LivingEntity:setMoveForward(move_forward)
   if self.move_forward ~= move_forward then
     self.move_forward = move_forward
     if self.move_forward then
-      self.move_time = clock()
-
+      -- end timers/tasks
+      if self.move_task then
+        local task = self.move_task
+        self.move_task = nil
+        task(false)
+      end
       if self.move_timer then self.move_timer:remove() end
       if self.move_final_timer then self.move_final_timer:remove() end
-
+      -- movement
+      self.move_time = clock()
       self.move_timer = itimer(1/cfg.tickrate, function()
         local dt = clock()-self.move_time
         local speed = LivingEntity.pixelSpeed(self.speed)
@@ -387,35 +414,41 @@ function LivingEntity:setMoveForward(move_forward)
         end
       end)
     else
-      self.move_timer:remove()
-      self.move_timer = nil
-      -- final teleport
-      self.move_final_timer = timer(0.25, function()
-        self:teleport(self.x, self.y) -- end position
-      end)
+      if self.move_timer then
+        self.move_timer:remove()
+        self.move_timer = nil
+        -- final teleport
+        self.move_final_timer = timer(0.25, function()
+          self:teleport(self.x, self.y) -- end position
+        end)
+      end
     end
   end
 end
 
 -- (async)
 -- blocking: if passed/true, async and wait until it reaches the destination
-function LivingEntity:moveToCell(cx, cy, blocking)
-  local r
-  if blocking then r = async() end
-
-  -- basic implementation
+-- speed_factor: (optional)
+-- return true on success when blocking
+function LivingEntity:moveToCell(cx, cy, blocking, speed_factor)
+  -- end previous task
+  if self.move_task then
+    local task = self.move_task
+    self.move_task = nil
+    task(false)
+  end
+  if blocking then self.move_task = async() end
+  -- init
   local dx, dy = cx*16-self.x, cy*16-self.y
-  local speed = LivingEntity.pixelSpeed(self.speed) -- pixels per second
-  self:setOrientation(LivingEntity.vectorOrientation(dx,dy))
-  self:broadcastPacket("move_to_cell", {cx = cx, cy = cy, speed = speed})
-
+  local speed = LivingEntity.pixelSpeed(self.speed)*(speed_factor or 1) -- pixels per second
   local dist = math.sqrt(dx*dx+dy*dy)
   local duration = dist/speed
   local time = clock()
   local x, y = self.x, self.y
-
+  self:setOrientation(LivingEntity.vectorOrientation(dx,dy))
+  self:broadcastPacket("move_to_cell", {cx = cx, cy = cy, speed = speed})
+  -- movement
   if self.move_timer then self.move_timer:remove() end
-
   self.move_timer = itimer(1/cfg.tickrate, function()
     local progress = (clock()-time)/duration
     if progress <= 1 then
@@ -427,36 +460,66 @@ function LivingEntity:moveToCell(cx, cy, blocking)
       self.move_timer:remove()
       self.move_timer = nil
       if blocking then
-        r()
+        local task = self.move_task
+        self.move_task = nil
+        task(true)
       end
     end
   end)
-
-  if blocking then r:wait() end
+  if blocking then return self.move_task:wait() end
 end
 
+-- (async)
+-- Move to entity. The targeted entity will be followed if moving.
+-- target: Entity
+-- speed_factor: (optional)
+-- return true on success, false on target loss
+function LivingEntity:moveToEntity(target, speed_factor)
+  -- movements
+  while self.map and self.map == target.map and
+      self.cx ~= target.cx or self.cy ~= target.cy do
+    local dx, dy = utils.dvec(target.cx-self.cx, target.cy-self.cy)
+    if not self:moveToCell(self.cx+dx, self.cy+dy, true, speed_factor) then break end
+  end
+  return self.map and self.map == target.map and
+      self.cx == target.cx and self.cy == target.cy
+end
+
+-- Do an action (visual effect).
 -- action: string
 --- "attack"
 --- "defend"
 --- "cast"
 --- "use"
+-- return success boolean
 function LivingEntity:act(action, duration)
   if not self.acting then
-    self.acting = action
-    if action == "attack" then
-      -- attack check
-      local client = (class.is(self, Client) and self or self.client)
-      local entities = self:raycastEntities(1)
-      for _, entity in ipairs(entities) do
-        if class.is(entity, LivingEntity) and (not entity.client or entity.client == client) then
-          if entity:onAttack(self) then break end
-        end
-      end
-    end
-    -- TODO: defend effect
     -- do animation
+    self.acting = action
     self:broadcastPacket("act", {self.acting, duration})
     timer(duration, function() self.acting = false end)
+    return true
+  end
+  return false
+end
+
+function LivingEntity:attack()
+  if self:act("attack", 1) then
+    -- Check if the attacker and the attacked are on the same realm.
+    -- E.g. client bound entities.
+    local client = (class.is(self, Client) and self or self.client)
+    local entities = self:raycastEntities(1)
+    for _, entity in ipairs(entities) do
+      if class.is(entity, LivingEntity) and (not entity.client or entity.client == client) then
+        if entity:onAttack(self) then break end
+      end
+    end
+  end
+end
+
+function LivingEntity:defend()
+  if self:act("defend", 1) then
+    -- TODO
   end
 end
 
@@ -495,6 +558,49 @@ function LivingEntity:computeAttack(target)
   end
 end
 
+-- Cast a spell.
+-- target: LivingEntity
+-- spell: spell data
+function LivingEntity:castSpell(target, spell)
+  local cast_duration = spell.cast_duration*0.03
+  -- cast spell
+  if spell.type == "sneak-attack" then -- special case, attacking
+    self:act("attack", cast_duration)
+    timer(cast_duration, function()
+      -- find target
+      local entities = self:raycastEntities(1)
+      for _, entity in ipairs(entities) do
+        if entity == target then
+          target:applySpell(self, spell)
+          break
+        end
+      end
+    end)
+  else -- regular cases, spell casting
+    self:act("cast", cast_duration)
+    timer(cast_duration, function()
+      self:emitHint({{0.77,0.18,1}, spell.name})
+      if spell.type == "fireball" then
+        local proj = Projectile()
+        proj:setCharaset({
+          path = spell.set:sub(9), -- remove Chipset/ part
+          x = spell.x, y = spell.y, w = spell.w, h = spell.h
+        })
+        self.map:addEntity(proj)
+        proj:teleport(self.x, self.y)
+        proj:launch(target, function() target:applySpell(self, spell) end)
+      elseif spell.type == "resurrect" then
+        target:resurrect()
+        target:applySpell(self, spell)
+      elseif spell.type == "jump-attack" then
+        async(function()
+         if self:moveToEntity(target, 3) then target:applySpell(self, spell) end
+        end)
+      else target:applySpell(self, spell) end
+    end)
+  end
+end
+
 local function spell_error_handler(err)
   io.stderr:write(debug.traceback("spell: "..err, 2).."\n")
 end
@@ -507,17 +613,30 @@ local function spellEval(f, ...)
   end
 end
 
--- Cast a spell.
--- target: LivingEntity
--- spell: spell data
-function LivingEntity:castSpell(target, spell)
-  local cast_duration = spell.cast_duration*0.03
-  -- cast spell
-  self:act("cast", cast_duration)
-  timer(cast_duration, function()
-    self:emitHint({{0.77,0.18,1}, spell.name})
-    target:applySpell(self, spell)
-  end)
+-- Apply spell step effects (self is target).
+local function applySpellStep(state)
+  -- unblock target
+  if state.spell_block then
+    state.spell_block = false
+    state.target.spell_blocked = false
+  end
+  -- apply
+  local spell = state.spell
+  local hit = spellEval(spell.hit_func, state) or 1
+  if hit > 0 then -- success
+    if spell.type ~= "AoE" then
+      -- audio/visual effects
+      if #spell.set > 0 then
+        state.target:emitAnimation(string.sub(spell.set, 9), -- remove Chipset\ part
+          spell.x, spell.y, spell.w, spell.h, spell.anim_duration*0.03, spell.opacity/255)
+      end
+      if #spell.sound > 0 then state.target:emitSound(string.sub(spell.sound, 7)) end -- remove Sound\ part
+    end
+    -- effect
+    spellEval(spell.effect_func, state)
+  else
+    state.target:damage(nil) -- miss
+  end
 end
 
 -- Apply spell effects (self is target).
@@ -527,19 +646,68 @@ function LivingEntity:applySpell(caster, spell)
   local state = {caster = caster, target = self, spell = spell}
   local area = spellEval(spell.area_func, state) or 0
   local aggro = spellEval(spell.aggro_func, state) or 0
-  local duration = spellEval(spell.duration_func, state) or 1
-  local hit = spellEval(spell.hit_func, state) or 1
-  if hit > 0 then -- success
-    -- audio/visual effects
-    if #spell.set > 0 then
-      self:emitAnimation(string.sub(spell.set, 9), -- remove Chipset\ part
-        spell.x, spell.y, spell.w, spell.h, spell.anim_duration*0.03, spell.opacity/255)
-    end
-    if #spell.sound > 0 then self:emitSound(string.sub(spell.sound, 7)) end -- remove Sound\ part
-    -- effect
-    spellEval(spell.effect_func, state)
-  else
-    self:damage(nil) -- miss
+  local steps = spellEval(spell.duration_func, state) or 1
+  local duration = spell.anim_duration*0.03
+  if spell.type == "AoE" then -- special case, spawn AoE on the map
+    local map = caster.map
+    -- compute pixel area
+    local tiles_per_axis = (area == 0 and 1 or area*2)
+    local w, h = tiles_per_axis*spell.w, tiles_per_axis*spell.h
+    local x, y = self.x+8, self.y+8
+    local x1, y1 = x-math.floor(w/2)+spell.x, y-math.floor(h/2)+spell.y
+    local x2, y2 = x1+w, y1+h
+    async(function()
+      for i=1, steps do
+        -- interrupt effect if invalid
+        if not map == caster.map then break end
+        -- audio/visual effects
+        if #spell.set > 0 then
+          for tile_i=1, tiles_per_axis do
+            for tile_j=1, tiles_per_axis do
+              map:playAnimation(spell.set:sub(9), -- remove Chipset\ part
+                x1+(tile_i-1)*spell.w, y1+(tile_j-1)*spell.h, spell.w, spell.h,
+                duration, spell.opacity/255)
+            end
+          end
+        end
+        if #spell.sound > 0 then
+          map:playSound(spell.sound:sub(7), x, y) -- remove Sound\ part
+        end
+        -- effect, for each touched cell
+        for cx=math.floor(x1/16), math.ceil(x2/16) do
+          for cy=math.floor(y1/16), math.ceil(y2/16) do
+            local cell = map:getCell(cx, cy)
+            if cell then
+              for entity in pairs(cell) do
+                -- check touch
+                local touched = false
+                if spell.target_type == "mob-player" or spell.target_type == "around" then
+                  touched = (class.is(caster, Mob) or class.is(entity, Client) and caster:canFight(entity)) or class.is(entity, Mob)
+                elseif spell.target_type == "player" then
+                  touched = class.is(entity, Client) and entity ~= caster
+                end
+                -- apply
+                if touched then
+                  applySpellStep({caster = caster, target = entity, spell = spell})
+                end
+              end
+            end
+          end
+        end
+        -- next
+        wait(duration)
+      end
+    end)
+  else -- regular spell, apply steps
+    async(function()
+      for i=1, steps do
+        -- interrupt effect if invalid
+        if not self.map then break end
+        applySpellStep(state)
+        -- next
+        wait(duration)
+      end
+    end)
   end
 end
 
@@ -584,6 +752,20 @@ function LivingEntity:raycastEntities(dist)
   end
 
   return entities
+end
+
+-- Check if there is a line of sight to another cell.
+function LivingEntity:hasLOS(tx, ty)
+  if self.map then
+    local cx, cy = self.cx, self.cy
+    while cx ~= tx or cy ~= ty do
+      local dx, dy = utils.dvec(tx-cx, ty-cy)
+      cx, cy = cx+dx, cy+dy
+      if cx == tx and cy == ty then return true end
+      if not self.map:isCellPassable(self, cx, cy) then return false end
+    end
+    return true
+  end
 end
 
 -- charaset: {.path, .x, .y, .w, .h}

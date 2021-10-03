@@ -71,5 +71,7 @@ return utils.rmap{
   "TRADE_CLOSE",
   "DIALOG_QUERY",
   "DIALOG_RESULT",
-  "MAP_EFFECT"
+  "MAP_EFFECT",
+  "MAP_PLAY_ANIMATION",
+  "MAP_PLAY_SOUND"
 }

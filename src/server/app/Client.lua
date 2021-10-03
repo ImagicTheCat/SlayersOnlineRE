@@ -297,11 +297,11 @@ function packet:INPUT_MOVE_FORWARD(data)
 end
 function packet:INPUT_ATTACK(data)
   if not self.user_id then return end
-  if self:canAttack() then self:act("attack", 1) end
+  if self:canAttack() then self:attack() end
 end
 function packet:INPUT_DEFEND(data)
   if not self.user_id then return end
-  if self:canDefend() then self:act("defend", 1) end
+  if self:canDefend() then self:defend() end
 end
 function packet:INPUT_INTERACT(data)
   if not self.user_id then return end
@@ -742,6 +742,7 @@ function Client:__construct(server, peer)
   self.draw_order = 0
   self.view_shift = {0,0}
   self.blocked = false
+  self.spell_blocked = false -- blocked by a spell effect
   self.blocked_skin = false
   self.blocked_attack = false
   self.blocked_defend = false
@@ -890,6 +891,7 @@ function Client:requestInputString(title)
 end
 
 -- (async)
+-- Request to pick a target (self excluded).
 -- type: target type (string)
 --- "player" (only player)
 --- "mob" (mob/player)
@@ -902,9 +904,9 @@ function Client:requestPickTarget(type, radius)
   if entity and entity ~= self then
     local dx = math.abs(self.x-entity.x)
     local dy = math.abs(self.y-entity.y)
-    if dx <= radius*16 and dy <= radius*16 --
-      and (type == "player" and class.is(entity, Player) --
-      or type == "mob" and (class.is(entity, Mob) or class.is(entity, Player))) then
+    if dx <= radius*16 and dy <= radius*16 and
+        (type == "player" and class.is(entity, Player) or
+        type == "mob" and (class.is(entity, Mob) or class.is(entity, Player))) then
       return entity
     end
   end
@@ -1184,14 +1186,8 @@ function Client:onAttack(attacker)
   if class.is(attacker, Mob) then -- mob
     self:damage(attacker:computeAttack(self))
     return true
-  elseif class.is(attacker, Player) then -- player
-    if self.map.data.type == "PvE" then return false end -- PVE only check
-    if self.group and self.group == attacker.group then return false end -- group check
-    if self.map.data.type == "PvE-PvP" -- PVE/PVP guild/group check
-      and self.guild and self.guild == attacker.guild -- same guild
-      and self.group == attacker.group then return false end -- same group or none
-    if math.abs(self.level-attacker.level) >= 10 then return false end -- level check
-
+  elseif class.is(attacker, Client) then -- player
+    if not attacker:canFight(self) then return false end
     self.last_attacker = attacker
     -- alignment loss
     local amount = attacker:computeAttack(self)
@@ -1256,15 +1252,14 @@ end
 function Client:tryCastSpell(id)
   local spell = self.server.project.spells[id]
   if spell and self.spell_inventory.items[id] > 0 then -- check owned
-    if spell.mp > self.mana then -- mana check
+    if spell.mp > self.mana then -- check mana
       self:sendChatMessage("Pas assez de mana.")
       return
     end
-    if self.level < spell.req_level then -- level check
+    if self.level < spell.req_level then -- check level
       self:sendChatMessage("Niveau trop bas.")
       return
     end
-
     async(function()
       -- acquire target
       local target
@@ -1272,16 +1267,23 @@ function Client:tryCastSpell(id)
         target = self:requestPickTarget("player", 7)
       elseif spell.target_type == "mob-player" then
         target = self:requestPickTarget("mob", 7)
+        -- check for invalid player target
+        if class.is(target, Client) and not self:canFight(target) then target = nil end
       elseif spell.target_type == "self" then
         target = self
-      elseif spell.target_type == "area" then
+      elseif spell.target_type == "around" then
         target = self
-        -- TODO
       end
-      if not target then -- target check
+      if not target then
         self:sendChatMessage("Cible invalide.")
         return
       end
+      -- check line of sight
+      if spell.type == "fireball" and not self:hasLOS(target.cx, target.cy) then
+        self:sendChatMessage("Pas de ligne de vue.")
+        return
+      end
+      -- cast
       self:setMana(self.mana-spell.mp)
       self:castSpell(target, spell)
     end)
@@ -1629,7 +1631,6 @@ function Client:onDeath()
     if delta < 0 then self:emitHint({{0,0.9,1}, utils.fn(delta, true)}) end
     self:setXP(new_xp)
   end
-
   if self.last_attacker then -- killed by player
     print(self.last_attacker)
     -- gold stealing (1%)
@@ -1652,19 +1653,34 @@ function Client:onDeath()
 
     self.last_attacker:onPlayerKill()
   end
-
   -- set ghost
   self:setGhost(true)
-
   -- respawn after a while
-  timer(5, function() self:respawn() end)
+  self.respawn_timer = timer(server.cfg.respawn_delay, function() self:respawn() end)
+end
+
+-- Resurrect player before respawn.
+function Client:resurrect()
+  if self.map then
+    if self.respawn_timer then
+      self.respawn_timer:remove()
+      self.respawn_timer = nil
+    end
+    if self.ghost then
+      self:setGhost(false)
+      self:setHealth(1)
+    end
+  end
 end
 
 function Client:respawn()
   if self.map then -- check if still on the world
+    if self.respawn_timer then
+      self.respawn_timer:remove()
+      self.respawn_timer = nil
+    end
     self:setGhost(false)
     self:setHealth(self.max_health) -- reset health
-
     -- respawn
     local respawned = false
     if self.respawn_point then -- res point respawn
@@ -1675,7 +1691,6 @@ function Client:respawn()
         respawned = true
       end
     end
-
     if not respawned then -- default respawn
       local spawn_location = self.server.cfg.spawn_location
       local map = self.server:getMap(spawn_location.map)
@@ -1694,6 +1709,19 @@ end
 
 -- restriction checks
 
+-- Check if the player can fight another one (self is handled).
+-- target: Client
+function Client:canFight(target)
+  if self == target or not self.map or self.map ~= target.map then return false end
+  if self.map.data.type == "PvE" then return false end -- PVE only check
+  if self.group and self.group == attacker.group then return false end -- group check
+  if self.map.data.type == "PvE-PvP" -- PVE/PVP guild/group check
+    and self.guild and self.guild == attacker.guild -- same guild
+    and self.group == attacker.group then return false end -- same group or none
+  if math.abs(self.level-attacker.level) >= 10 then return false end -- level check
+  return true
+end
+
 function Client:canAttack()
   if self.map and self.map.data.type == "safe" then return false end
   return not self.running_event and not self.acting and not self.ghost and not self.blocked_attack
@@ -1708,8 +1736,18 @@ end
 function Client:canCast(id)
   local spell = self.server.project.spells[id]
   if not spell then return false end
-  if self.map and self.map.data.type == "safe" and spell.target_type ~= "self" then return false end
-  return not self.running_event and not self.acting and not self.ghost and not self.blocked_cast
+  if self.map and self.map.data.type == "safe" then
+    -- check target
+    if not (spell.target_type == "self" or spell.target_type == "player") then
+      return false
+    end
+    -- check type
+    if spell.target_type == "player" and not (spell.type == "unique" or spell.type == "AoE") then
+      return false
+    end
+  end
+  return not self.running_event and not self.acting and
+      not self.ghost and not self.blocked_cast
 end
 
 function Client:canChat()
@@ -1717,7 +1755,7 @@ function Client:canChat()
 end
 
 function Client:canMove()
-  return not self.running_event and not self.blocked
+  return not self.running_event and not self.move_task and not self.blocked and not self.spell_blocked
 end
 
 function Client:canInteract()

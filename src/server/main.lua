@@ -43,6 +43,15 @@ function itimer(delay, cb)
   return timer
 end
 
+-- (async)
+-- Wait an amount of time.
+-- delay: seconds
+function wait(delay)
+  local task = async()
+  timer(delay, task)
+  task:wait()
+end
+
 -- create server
 local Server = require("app.Server")
 
