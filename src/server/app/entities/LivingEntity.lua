@@ -682,7 +682,11 @@ function LivingEntity:applySpell(caster, spell)
                 -- check touch
                 local touched = false
                 if spell.target_type == "mob-player" or spell.target_type == "around" then
-                  touched = (class.is(caster, Mob) or class.is(entity, Client) and caster:canFight(entity)) or class.is(entity, Mob)
+                  -- caster: Mob
+                  touched = class.is(caster, Mob) and class.is(entity, Client)
+                  -- caster: Client/Player
+                  touched = touched or class.is(caster, Client) and
+                      (class.is(entity, Mob) or class.is(entity, Client) and caster:canFight(entity))
                 elseif spell.target_type == "player" then
                   touched = class.is(entity, Client) and entity ~= caster
                 end
