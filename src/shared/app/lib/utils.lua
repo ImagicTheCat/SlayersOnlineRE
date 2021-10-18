@@ -183,7 +183,7 @@ function utils.rmap(t, v)
   return nt
 end
 
--- Compute direction vector from delta.
+-- Compute direction vector (no diagonal) from delta.
 function utils.dvec(dx, dy)
   local g_x = math.abs(dx) > math.abs(dy)
   if dy < 0 and not g_x then return 0,-1
