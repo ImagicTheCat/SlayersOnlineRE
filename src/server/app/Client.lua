@@ -425,7 +425,7 @@ end
 function packet:ITEM_USE(data)
   if not self.user_id then return end
   local id = tonumber(data) or 0
-  if self:canUseItem() then self:useItem(id) end
+  if self:canUseItem() then async(function() self:tryUseItem(id) end) end
 end
 function packet:ITEM_TRASH(data)
   if not self.user_id then return end
@@ -638,7 +638,12 @@ end
 function packet:SPELL_CAST(data)
   if not self.user_id then return end
   local id = tonumber(data) or 0
-  if self:canCast(id) then self:tryCastSpell(id) end
+  local spell = self.server.project.spells[id]
+  if spell and self:canCast(spell) then
+    if self.spell_inventory.items[id] > 0 then -- check owned
+      async(function() self:tryCastSpell(spell) end)
+    end
+  end
 end
 function packet:TRADE_SEEK(data)
   if not self.user_id then return end
@@ -1220,74 +1225,76 @@ function Client:interact()
   end
 end
 
--- consume owned usable item and apply effects
+-- (async) Consume owned usable item and apply effects.
 -- return true on success
-function Client:useItem(id)
-  local item = self.server.project.objects[id]
-  if item and item.type == "usable" and self.inventory:take(id) then
-    self:setHealth(self.health+item.mod_hp)
-    self:setMana(self.mana+item.mod_mp)
-    local spell = server.project.spells[item.spell]
-    if spell then self:applySpell(self, spell) end
-    self:act("use", 1)
-    -- heal effect
-    if item.mod_hp > 0 then
-      self:emitSound("Holy2.wav")
-      self:emitAnimation("heal.png", 0, 0, 48, 56, 0.75)
-      self:emitHint({{0,1,0}, utils.fn(item.mod_hp)})
-    elseif item.mod_hp < 0 then -- damage
-      self:broadcastPacket("damage", -item.mod_hp)
-    end
-    -- mana effect
-    if item.mod_mp > 0 then
-      self:emitSound("Holy2.wav")
-      self:emitAnimation("mana.png", 0, 0, 48, 56, 0.75)
-      self:emitHint({{0.04,0.42,1}, utils.fn(item.mod_mp)})
-    end
-    return true
+function Client:tryUseItem(id)
+  local item = server.project.objects[id]
+  local spell = server.project.spells[item.spell]
+  -- checks
+  if not item or item.type ~= "usable" then return end
+  if not self:checkItemRequirements(item) then
+    self:sendChatMessage("Prérequis insuffisants."); return
   end
+  if spell and (not self:canCast(spell) or not self:tryCastSpell(spell)) then return end
+  -- consume
+  if not self.inventory:take(id) then return end
+  if not spell then self:act("use", 1) end
+  -- heal effect
+  self:setHealth(self.health+item.mod_hp)
+  if item.mod_hp > 0 then
+    self:emitSound("Holy2.wav")
+    self:emitAnimation("heal.png", 0, 0, 48, 56, 0.75)
+    self:emitHint({{0,1,0}, utils.fn(item.mod_hp)})
+  elseif item.mod_hp < 0 then -- damage
+    self:broadcastPacket("damage", -item.mod_hp)
+  end
+  -- mana effect
+  self:setMana(self.mana+item.mod_mp)
+  if item.mod_mp > 0 then
+    self:emitSound("Holy2.wav")
+    self:emitAnimation("mana.png", 0, 0, 48, 56, 0.75)
+    self:emitHint({{0.04,0.42,1}, utils.fn(item.mod_mp)})
+  end
+  return true
 end
 
--- Try to cast a spell.
-function Client:tryCastSpell(id)
-  local spell = self.server.project.spells[id]
-  if spell and self.spell_inventory.items[id] > 0 then -- check owned
-    if spell.mp > self.mana then -- check mana
-      self:sendChatMessage("Pas assez de mana.")
-      return
-    end
-    if self.level < spell.req_level then -- check level
-      self:sendChatMessage("Niveau trop bas.")
-      return
-    end
-    async(function()
-      -- acquire target
-      local target
-      if spell.target_type == "player" then
-        target = self:requestPickTarget("player", 7)
-      elseif spell.target_type == "mob-player" then
-        target = self:requestPickTarget("mob", 7)
-        -- check for invalid player target
-        if class.is(target, Client) and not self:canFight(target) then target = nil end
-      elseif spell.target_type == "self" then
-        target = self
-      elseif spell.target_type == "around" then
-        target = self
-      end
-      if not target then
-        self:sendChatMessage("Cible invalide.")
-        return
-      end
-      -- check line of sight
-      if spell.type == "fireball" and not self:hasLOS(target.cx, target.cy) then
-        self:sendChatMessage("Pas de ligne de vue.")
-        return
-      end
-      -- cast
-      self:setMana(self.mana-spell.mp)
-      self:castSpell(target, spell)
-    end)
+-- (async) Try to cast a spell.
+-- spell: spell data
+-- return true on success
+function Client:tryCastSpell(spell)
+  if spell.mp > self.mana then -- check mana
+    self:sendChatMessage("Pas assez de mana."); return
   end
+  if self.level < spell.req_level or not
+      (spell.usable_class == 0 or self.class == spell.usable_class) then
+    self:sendChatMessage("Prérequis insuffisants."); return
+  end
+  -- acquire target
+  local target
+  if spell.target_type == "player" then
+    target = self:requestPickTarget("player", 7)
+  elseif spell.target_type == "mob-player" then
+    target = self:requestPickTarget("mob", 7)
+    -- check for invalid player target
+    if class.is(target, Client) and not self:canFight(target) then target = nil end
+  elseif spell.target_type == "self" then
+    target = self
+  elseif spell.target_type == "around" then
+    target = self
+  end
+  if not target then
+    self:sendChatMessage("Cible invalide.")
+    return
+  end
+  -- check line of sight
+  if spell.type == "fireball" and not self:hasLOS(target.cx, target.cy) then
+    self:sendChatMessage("Pas de ligne de vue.")
+    return
+  end
+  -- cast
+  self:setMana(self.mana-spell.mp)
+  self:castSpell(target, spell)
+  return true
 end
 
 function Client:playMusic(path)
@@ -1732,10 +1739,9 @@ function Client:canDefend()
   return not self.running_event and not self.acting and not self.ghost and not self.blocked_defend
 end
 
--- id: spell id
-function Client:canCast(id)
-  local spell = self.server.project.spells[id]
-  if not spell then return false end
+-- Check basic cast ability.
+-- spell: spell data
+function Client:canCast(spell)
   if self.map and self.map.data.type == "safe" then
     -- check target
     if not (spell.target_type == "self" or spell.target_type == "player") then
