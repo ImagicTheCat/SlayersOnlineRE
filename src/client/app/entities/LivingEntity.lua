@@ -8,21 +8,6 @@ local HINT_DURATION = 2
 
 -- STATICS
 
-LivingEntity.atlases = {}
-
--- get cached texture atlas
-function LivingEntity.getTextureAtlas(x, y, tw, th, w, h)
-  local key = table.concat({x,y,tw,th,w,h}, ",")
-
-  local atlas = LivingEntity.atlases[key]
-  if not atlas then
-    atlas = TextureAtlas(x,y,tw,th,w,h)
-    LivingEntity.atlases[key] = atlas
-  end
-
-  return atlas
-end
-
 local ANIM_STEP_LENGTH = 11 -- pixel length for a movement step
 
 -- METHODS
@@ -45,7 +30,7 @@ function LivingEntity:__construct(data)
     w = 24, h = 32
   }
   self.texture = client:loadTexture("resources/textures/sets/"..self.charaset.path)
-  self.atlas = LivingEntity.getTextureAtlas(self.charaset.x, self.charaset.y,
+  self.atlas = client:getTextureAtlas(self.charaset.x, self.charaset.y,
     self.texture:getWidth(), self.texture:getHeight(),
     self.charaset.w, self.charaset.h)
   self.attack_sound = data.attack_sound
@@ -124,7 +109,7 @@ function LivingEntity:setCharaset(charaset)
         client:loadTexture("resources/textures/sets/"..charaset.path))
       if texture then
         self.texture = texture
-        self.atlas = LivingEntity.getTextureAtlas(charaset.x, charaset.y, texture:getWidth(), texture:getHeight(), charaset.w, charaset.h)
+        self.atlas = client:getTextureAtlas(charaset.x, charaset.y, texture:getWidth(), texture:getHeight(), charaset.w, charaset.h)
       else print("failed to load charaset \""..charaset.path.."\"") end
     end)
   else
@@ -167,7 +152,7 @@ function LivingEntity:emitAnimation(path, x, y, w, h, duration, alpha)
       local texture = client:loadTexture("resources/textures/sets/"..path)
       local anim = {
         texture = texture,
-        atlas = LivingEntity.getTextureAtlas(0, 0, texture:getWidth(), texture:getHeight(), w, h),
+        atlas = client:getTextureAtlas(0, 0, texture:getWidth(), texture:getHeight(), w, h),
         x = x,
         y = y,
         time = 0,

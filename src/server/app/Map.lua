@@ -96,8 +96,8 @@ function Map:removeFromCell(entity, x, y)
   end
 end
 
--- will remove the entity from its previous map
--- adding an entity set its position to (-1,-1) cell, it must be teleported afterwards
+-- Will remove the entity from its previous map.
+-- Adding an entity sets its position to (-1,-1) cell, it must be teleported afterwards.
 function Map:addEntity(entity)
   -- remove the entity from the previous map
   if entity.map then
@@ -334,6 +334,23 @@ function Map:killGeneratedMobs()
   local generated_mobs = self.generated_mobs
   self.generated_mobs = {} -- clear
   for mob in pairs(generated_mobs) do mob:setHealth(0) end -- kill them all
+end
+
+-- path: set path
+-- x,y: pixel position
+-- w,h: frame dimensions
+-- duration: seconds
+-- alpha: (optional) 0-1
+function Map:playAnimation(path, x, y, w, h, duration, alpha)
+  self:broadcastPacket(net.MAP_PLAY_ANIMATION, utils.pack(
+    path, x, y, w, h, duration, alpha
+  ))
+end
+
+-- path: sound path
+-- x,y: pixel position
+function Map:playSound(path, x, y)
+  self:broadcastPacket(net.MAP_PLAY_SOUND, utils.pack(path, x, y))
 end
 
 return Map

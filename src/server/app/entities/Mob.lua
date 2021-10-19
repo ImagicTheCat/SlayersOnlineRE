@@ -37,7 +37,7 @@ function Mob:__construct(data, area)
   self.ch_defense = data.defense
   self.min_damage = data.damage
   self.max_damage = data.damage
-
+  self.spell_blocked = false
 
   self.highest_damage_received = 0
   self.area = area
@@ -48,6 +48,11 @@ function Mob:__construct(data, area)
   -- self.target -- player aggro
 end
 
+function Mob:canMove()
+  return not self.spell_blocked and
+      self.data.type ~= "static" and self.data.type ~= "breakable"
+end
+
 -- (re)launch/do AI timer
 -- (starts a unique loop, will call itself again)
 function Mob:doAI()
@@ -56,20 +61,20 @@ function Mob:doAI()
       self.ai_timer:remove()
       self.ai_timer = nil
     end
-
-    if self.target and self.target.ghost then self.target = nil end -- lose target if ghost
+    -- lose target if ghost
+    if self.target and self.target.ghost then self.target = nil end
     -- lose target if aggressive and the target is gone
     if self.data.type == "aggressive" and self.target and self.target.map ~= self.map then
       self.target = nil
     end
-
+    -- next iteration
     local aggro = (self.target and self.target.map == self.map)
     self.ai_timer = timer(utils.randf(1, 5)/self.speed*(aggro and 0.25 or 1.5), function()
       if self.map then
         if aggro then -- aggro mode
           local dcx, dcy = self.target.cx-self.cx, self.target.cy-self.cy
           if math.abs(dcx)+math.abs(dcy) > 1 then -- too far, seek target
-            if self.data.type ~= "static" then -- move to target
+            if self:canMove() then -- move to target
               local dx, dy = utils.sign(dcx), utils.sign(dcy)
               if dx ~= 0 and math.abs(dcx) > math.abs(dy) and self:isCellPassable(self.cx+dx, self.cy) then
                 self:moveToCell(self.cx+dx, self.cy)
@@ -79,11 +84,11 @@ function Mob:doAI()
             end
           else -- close to target, try attack
             self:setOrientation(LivingEntity.vectorOrientation(self.target.x-self.x, self.target.y-self.y))
-            self:act("attack", 1)
+            self:attack()
           end
         else -- idle mode
           -- random movement
-          if self.data.type ~= "static" and self.data.type ~= "breakable" then
+          if self:canMove() then
             local ok
             local ncx, ncy
             -- search for a passable cell
@@ -100,8 +105,8 @@ function Mob:doAI()
               self:moveToCell(ncx, ncy)
             end
           end
-
-          if not aggro and self.data.type == "aggressive" then -- find target
+          -- find target
+          if not aggro and self.data.type == "aggressive" then
             -- target nearest player
             if next(self.map.clients) then
               local players = {}
@@ -114,7 +119,6 @@ function Mob:doAI()
             end
           end
         end
-
         -- next AI tick
         self.ai_timer = nil
         self:doAI()

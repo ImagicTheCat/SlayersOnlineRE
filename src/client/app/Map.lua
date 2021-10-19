@@ -43,6 +43,7 @@ function Map:__construct(data)
   self.dynamic_draw_list = {}
   self.front_draw_list = {}
   self.afterimages = {} -- map of entity => time
+  self.animations = {} -- list of animations
   -- create/spawn
   for _, edata in pairs(data.entities) do
     self:createEntity(edata)
@@ -100,12 +101,44 @@ function Map:onMovementsPacket(data)
   end
 end
 
+-- path: set path (will request resource)
+-- x,y: position
+-- w,h: frame dimensions
+-- duration: seconds
+-- alpha: (optional) 0-1
+function Map:playAnimation(path, x, y, w, h, duration, alpha)
+  async(function()
+    if client.rsc_manager:requestResource("textures/sets/"..path) then
+      local texture = client:loadTexture("resources/textures/sets/"..path)
+      local anim = {
+        texture = texture,
+        atlas = client:getTextureAtlas(0, 0, texture:getWidth(), texture:getHeight(), w, h),
+        x = x, y = y, time = 0, duration = duration,
+        alpha = alpha or 1
+      }
+      table.insert(self.animations, anim)
+    else print("failed to load animation \""..path.."\"") end
+  end)
+end
+
+-- path: sound path
+-- x,y: pixel position
+function Map:playSound(path, x, y)
+  async(function()
+    if client.rsc_manager:requestResource("audio/"..path) then
+      local source = client:playSound("resources/audio/"..path)
+      source:setPosition(x, y, 0)
+      source:setAttenuationDistances(16, 16*15)
+      source:setRelative(false)
+    else print("failed to load path \""..path.."\"") end
+  end)
+end
+
 function Map:tick(dt)
   -- entities tick
   for id, entity in pairs(self.entities) do
     entity:tick(dt)
   end
-
   -- afterimages tick
   for entity, time in pairs(self.afterimages) do
     entity:tick(dt)
@@ -136,7 +169,14 @@ function Map:tick(dt)
       end
     end
   end
-
+  -- animations
+  for i=#self.animations,1,-1 do
+    local anim = self.animations[i]
+    anim.time = anim.time+dt
+    if anim.time >= anim.duration then -- remove
+      table.remove(self.animations, i)
+    end
+  end
   -- sort entities by Y-top position (top-down sorting)
   table.sort(self.back_draw_list, sort_entities)
   table.sort(self.dynamic_draw_list, sort_entities)
@@ -152,44 +192,47 @@ function Map:draw()
   for _, entity in ipairs(self.back_draw_list) do
     entity:drawUnder()
   end
-
   --- dynamic entities
   for _, entity in ipairs(self.dynamic_draw_list) do
     entity:drawUnder()
   end
-
   --- front entities
   for _, entity in ipairs(self.front_draw_list) do
     entity:drawUnder()
   end
-
   -- base
   --- back entities
   for _, entity in ipairs(self.back_draw_list) do
     entity:draw()
   end
-
   --- dynamic entities
   for _, entity in ipairs(self.dynamic_draw_list) do
     entity:draw()
   end
-
   --- front entities
   for _, entity in ipairs(self.front_draw_list) do
     entity:draw()
   end
-
+  -- animations
+  for _, anim in ipairs(self.animations) do
+    local frame = math.floor(anim.time/anim.duration*anim.atlas.wc*anim.atlas.hc)
+    local cx, cy = frame%anim.atlas.wc, math.floor(frame/anim.atlas.wc)
+    local quad = anim.atlas:getQuad(cx, cy)
+    if quad then
+      if anim.alpha < 1 then love.graphics.setColor(1,1,1,anim.alpha) end
+      love.graphics.draw(anim.texture, quad, anim.x, anim.y)
+      if anim.alpha < 1 then love.graphics.setColor(1,1,1) end
+    end
+  end
   -- over
   --- back entities
   for _, entity in ipairs(self.back_draw_list) do
     entity:drawOver()
   end
-
   --- dynamic entities
   for _, entity in ipairs(self.dynamic_draw_list) do
     entity:drawOver()
   end
-
   --- front entities
   for _, entity in ipairs(self.front_draw_list) do
     entity:drawOver()

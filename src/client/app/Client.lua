@@ -363,6 +363,12 @@ function packet:MAP_EFFECT(data)
     end)
   end
 end
+function packet:MAP_PLAY_ANIMATION(data)
+  if self.map then self.map:playAnimation(unpack(data, 1, data.n)) end
+end
+function packet:MAP_PLAY_SOUND(data)
+  if self.map then self.map:playSound(unpack(data, 1, data.n)) end
+end
 
 -- METHODS
 
@@ -443,6 +449,7 @@ function Client:__construct(cfg)
   self.stats = {}
 
   self.textures = {} -- map of texture path => image
+  self.atlases = {} -- cached texture atlases
   self.map_effect = "none"
 
   self.sound_sources = {} -- list of source
@@ -1544,13 +1551,22 @@ end
 
 function Client:loadTexture(path)
   local image = self.textures[path]
-
   if not image then
     image = love.graphics.newImage(path)
     self.textures[path] = image
   end
-
   return image
+end
+
+-- Get cached texture atlas.
+function Client:getTextureAtlas(x, y, tw, th, w, h)
+  local key = table.concat({x,y,tw,th,w,h}, ",")
+  local atlas = self.atlases[key]
+  if not atlas then
+    atlas = TextureAtlas(x,y,tw,th,w,h)
+    self.atlases[key] = atlas
+  end
+  return atlas
 end
 
 -- inventory interactions

@@ -136,7 +136,7 @@ end
 local SPELL_TYPES = {
   [0] = "unique",
   "fireball",
-  "AOE",
+  "AoE",
   "teleport",
   "resurrect",
   "jump-attack",
@@ -147,7 +147,7 @@ local SPELL_TARGET_TYPES = {
   [0] = "player",
   "mob-player",
   "self",
-  "area"
+  "around"
 }
 
 local SPELL_POSITION_TYPES = {
