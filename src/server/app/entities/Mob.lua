@@ -9,27 +9,23 @@ end)
 
 local Mob = class("Mob", LivingEntity)
 
--- STATICS
-
--- METHODS
+local AGGRO_RANGE = 15 -- radius in cells
 
 -- data: mob data
 -- area: (optional) bound mob area
 function Mob:__construct(data, area)
   LivingEntity.__construct(self)
-
   self.nettype = "Mob"
   self.data = data
-
   self:setOrientation(2)
-
   self:setCharaset({
     path = string.sub(data.charaset, 9), -- remove Chipset\ part
     x = 0, y = 0,
     w = data.w,
     h = data.h
   })
-
+  -- remove Sound\ parts
+  self:setSounds(string.sub(data.attack_sound, 7), string.sub(data.hurt_sound, 7))
   self.speed = data.speed
   self.obstacle = data.obstacle
   self.max_health = data.health
@@ -39,14 +35,10 @@ function Mob:__construct(data, area)
   self.min_damage = data.damage
   self.max_damage = data.damage
   self.spell_blocked = false
-
-  self.highest_damage_received = 0
   self.area = area
-
-  -- remove Sound\ parts
-  self:setSounds(string.sub(data.attack_sound, 7), string.sub(data.hurt_sound, 7))
-
-  -- self.target -- player aggro
+  -- Players to kill, weak map of client/player => kill priority.
+  self.bingobook = setmetatable({}, {__mode = "k"})
+  -- self.target
 end
 
 function Mob:canMove()
@@ -54,77 +46,104 @@ function Mob:canMove()
       self.data.type ~= "static" and self.data.type ~= "breakable"
 end
 
--- (re)launch/do AI timer
--- (starts a unique loop, will call itself again)
-function Mob:doAI()
-  if self.map then
-    if self.ai_timer then -- remove previous timer if not done
-      self.ai_timer:remove()
-      self.ai_timer = nil
+-- (async) Wait with the ability to wake-up.
+-- delay: seconds
+local function waitAction(self, delay)
+  local task = async(); self.wait_task = task
+  local rtimer = timer(delay, task); task:wait()
+  rtimer:remove(); self.wait_task = nil
+end
+
+-- Seek target, if not in range move towards it (AI).
+-- range: cells
+-- return true if in range
+local function seekTarget(self, target, range)
+  local dcx, dcy = target.cx-self.cx, target.cy-self.cy
+  if math.abs(dcx)+math.abs(dcy) > range then -- too far, seek target
+    if self:canMove() then -- move to target
+      local dx, dy = utils.dvec(dcx, dcy)
+      if self:isCellPassable(self.cx+dx, self.cy+dy) then
+        self:moveToCell(self.cx+dx, self.cy+dy)
+      end
     end
-    -- lose target if ghost
-    if self.target and self.target.ghost then self.target = nil end
-    -- lose target if aggressive and the target is gone
-    if self.data.type == "aggressive" and self.target and self.target.map ~= self.map then
-      self.target = nil
+  else return true end
+end
+
+-- async
+local function AI_thread(self)
+  self.ai_running = true
+  while self.map do
+    do -- target acquisition
+      -- detect players if aggressive
+      if self.data.type == "aggressive" then
+        for client in pairs(self.map.clients) do
+          local dx, dy = client.x-self.x, client.y-self.y
+          if math.sqrt(dx*dx+dy*dy) <= AGGRO_RANGE*16 then
+            self:addToBingoBook(client, 10)
+          end
+        end
+      end
+      -- select highest from bingo book
+      local targets = {}
+      for client, priority in pairs(self.bingobook) do
+        if not client.ghost then
+          if self.map == client.map then table.insert(targets, {client, priority}) end
+        else self.bingobook[client] = nil end -- dead, remove
+      end
+      table.sort(targets, function(a,b) return a[2] > b[2] end)
+      self.target = targets[1] and targets[1][1]
     end
-    -- next iteration
-    local aggro = (self.target and self.target.map == self.map)
-    self.ai_timer = timer(utils.randf(1, 5)/self.speed*(aggro and 0.25 or 1.5), function()
-      if self.map then
-        if aggro then -- aggro mode
-          local dcx, dcy = self.target.cx-self.cx, self.target.cy-self.cy
-          if math.abs(dcx)+math.abs(dcy) > 1 then -- too far, seek target
-            if self:canMove() then -- move to target
-              local dx, dy = utils.sign(dcx), utils.sign(dcy)
-              if dx ~= 0 and math.abs(dcx) > math.abs(dy) and self:isCellPassable(self.cx+dx, self.cy) then
-                self:moveToCell(self.cx+dx, self.cy)
-              elseif dy ~= 0 and self:isCellPassable(self.cx, self.cy+dy) then
-                self:moveToCell(self.cx, self.cy+dy)
-              end
-            end
-          else -- close to target, try attack
+    -- active behavior
+    if not self.acting then
+      if self.target then -- combat mode
+        local spell = self:selectSpell()
+        if spell then -- cast a spell
+          if spell.target_type == "self" or spell.target_type == "around" then
+            self:castSpell(self, spell)
+          elseif seekTarget(self, self.target, AGGRO_RANGE) then
+            self:setOrientation(LivingEntity.vectorOrientation(self.target.x-self.x, self.target.y-self.y))
+            self:castSpell(self.target, spell)
+          end
+        else -- regular attack
+          if seekTarget(self, self.target, 1) then
             self:setOrientation(LivingEntity.vectorOrientation(self.target.x-self.x, self.target.y-self.y))
             self:attack()
           end
-        else -- idle mode
-          -- random movement
-          if self:canMove() then
-            local ok
-            local ncx, ncy
-            -- search for a passable cell
-            local i = 1
-            while not ok and i <= 10 do
-              local orientation = math.random(0,3)
-              local dx, dy = LivingEntity.orientationVector(orientation)
-              ncx, ncy = self.cx+dx, self.cy+dy
-              ok = self:isCellPassable(ncx, ncy)
-              i = i+1
-            end
-
-            if ok then
-              self:moveToCell(ncx, ncy)
-            end
-          end
-          -- find target
-          if not aggro and self.data.type == "aggressive" then
-            -- target nearest player
-            if next(self.map.clients) then
-              local players = {}
-              for client in pairs(self.map.clients) do
-                local dx, dy = client.x-self.x, client.y-self.y
-                table.insert(players, {client, math.sqrt(dx*dx+dy*dy)})
-              end
-              table.sort(players, function(a,b) return a[2] < b[2] end)
-              self.target = players[1][1]
-            end
-          end
         end
-        -- next AI tick
-        self.ai_timer = nil
-        self:doAI()
+      else -- idle mode
+        if self:canMove() then -- random movements
+          -- search for a passable cell
+          local done, ncx, ncy
+          local dirs = {0,1,2,3}
+          while not done and #dirs > 0 do
+            local i = math.random(1, #dirs)
+            local orientation = dirs[i]
+            table.remove(dirs, i)
+            local dx, dy = LivingEntity.orientationVector(orientation)
+            ncx, ncy = self.cx+dx, self.cy+dy
+            if self:isCellPassable(ncx, ncy) then done = true end
+          end
+          if done then self:moveToCell(ncx, ncy) end
+        end
       end
-    end)
+    end
+    -- next
+    waitAction(self, self.target and 0.5 or math.max(0.5, utils.randf(1.5, 7.5)/self.speed))
+  end
+  self.ai_running = nil
+end
+
+function Mob:addToBingoBook(client, amount)
+  self.bingobook[client] = (self.bingobook[client] or 0)+amount
+end
+
+-- Select spell to cast.
+-- return spell data or nil on failure
+function Mob:selectSpell()
+  for i=1,10 do
+    local id, probability = unpack(self.data.spells[i])
+    local spell = server.project.spells[id]
+    if spell and math.random(1, 100) <= probability then return spell end
   end
 end
 
@@ -153,16 +172,10 @@ function Mob:onAttack(attacker)
   if class.is(attacker, Client) then
     self.last_attacker = attacker
     local amount = attacker:computeAttack(self)
-    if self.data.type ~= "breakable" then -- update target
-      -- update target if without target or on max damage
-      if not (self.target and self.target.map == self.map) or (amount and amount >= self.highest_damage_received) then
-        self.highest_damage_received = amount or 0
-        self.target = attacker
-        self:doAI() -- update timer
-      end
-    end
     self:damage(amount)
+    self:addToBingoBook(attacker, amount or 0)
     attacker:triggerGearSpells(self)
+    if self.wait_task then self.wait_task() end
     return true
   end
 end
@@ -206,7 +219,7 @@ function Mob:onMapChange()
   LivingEntity.onMapChange(self)
 
   if self.map and self.data.type ~= "breakable" then
-    self:doAI()
+    if not self.ai_running then async(function() AI_thread(self) end) end
   end
 end
 
