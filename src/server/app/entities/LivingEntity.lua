@@ -1,5 +1,6 @@
-local Entity = require("app.Entity")
 local utils = require("app.lib.utils")
+local Entity = require("app.Entity")
+local XPtable = require("app.XPtable")
 local cfg = require("config")
 -- deferred
 local Client
@@ -10,14 +11,6 @@ end)
 local LivingEntity = class("LivingEntity", Entity)
 
 -- STATICS
-
-LivingEntity.spell_patterns = {
-  vfunction = "%%([%w_]+)%((.-)%)%%", -- %func(...)%
-  caster_var = "%%%[Wizard%]%.([^%.%s%%%(%)]+)%%", -- %[Wizard].var%
-  target_var = "%%%[Cible%]%.([^%.%s%%%(%)]+)%%", -- %[Cible].var%
-  spell_ins = "^%s*spell:%s*([^%.%%%(%)]+)%s*$", -- spell: name
-  assignment_ins = "^%s*(.-)=(.*)$" -- var=value
-}
 
 -- return dx,dy (direction) or nil on invalid orientation (0-3)
 function LivingEntity.orientationVector(orientation)
@@ -46,34 +39,30 @@ end
 
 -- PRIVATE METHODS
 
--- spell var function definitions, map of id => function
--- function(target, args...): should return a number or a string
---- args...: passed string expressions (after substitution)
+-- Function vars definitions, map of id => function.
+-- form: %var(...)%
+-- function(state, args...)
+local function_vars = {}
 
-local spell_vfunctions = {}
-
-function spell_vfunctions:rand(max)
+function function_vars:rand(max)
   if max then
-    return math.random(0, (utils.computeExpression(max) or 1)-1)
+    return math.random(0, (tonumber(max) or 1)-1)
   end
 end
-
-function spell_vfunctions:min(a, b)
+function function_vars:min(a, b)
   if a and b then
-    return math.min(utils.computeExpression(a) or 0, utils.computeExpression(b) or 0)
+    return math.min(tonumber(a) or 0, tonumber(b) or 0)
   end
 end
-
-function spell_vfunctions:max(a, b)
+function function_vars:max(a, b)
   if a and b then
-    return math.max(utils.computeExpression(a) or 0, utils.computeExpression(b) or 0)
+    return math.max(tonumber(a) or 0, tonumber(b) or 0)
   end
 end
 
--- caster var accessor definitions, map of id => function
--- function(caster, value): should return a number or a string on get mode
---- value: passed string expression (after substitution) on set mode (nil on get mode)
-
+-- Caster var accessor definitions, map of id => function.
+-- function(caster, value): should return on get mode
+--- value: nil on get mode
 local caster_vars = {}
 
 function caster_vars:Force(value)
@@ -81,57 +70,47 @@ function caster_vars:Force(value)
     return self.strength_pts or 0
   end
 end
-
 function caster_vars:Dext(value)
   if not value then
     return self.dexterity_pts or 0
   end
 end
-
 function caster_vars:Constit(value)
   if not value then
     return self.constitution_pts or 0
   end
 end
-
 function caster_vars:Magie(value)
   if not value then
     return self.magic_pts or 0
   end
 end
-
 function caster_vars:Attaque(value)
   if not value then
     return self.ch_attack
   end
 end
-
 function caster_vars:Defense(value)
   if not value then
     return self.ch_defense
   end
 end
-
 function caster_vars:Vie(value)
   if value then
     -- effect
-    value = utils.computeExpression(value) or 0
     local delta = value-self.health
     if delta > 0 then self:emitHint({{0,1,0}, utils.fn(delta)})
     elseif delta < 0 then self:broadcastPacket("damage", -delta) end
-
     self:setHealth(value)
   else
     return self.health
   end
 end
-
 function caster_vars:VieMax(value)
   if not value then
     return self.max_health
   end
 end
-
 function caster_vars:CurrentMag(value)
   if value then
     self:setMana(utils.computeExpression(value) or 0)
@@ -139,83 +118,79 @@ function caster_vars:CurrentMag(value)
     return self.mana
   end
 end
-
 function caster_vars:MagMax(value)
   if not value then
     return self.max_mana
   end
 end
-
 function caster_vars:Alignement(value)
   if not value then
     return self.alignment or 0
   end
 end
-
 function caster_vars:Reputation(value)
   if not value then
     return self.reputation or 0
   end
 end
-
 function caster_vars:Gold(value)
   if not value then
     return self.gold or 0
   end
 end
-
 function caster_vars:Lvl(value)
-  if not value then
-    return self.level or 0
+  if not value then return self.level or 0
+  else
+    if class.is(self, Client) then
+      local xp = XPtable[tonumber(value) or 0]
+      if xp then
+        local delta = xp-self.xp
+        self:emitHint({{0,0.9,1}, utils.fn(delta, true)})
+        self:setXP(xp)
+      end
+    end
   end
 end
-
 function caster_vars:CurrentXP(value)
-  if not value then
-    return self.xp or 0
+  if not value then return self.xp or 0
+  else
+    if class.is(self, Client) then self:setXP(value) end
   end
 end
-
 function caster_vars:Dommage(value)
   if not value then
     return 0
   end
 end
-
 function caster_vars:HandDom(value)
   if not value then
     return 0
   end
 end
-
 function caster_vars:IndOff(value)
   if not value then
     local class_data = server.project.classes[self.class]
     return class_data and class_data.off_index or 0
   end
 end
-
 function caster_vars:IndDef(value)
   if not value then
     local class_data = server.project.classes[self.class]
     return class_data and class_data.def_index or 0
   end
 end
-
 function caster_vars:IndPui(value)
   if not value then
     local class_data = server.project.classes[self.class]
     return class_data and class_data.pow_index or 0
   end
 end
-
 function caster_vars:IndVit(value)
   if not value then
     local class_data = server.project.classes[self.class]
     return class_data and class_data.health_index or 0
   end
 end
-
 function caster_vars:IndMag(value)
   if not value then
     local class_data = server.project.classes[self.class]
@@ -223,48 +198,89 @@ function caster_vars:IndMag(value)
   end
 end
 
--- target var accessor definitions, map of id => function
--- function(target, value): should return a number or a string on get mode
---- value: passed string expression (after substitution) on set mode (nil on get mode)
-
+-- Target var accessor definitions, map of id => function.
+-- function(target, value): should return on get mode
+--- value: nil on get mode
 local target_vars = {}
 
 function target_vars:Vie(value)
   if value then
     -- effect
-    value = utils.computeExpression(value) or 0
     local delta = value-self.health
     if delta > 0 then self:emitHint({{0,1,0}, utils.fn(delta)})
     elseif delta < 0 then self:broadcastPacket("damage", -delta) end
-
     self:setHealth(value)
   else
     return self.health
   end
 end
-
 function target_vars:Attaque(value)
   if not value then
     return self.ch_attack
   end
 end
-
 function target_vars:Defense(value)
   if not value then
     return self.ch_defense
   end
 end
-
 function target_vars:Bloque(value)
   if not value then
     return 0
   end
 end
-
 function target_vars:Dommage(value)
   if not value then
     return 0
   end
+end
+
+do -- Build spell execution environment.
+  local function sanitize_result(v)
+    if v ~= v then return 0 -- NaN
+    elseif math.abs(v) == 1/0 then return 0 -- inf
+    else return math.floor(v) end
+  end
+  local function var(state, id, value)
+    local caster = state.caster
+    if value then
+      if class.is(caster, Client) then caster:setVariable(id, value) end
+    else
+      if class.is(caster, Client) then return caster:getVariable(id) end
+      return 0
+    end
+  end
+  local function func_var(state, id, ...)
+    local f = function_vars[id]
+    if f then return f(state, ...) end
+  end
+  local function caster_var(state, id, value)
+    local f = caster_vars[id]
+    if f then
+      if value then f(state.caster, value)
+      else return f(state.caster) end
+    end
+  end
+  local function target_var(state, id, value)
+    local f = target_vars[id]
+    if f then
+      if value then f(state.target, value)
+      else return f(state.target) end
+    end
+  end
+  -- spell command
+  local function spell(state, id)
+    local spell_data = server.project.spells[server.project.spells_by_name[id]]
+    if spell_data then state.target:applySpell(state.caster, spell_data) end
+  end
+  LivingEntity.spell_env = {
+    R = sanitize_result,
+    var = var,
+    caster_var = caster_var,
+    target_var = target_var,
+    func_var = func_var,
+    spell = spell
+  }
 end
 
 -- METHODS
@@ -312,14 +328,12 @@ end
 function LivingEntity:setSounds(attack_sound, hurt_sound)
   self.attack_sound = attack_sound
   self.hurt_sound = hurt_sound
-
   self:broadcastPacket("ch_sounds", {self.attack_sound, self.hurt_sound})
 end
 
 function LivingEntity:setOrientation(orientation)
   if self.orientation ~= orientation and orientation >= 0 and orientation < 4 then
     self.orientation = orientation
-
     self:broadcastPacket("ch_orientation", orientation)
   end
 end
@@ -429,7 +443,6 @@ end
 function LivingEntity:act(action, duration)
   if not self.acting then
     self.acting = action
-
     if action == "attack" then
       -- attack check
       local client = (class.is(self, Client) and self or self.client)
@@ -440,9 +453,7 @@ function LivingEntity:act(action, duration)
         end
       end
     end
-
     -- TODO: defend effect
-
     -- do animation
     self:broadcastPacket("act", {self.acting, duration})
     timer(duration, function() self.acting = false end)
@@ -484,16 +495,40 @@ function LivingEntity:computeAttack(target)
   end
 end
 
--- apply spell (self is target)
--- caster: spell caster (LivingEntity)
+local function spell_error_handler(err)
+  io.stderr:write(debug.traceback("spell: "..err, 2).."\n")
+end
+
+-- Protected call of spell functions.
+local function spellEval(f, ...)
+  if f then
+    local ok, r = xpcall(f, spell_error_handler, ...)
+    if ok then return r end
+  end
+end
+
+-- Cast a spell.
+-- target: LivingEntity
+-- spell: spell data
+function LivingEntity:castSpell(target, spell)
+  local cast_duration = spell.cast_duration*0.03
+  -- cast spell
+  self:act("cast", cast_duration)
+  timer(cast_duration, function()
+    self:emitHint({{0.77,0.18,1}, spell.name})
+    target:applySpell(self, spell)
+  end)
+end
+
+-- Apply spell effects (self is target).
+-- caster: LivingEntity
 -- spell: spell data
 function LivingEntity:applySpell(caster, spell)
-  local CE, ES = utils.computeExpression, self.spellExpressionSubstitution
-  local area = CE(ES(self, caster, spell.area_expr)) or 0
-  local aggro = CE(ES(self, caster, spell.aggro_expr)) or 0
-  local duration = CE(ES(self, caster, spell.duration_expr)) or 1
-  local hit = CE(ES(self, caster, spell.hit_expr)) or 1
-
+  local state = {caster = caster, target = self, spell = spell}
+  local area = spellEval(spell.area_func, state) or 0
+  local aggro = spellEval(spell.aggro_func, state) or 0
+  local duration = spellEval(spell.duration_func, state) or 1
+  local hit = spellEval(spell.hit_func, state) or 1
   if hit > 0 then -- success
     -- audio/visual effects
     if #spell.set > 0 then
@@ -501,109 +536,10 @@ function LivingEntity:applySpell(caster, spell)
         spell.x, spell.y, spell.w, spell.h, spell.anim_duration*0.03, spell.opacity/255)
     end
     if #spell.sound > 0 then self:emitSound(string.sub(spell.sound, 7)) end -- remove Sound\ part
-
-    -- instructions
-    self:spellExecuteInstructions(caster, spell.effect_expr)
+    -- effect
+    spellEval(spell.effect_func, state)
   else
     self:damage(nil) -- miss
-  end
-end
-
--- process the string to substitute all spell language patterns (self is target)
--- caster: spell caster (LivingEntity)
--- return processed string
-function LivingEntity:spellExpressionSubstitution(caster, str)
-  local pat = LivingEntity.spell_patterns
-
-  -- variable functions "%func(...)%"
-  str = utils.gsub(str, pat.vfunction, function(id, content)
-    local f = spell_vfunctions[id]
-    if f then
-      -- process function arguments
-      local args = utils.split(content, ",")
-      for i=1,#args do
-        args[i] = self:spellExpressionSubstitution(caster, args[i])
-      end
-      return f(self, unpack(args))
-    else print("spell: variable function \""..id.."\" not implemented") end
-  end)
-
-  -- caster vars
-  str = string.gsub(str, pat.caster_var, function(id)
-    -- check for client variable
-    local v_id = string.match(id, "Variable%[(%d+)%]")
-    if v_id then
-      return class.is(caster, Client) and caster:getVariable("var", tonumber(v_id)) or 0
-    else -- regular variable
-      local f = caster_vars[id]
-      if f then return f(caster)
-      else print("spell: caster variable \""..id.."\" not implemented") end
-    end
-  end)
-
-  -- target vars
-  str = string.gsub(str, pat.target_var, function(id)
-    local f = target_vars[id]
-    if f then return f(self)
-    else print("spell: target variable \""..id.."\" not implemented") end
-  end)
-
-  return str
-end
-
--- execute spell instructions (self is target)
--- caster: spell caster (LivingEntity)
-function LivingEntity:spellExecuteInstructions(caster, str)
-  local pat = LivingEntity.spell_patterns
-
-  local spells = {}
-  local instructions = utils.split(str, ";")
-  for i, instruction in ipairs(instructions) do
-    -- spell instruction
-    local spell = string.match(instruction, pat.spell_ins)
-    if spell then table.insert(spells, spell); break end
-
-    -- assignment
-    local lhs, rhs = string.match(instruction, pat.assignment_ins)
-    if lhs then
-      -- compute rhs
-      local rhs = self:spellExpressionSubstitution(caster, rhs)
-
-      -- parse lhs var type and id
-      local lhs_type, lhs_id
-      lhs_id = string.match(lhs, pat.caster_var)
-      if lhs_id then lhs_type = "caster"
-      else
-        lhs_id = string.match(lhs, pat.target_var)
-        if lhs_id then lhs_type = "target" end
-      end
-
-      -- assignment
-      if lhs_type == "caster" then
-        -- check for client variable
-        local v_id = string.match(id, "Variable%[(%d+)%]")
-        if v_id then
-          if class.is(caster, Client) then
-            caster:setVariable("var", tonumber(v_id), utils.computeExpression(rhs) or 0)
-          end
-        else -- regular variable
-          local f = caster_vars[id]
-          if f then f(caster, rhs)
-          else print("spell: caster variable \""..id.."\" not implemented") end
-        end
-      elseif lhs_type == "target" then
-        local f = target_vars[lhs_id]
-        if f then f(self, rhs)
-        else print("spell: target variable \""..id.."\" not implemented") end
-      end
-    end
-  end
-
-  -- apply spells
-  for _, name in pairs(spells) do
-    local spell = server.project.spells[server.project.spells_by_name[name]]
-    if spell then self:applySpell(caster, spell)
-    else print("spell: spell \""..name.."\" not found") end
   end
 end
 
