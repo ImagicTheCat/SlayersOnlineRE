@@ -15,6 +15,7 @@ function Map:__construct(server, id, data)
   self.entities = {} -- map of entity => id
   self.entities_by_id = {} -- map of id => entity
   self.clients = {} -- map of client
+  self.mobs = {} -- map of all mobs
   self.cells = {} -- map space partitioning (16x16 cells), map of cell index => map of entity
   self.living_entity_updates = {} -- map of living entity
   self.movement_packet_count = 0
@@ -100,10 +101,7 @@ end
 -- Adding an entity sets its position to (-1,-1) cell, it must be teleported afterwards.
 function Map:addEntity(entity)
   -- remove the entity from the previous map
-  if entity.map then
-    entity.map:removeEntity(entity)
-  end
-
+  if entity.map then entity.map:removeEntity(entity) end
   if not entity.client or self.clients[entity.client] then -- unbound or bound to existing client
     -- reference
     local id = self.id_gen
@@ -114,12 +112,8 @@ function Map:addEntity(entity)
     entity.map = self
     entity.x, entity.y = -16, -16
     entity.cx, entity.cy = -1, -1
-
     -- reference client bound entity
-    if entity.client then
-      entity.client.entities[entity] = true
-    end
-
+    if entity.client then entity.client.entities[entity] = true end
     -- send entity packet to bound or all map clients
     if entity.nettype then
       if entity.client and self.clients[entity.client] then
@@ -128,21 +122,17 @@ function Map:addEntity(entity)
         self:broadcastPacket(net.ENTITY_ADD, entity:serializeNet())
       end
     end
-
-    if class.is(entity, Client) then
-      self.clients[entity] = true
-    end
-
+    -- reference
+    if class.is(entity, Client) then self.clients[entity] = true
+    elseif class.is(entity, Mob) then self.mobs[entity] = true end
     entity:onMapChange() -- add event
   end
 end
 
 function Map:removeEntity(entity)
   local ok = self.entities[entity]
-
   if ok then
     local id = entity.id
-
     -- unreference
     entity.id = nil
     entity.map = nil
@@ -150,21 +140,18 @@ function Map:removeEntity(entity)
     self.entities_by_id[id] = nil
     self:removeFromCell(entity, entity.cx, entity.cy)
     self.generated_mobs[entity] = nil
-
+    self.mobs[entity] = nil
     -- unreference client bound entity
     if entity.client then
       entity.client.entities[entity] = nil
     end
-
     if class.is(entity, Client) then -- handle client removal
       self.clients[entity] = nil
-
       -- remove client bound entities
       for c_entity in pairs(entity.entities) do
         self:removeEntity(c_entity)
       end
     end
-
     -- send entity packet to bound or all map clients
     if entity.nettype then
       if entity.client and self.clients[entity.client] then
@@ -173,7 +160,6 @@ function Map:removeEntity(entity)
         self:broadcastPacket(net.ENTITY_REMOVE, id)
       end
     end
-
     entity:onMapChange() -- removal event
   end
 end
@@ -302,7 +288,6 @@ function Map:mobAreaSpawnTask(index)
       local mob_data = self.server.project.mobs[def.type+1]
       if mob_data then
         local mob = Mob(mob_data, area)
-
         -- find position
         local i = 0
         local done = false

@@ -3,11 +3,10 @@ local Entity = require("app.Entity")
 local XPtable = require("app.XPtable")
 local cfg = require("config")
 -- deferred
-local Client, Projectile, Player, Mob
+local Client, Projectile, Mob
 timer(0.01, function()
   Client = require("app.Client")
   Projectile = require("app.entities.Projectile")
-  Player = require("app.entities.Player")
   Mob = require("app.entities.Mob")
 end)
 
@@ -126,12 +125,18 @@ end
 function caster_vars:Dommage(value)
   if not value then return self.min_damage end
 end
-function caster_vars:Vie(value)
+function caster_vars:Vie(value, state)
   if value then
     -- effect
     local delta = value-self.health
     if delta > 0 then self:emitHint({{0,1,0}, utils.fn(delta)})
-    elseif delta < 0 then self:broadcastPacket("damage", -delta) end
+    elseif delta < 0 then
+      self:broadcastPacket("damage", -delta)
+      -- add damages to bingo book
+      if class.is(self, Mob) and class.is(state.caster, Client) then
+        self:addToBingoBook(state.caster, -delta)
+      end
+    end
     self:setHealth(value)
   else
     return self.health
@@ -237,7 +242,7 @@ function caster_vars:IndMag(value)
 end
 
 -- Target var accessor definitions, map of id => function.
--- function(target, value): should return on get mode
+-- function(target, value, state): should return on get mode
 --- value: nil on get mode
 local target_vars = {}
 
@@ -246,11 +251,12 @@ target_vars.Attaque = caster_vars.Attaque
 target_vars.Defense = caster_vars.Defense
 target_vars.Dommage = caster_vars.Dommage
 
-function target_vars:Bloque(value)
+function target_vars:Bloque(value, state)
   if not value then return self.spell_blocked and 1 or 0
   else
     if class.is(self, Client) or class.is(self, Mob) then
       self.spell_blocked = value > 0
+      state.spell_block = true
     end
   end
 end
@@ -277,17 +283,15 @@ do -- Build spell execution environment.
   local function caster_var(state, id, value)
     local f = caster_vars[id]
     if f then
-      if value then f(state.caster, value)
-      else return f(state.caster) end
+      if value then f(state.caster, value, state)
+      else return f(state.caster, nil, state) end
     end
   end
   local function target_var(state, id, value)
     local f = target_vars[id]
     if f then
-      if value then
-        if id == "Bloque" then state.spell_block = true end
-        f(state.target, value)
-      else return f(state.target) end
+      if value then f(state.target, value, state)
+      else return f(state.target, nil, state) end
     end
   end
   -- spell command
@@ -622,6 +626,11 @@ local function applySpellStep(state)
     state.target.spell_blocked = false
   end
   -- apply
+  --- trigger aggressivity
+  if class.is(state.caster, Client) and class.is(state.target, Mob) then
+    state.target:addToBingoBook(state.caster, 0)
+  end
+  --- hit
   local spell = state.spell
   local hit = spellEval(spell.hit_func, state) or 1
   if hit > 0 then -- success
@@ -683,13 +692,17 @@ function LivingEntity:applySpell(caster, spell)
                 -- check touch
                 local touched = false
                 if spell.target_type == "mob-player" or spell.target_type == "around" then
-                  -- caster: Mob
-                  touched = class.is(caster, Mob) and class.is(entity, Client)
-                  -- caster: Client/Player
-                  touched = touched or class.is(caster, Client) and
-                      (class.is(entity, Mob) or class.is(entity, Client) and caster:canFight(entity))
+                  if class.is(caster, Client) then
+                    touched = class.is(entity, Mob) or class.is(entity, Client) and caster:canFight(entity)
+                  elseif class.is(caster, Mob) then
+                    touched = class.is(entity, Client)
+                  end
                 elseif spell.target_type == "player" then
-                  touched = class.is(entity, Client) and entity ~= caster
+                  if class.is(caster, Client) then
+                    touched = class.is(entity, Client) and entity ~= caster
+                  elseif class.is(caster, Mob) then
+                    touched = class.is(entity, Mob) and entity ~= caster
+                  end
                 end
                 -- apply
                 if touched then

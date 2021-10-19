@@ -1,15 +1,14 @@
 local LivingEntity = require("app.entities.LivingEntity")
 local utils = require("app.lib.utils")
 -- deferred
-local Player, Client
+local Client
 timer(0.01, function()
-  Player = require("app.entities.Player")
   Client = require("app.Client")
 end)
 
 local Mob = class("Mob", LivingEntity)
 
-local AGGRO_RANGE = 15 -- radius in cells
+local AGGRO_RANGE = 8 -- radius in cells
 
 -- data: mob data
 -- area: (optional) bound mob area
@@ -94,13 +93,24 @@ local function AI_thread(self)
       self.target = targets[1] and targets[1][1]
     end
     -- active behavior
-    if not self.acting then
+    if not self.acting and not self.move_task then
       if self.target then -- combat mode
         local spell = self:selectSpell()
         if spell then -- cast a spell
-          if spell.target_type == "self" or spell.target_type == "around" then
+          if spell.target_type == "self" or spell.target_type == "around" then -- self
             self:castSpell(self, spell)
-          elseif seekTarget(self, self.target, AGGRO_RANGE) then
+          elseif spell.target_type == "player" then -- mobs (allies)
+            -- find mobs in range
+            local targets = {}
+            for mob in pairs(self.map.mobs) do
+              local dx, dy = mob.x-self.x, mob.y-self.y
+              if mob ~= self and math.sqrt(dx*dx+dy*dy) <= AGGRO_RANGE*16 then
+                table.insert(targets, mob)
+              end
+            end
+            if #targets > 0 then self:castSpell(targets[math.random(1, #targets)], spell) end
+          elseif seekTarget(self, self.target, spell.type == "sneak-attack" and 1 or AGGRO_RANGE) then
+            -- players (enemies)
             self:setOrientation(LivingEntity.vectorOrientation(self.target.x-self.x, self.target.y-self.y))
             self:castSpell(self.target, spell)
           end
