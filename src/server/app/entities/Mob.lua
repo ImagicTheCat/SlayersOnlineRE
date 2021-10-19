@@ -35,8 +35,9 @@ function Mob:__construct(data, area)
   self.max_damage = data.damage
   self.spell_blocked = false
   self.area = area
-  -- Players to kill, weak map of client/player => kill priority.
-  self.bingobook = setmetatable({}, {__mode = "k"})
+  -- Players to kill, map of user id => kill priority.
+  -- Will persist even if a player moves to another map, disconnects or dies.
+  self.bingobook = {}
   -- self.target
 end
 
@@ -78,16 +79,17 @@ local function AI_thread(self)
         for client in pairs(self.map.clients) do
           local dx, dy = client.x-self.x, client.y-self.y
           if math.sqrt(dx*dx+dy*dy) <= AGGRO_RANGE*16 then
-            self:addToBingoBook(client, 10)
+            self:addToBingoBook(client, self.data.health*0.1)
           end
         end
       end
-      -- select highest from bingo book
+      -- select highest valid player from bingo book
       local targets = {}
-      for client, priority in pairs(self.bingobook) do
-        if not client.ghost then
-          if self.map == client.map then table.insert(targets, {client, priority}) end
-        else self.bingobook[client] = nil end -- dead, remove
+      for user_id, priority in pairs(self.bingobook) do
+        local client = server.clients_by_id[user_id]
+        if client and self.map == client.map and not client.ghost then
+          table.insert(targets, {client, priority})
+        end
       end
       table.sort(targets, function(a,b) return a[2] > b[2] end)
       self.target = targets[1] and targets[1][1]
@@ -144,7 +146,9 @@ local function AI_thread(self)
 end
 
 function Mob:addToBingoBook(client, amount)
-  self.bingobook[client] = (self.bingobook[client] or 0)+amount
+  local user_id = client.user_id
+  if not user_id then return end
+  self.bingobook[user_id] = (self.bingobook[user_id] or 0)+amount
 end
 
 -- Select spell to cast.
