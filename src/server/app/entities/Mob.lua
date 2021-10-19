@@ -1,9 +1,10 @@
 local LivingEntity = require("app.entities.LivingEntity")
 local utils = require("app.lib.utils")
 -- deferred
-local Player
+local Player, Client
 timer(0.01, function()
   Player = require("app.entities.Player")
+  Client = require("app.Client")
 end)
 
 local Mob = class("Mob", LivingEntity)
@@ -149,10 +150,9 @@ end
 
 -- override
 function Mob:onAttack(attacker)
-  if class.is(attacker, Player) then
+  if class.is(attacker, Client) then
     self.last_attacker = attacker
     local amount = attacker:computeAttack(self)
-
     if self.data.type ~= "breakable" then -- update target
       -- update target if without target or on max damage
       if not (self.target and self.target.map == self.map) or (amount and amount >= self.highest_damage_received) then
@@ -161,8 +161,8 @@ function Mob:onAttack(attacker)
         self:doAI() -- update timer
       end
     end
-
     self:damage(amount)
+    attacker:triggerGearSpells(self)
     return true
   end
 end

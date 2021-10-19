@@ -561,11 +561,12 @@ end
 -- Cast a spell.
 -- target: LivingEntity
 -- spell: spell data
-function LivingEntity:castSpell(target, spell)
-  local cast_duration = spell.cast_duration*0.03
+-- mode: (optional) "nocast" to bypass cast
+function LivingEntity:castSpell(target, spell, mode)
+  local cast_duration = (mode ~= "nocast" and spell.cast_duration*0.03 or 0.001)
   -- cast spell
   if spell.type == "sneak-attack" then -- special case, attacking
-    self:act("attack", cast_duration)
+    if mode ~= "nocast" then self:act("attack", cast_duration) end
     timer(cast_duration, function()
       -- find target
       local entities = self:raycastEntities(1)
@@ -577,9 +578,9 @@ function LivingEntity:castSpell(target, spell)
       end
     end)
   else -- regular cases, spell casting
-    self:act("cast", cast_duration)
+    if mode ~= "nocast" then self:act("cast", cast_duration) end
     timer(cast_duration, function()
-      self:emitHint({{0.77,0.18,1}, spell.name})
+      if mode ~= "nocast" then self:emitHint({{0.77,0.18,1}, spell.name}) end
       if spell.type == "fireball" then
         local proj = Projectile()
         proj:setCharaset({

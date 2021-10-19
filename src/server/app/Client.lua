@@ -1187,7 +1187,6 @@ end
 -- override
 function Client:onAttack(attacker)
   if self.ghost or attacker == self then return end
-
   if class.is(attacker, Mob) then -- mob
     self:damage(attacker:computeAttack(self))
     return true
@@ -1201,7 +1200,21 @@ function Client:onAttack(attacker)
       attacker:emitHint("-5 alignement")
     end
     self:damage(amount)
+    attacker:triggerGearSpells(self)
     return true
+  end
+end
+
+-- target: LivingEntity
+function Client:triggerGearSpells(target)
+  local objs = self.server.project.objects
+  local gears = {
+    objs[self.helmet_slot], objs[self.armor_slot],
+    objs[self.weapon_slot], objs[self.shield_slot]
+  }
+  for _, item in pairs(gears) do
+    local spell = self.server.project.spells[item.spell]
+    if spell then self:castSpell(target, spell, "nocast") end
   end
 end
 
