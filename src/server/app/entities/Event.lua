@@ -250,7 +250,7 @@ end
 
 function special_vars:Timer(value)
   if value then
-    self.client.timers[1] = (tonumber(value) or 0)
+    self.client.timers[1] = tonumber(value) or 0
   else
     return self.client.timers[1]
   end
@@ -258,7 +258,7 @@ end
 
 function special_vars:Timer2(value)
   if value then
-    self.client.timers[2] = (tonumber(value) or 0)
+    self.client.timers[2] = tonumber(value) or 0
   else
     return self.client.timers[2]
   end
@@ -266,7 +266,7 @@ end
 
 function special_vars:Timer3(value)
   if value then
-    self.client.timers[3] = (tonumber(value) or 0)
+    self.client.timers[3] = tonumber(value) or 0
   else
     return self.client.timers[3]
   end
@@ -274,7 +274,7 @@ end
 
 function special_vars:KillPlayer(value)
   if value then
-    self.client.kill_player = (tonumber(value) or 0)
+    self.client.kill_player = tonumber(value) or 0
   else
     return self.client.kill_player
   end
