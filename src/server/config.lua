@@ -5,9 +5,6 @@ return {
   -- Used to decrease event computations (prefer 1/x fractions, where x is an integer).
   event_frequency_factor = 1,
   save_period = 120, -- seconds
-  -- password salts
-  client_salt = "<client_salt>",
-  server_salt = "<server_salt>",
   project_name = "game",
   db = {
     host = "localhost",

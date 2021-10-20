@@ -12,6 +12,7 @@ local DBManager = require("app.DBManager")
 local net = require("app.protocol")
 local EventCompiler = require("app.EventCompiler")
 local SpellCompiler = require("app.SpellCompiler")
+local client_salt = require("app.client_salt")
 
 -- optional require
 local profiler
@@ -465,12 +466,19 @@ end, "", "envoyer un message serveur"}
 commands.create_account = {0, function(self, client, args)
   if not client then
     if #args < 3 or #args[2] == 0 or #args[3] == 0 then return true end -- wrong parameters
-
     local pseudo = args[2]
-    local client_password = sha2.hex2bin(sha2.sha512(self.cfg.client_salt..pseudo..args[3]))
-    local password = sha2.hex2bin(sha2.sha512(self.cfg.server_salt..pseudo..client_password))
+    local client_password = sha2.hex2bin(sha2.sha512(client_salt..pseudo..args[3]))
+    -- generate salt
+    local urandom = io.open("/dev/urandom")
+    if not urandom then print("couldn't open /dev/urandom"); return end
+    local salt = urandom:read(64)
+    if not salt or #salt ~= 64 then print("couldn't read /dev/urandom"); return end
+    urandom:close()
+    -- create account
+    local password = sha2.hex2bin(sha2.sha512(salt..client_password))
     self.db:_query("user/createAccount", {
       pseudo = args[2],
+      salt = salt,
       password = password,
       rank = tonumber(args[4]) or 10
     })
