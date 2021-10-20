@@ -742,6 +742,7 @@ function Client:__construct(server, peer)
   self.changed_bool_vars = {} -- map of bool vars id
   self.special_var_listeners = {} -- map of id (string) => map of callback
   self.timers = {0,0,0} -- %TimerX% vars (3), incremented every 30ms
+  self.last_idle_swipe = clock()
   self.kill_player = 0
   self.visible = true
   self.draw_order = 0
@@ -826,7 +827,7 @@ function Client:eventTick(timer_ticks)
     -- Timer increments.
     if self.user_id then
       -- increment timers
-      for i,time in ipairs(self.timers) do
+      for i, time in ipairs(self.timers) do
         self.timers[i] = time+timer_ticks
       end
     end
@@ -863,12 +864,21 @@ function Client:eventTick(timer_ticks)
         local ok = xpcall(event.execute, event_error_handler, event, condition)
         if ok then -- events state invalidated, swipe
           self:swipeEvents()
+          self.last_idle_swipe = clock() -- reset next idle swipe
         else -- rollback on error
           event:rollback()
         end
         self.running_event = nil
         self:setMoveForward(self.move_forward_input) -- resume movement
       end)
+    else -- swipe events when idle for timer conditions
+      -- This may not be enough to handle all editor timing patterns, but
+      -- should be good enough while preventing swipe overhead.
+      local time = clock()
+      if time-self.last_idle_swipe >= 0.25 then
+        self.last_idle_swipe = time
+        self:swipeEvents()
+      end
     end
   end
 end
