@@ -78,8 +78,9 @@ local function AI_thread(self)
       if self.data.type == "aggressive" then
         for client in pairs(self.map.clients) do
           local dx, dy = client.x-self.x, client.y-self.y
-          if math.sqrt(dx*dx+dy*dy) <= AGGRO_RANGE*16 then
-            self:addToBingoBook(client, self.data.health*0.1)
+          local dist = math.sqrt(dx*dx+dy*dy)
+          if dist <= AGGRO_RANGE*16 then
+            self:addToBingoBook(client, dist/(AGGRO_RANGE*16))
           end
         end
       end
@@ -184,10 +185,9 @@ end
 -- override
 function Mob:onAttack(attacker)
   if class.is(attacker, Client) then
-    self.last_attacker = attacker
     local amount = attacker:computeAttack(self)
-    self:damage(amount)
     self:addToBingoBook(attacker, amount or 0)
+    self:damage(amount)
     attacker:triggerGearSpells(self)
     if self.wait_task then self.wait_task() end
     return true
@@ -196,33 +196,58 @@ end
 
 -- override
 function Mob:onDeath()
-  -- loot/var
-  local killer = self.last_attacker
-  if killer then
-    -- special var increment
-    local var_id = self.data.var_id
-    if var_id >= 0 then
-      killer:setVariable("var", var_id, killer:getVariable("var", var_id)+self.data.var_increment)
-    end
-
-    -- XP
-    local xp = math.random(self.data.xp_min, self.data.xp_max)
-    killer:setXP(killer.xp+xp)
-    if xp > 0 then killer:emitHint({{0,0.9,1}, utils.fn(xp, true)}) end
-
-    -- gold
-    local gold = math.random(self.data.gold_min, self.data.gold_max)
-    killer:setGold(killer.gold+gold)
-    if gold > 0 then killer:emitHint({{1,0.78,0}, utils.fn(gold, true)}) end
-
-    -- object
-    local item = killer.server.project.objects[self.data.loot_object]
-    if item and math.random(100) <= self.data.loot_chance then
-      killer.inventory:put(self.data.loot_object)
-      killer:emitHint("+ "..item.name)
+  local gold = math.random(self.data.gold_min, self.data.gold_max)
+  local xp = math.random(self.data.xp_min, self.data.xp_max)
+  local item = server.project.objects[self.data.loot_object]
+  local dropped = item and math.random(100) <= self.data.loot_chance
+  -- loot distribution
+  --- Compute total contribution.
+  local total = 0
+  for user_id, priority in pairs(self.bingobook) do
+    total = total+priority
+  end
+  if total > 0 then
+    -- Distribute.
+    -- Use a discrete cumulative distribution function (linear search) for the item.
+    -- The shares of disconnected players is lost.
+    local item_rand = math.random()*total
+    local item_done, item_sum = false, 0
+    for user_id, priority in pairs(self.bingobook) do
+      local client = server.clients_by_id[user_id]
+      if client then
+        local fraction = priority/total
+        -- special var increment
+        local var_id = self.data.var_id
+        if var_id >= 0 then
+          client:setVariable("var", var_id, client:getVariable("var", var_id)+self.data.var_increment)
+        end
+        -- XP
+        local xp_share = math.floor(xp*fraction)
+        client:setXP(client.xp+xp_share)
+        if xp_share > 0 then client:emitHint({{0,0.9,1}, utils.fn(xp_share, true)}) end
+        -- gold
+        local gold_share = math.floor(gold*fraction)
+        client:setGold(client.gold+gold_share)
+        if gold_share > 0 then client:emitHint({{1,0.78,0}, utils.fn(gold_share, true)}) end
+        -- notify if on a different map
+        if client.map ~= self.map then
+          client:sendChatMessage("Loot récupéré du monstre "..self.data.name..
+              " depuis la map "..self.map.data.name)
+        end
+      end
+      -- item
+      if dropped and not item_done then
+        item_sum = item_sum+priority
+        if item_rand < item_sum then -- selected
+          if client then
+            client.inventory:put(self.data.loot_object)
+            client:emitHint("+ "..item.name)
+          end
+          item_done = true
+        end
+      end
     end
   end
-
   -- remove
   self.map:removeEntity(self)
   if self.area then self.area.mob_count = self.area.mob_count-1 end
