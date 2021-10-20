@@ -1493,13 +1493,17 @@ function Client:setMana(mana)
   self:send(Client.makePacket(net.STATS_UPDATE, {mana = self.mana, max_mana = self.max_mana}))
 end
 
+-- Note: extra sanitization on important values. If for some reason (e.g. a
+-- bug) a player has "inf" golds, every gold transaction can lead to an
+-- infection of all players becoming infinitly (or almost) rich.
+
 function Client:setGold(gold)
-  self.gold = math.max(0,gold)
+  self.gold = math.max(0, utils.sanitizeInt(gold))
   self:send(Client.makePacket(net.STATS_UPDATE, {gold = self.gold}))
 end
 
 function Client:setXP(xp)
-  self.xp = xp
+  self.xp = utils.sanitizeInt(xp)
   local current = XPtable[self.level]
   if self.xp < current then self.xp = current -- reset to current level XP
   else -- level ups
@@ -1524,18 +1528,18 @@ function Client:setXP(xp)
 end
 
 function Client:setAlignment(alignment)
-  self.alignment = utils.clamp(alignment, 0, 100)
+  self.alignment = utils.clamp(utils.sanitizeInt(alignment), 0, 100)
   self:send(Client.makePacket(net.STATS_UPDATE, {alignment = self.alignment}))
   self:broadcastPacket("update_alignment", self.alignment)
 end
 
 function Client:setReputation(reputation)
-  self.reputation = reputation
+  self.reputation = utils.sanitizeInt(reputation)
   self:send(Client.makePacket(net.STATS_UPDATE, {reputation = self.reputation}))
 end
 
 function Client:setRemainingPoints(remaining_pts)
-  self.remaining_pts = math.max(0, remaining_pts)
+  self.remaining_pts = math.max(0, utils.sanitizeInt(remaining_pts))
   self:send(Client.makePacket(net.STATS_UPDATE, {points = self.remaining_pts}))
 end
 
@@ -1652,7 +1656,6 @@ function Client:onDeath()
     self:setXP(new_xp)
   end
   if self.last_attacker then -- killed by player
-    print(self.last_attacker)
     -- gold stealing (1%)
     local gold_amount = math.floor(self.gold*0.01)
     if gold_amount > 0 then
@@ -1661,7 +1664,6 @@ function Client:onDeath()
       self.last_attacker:emitHint({{1,0.78,0}, utils.fn(gold_amount, true)})
       self:emitHint({{1,0.78,0}, utils.fn(-gold_amount, true)})
     end
-
     -- reputation
     if self.map and self.map.data.type == "PvP" then
       local reputation_amount = math.floor(self.level*0.1)
@@ -1670,7 +1672,6 @@ function Client:onDeath()
         self.last_attacker:emitHint(utils.fn(reputation_amount, true).." réputation")
       end
     end
-
     self.last_attacker:onPlayerKill()
   end
   -- set ghost
