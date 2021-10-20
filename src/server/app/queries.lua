@@ -12,6 +12,7 @@ return function(db)
   db:prepare("user/createAccount", [[
 INSERT INTO users(
   pseudo,
+  salt,
   password,
   rank,
   ban_timestamp,
@@ -35,7 +36,7 @@ INSERT INTO users(
   guild_rank,
   guild_rank_title
 ) VALUES(
-  {pseudo}, {password},
+  {pseudo}, {salt}, {password},
   {rank}, 0, 1, 1, 100, 0, 0,
   0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0,
@@ -43,6 +44,7 @@ INSERT INTO users(
 );
 ]], {
   pseudo = pseudo_t,
+  salt = password_t,
   password = password_t,
   rank = utint
 })
@@ -54,6 +56,7 @@ INSERT INTO users(
   db:prepare("user/setBan", "UPDATE users SET ban_timestamp = {timestamp} WHERE pseudo = {pseudo}", {pseudo = pseudo_t, timestamp = "INTEGER"})
   db:prepare("server/getFreeSkins", "SELECT name FROM skins WHERE free = TRUE")
   -- user
+  db:prepare("user/getSalt", "SELECT salt FROM users WHERE pseudo = {1}", {pseudo_t})
   db:prepare("user/login", "SELECT * FROM users WHERE pseudo = {1} AND password = {2}", {pseudo_t, password_t})
   db:prepare("user/getVars", "SELECT id,value FROM users_vars WHERE user_id = {1}", {uint})
   db:prepare("user/getBoolVars", "SELECT id,value FROM users_bool_vars WHERE user_id = {1}", {uint})

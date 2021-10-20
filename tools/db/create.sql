@@ -1,6 +1,7 @@
 CREATE TABLE users(
   id INTEGER UNSIGNED AUTO_INCREMENT,
   pseudo VARCHAR(50),
+  salt BINARY(64),
   password BINARY(64),
   rank TINYINT UNSIGNED, -- user rank (permissions); 0: server, 10: normal player
   ban_timestamp INTEGER, -- ban timestamp (end)

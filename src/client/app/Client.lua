@@ -25,6 +25,7 @@ local TextureAtlas = require("app.TextureAtlas")
 local Phial = require("app.gui.Phial")
 local XPBar = require("app.gui.XPBar")
 local client_version = require("app.client_version")
+local client_salt = require("app.client_salt")
 
 local Client = class("Client")
 
@@ -53,7 +54,7 @@ function packet:MOTD_LOGIN(data)
     -- login process
     local pseudo = self:prompt(data.motd.."\n\nPseudo: ")
     local password = self:prompt(data.motd.."\n\nMot de passe: ", "", true)
-    local pass_hash = sha2.hex2bin(sha2.sha512(data.salt..pseudo..password))
+    local pass_hash = sha2.hex2bin(sha2.sha512(client_salt..pseudo..password))
     self:sendPacket(net.LOGIN, {pseudo = pseudo, password = pass_hash})
   end)
 end
