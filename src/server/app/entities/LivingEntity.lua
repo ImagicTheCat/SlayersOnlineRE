@@ -262,11 +262,6 @@ function target_vars:Bloque(value, state)
 end
 
 do -- Build spell execution environment.
-  local function sanitize_result(v)
-    if v ~= v then return 0 -- NaN
-    elseif math.abs(v) == 1/0 then return 0 -- inf
-    else return math.floor(v) end
-  end
   local function var(state, id, value)
     local caster = state.caster
     if value then
@@ -300,7 +295,7 @@ do -- Build spell execution environment.
     if spell_data then state.target:applySpell(state.caster, spell_data) end
   end
   LivingEntity.spell_env = {
-    R = sanitize_result,
+    R = utils.sanitizeInt,
     var = var,
     caster_var = caster_var,
     target_var = target_var,

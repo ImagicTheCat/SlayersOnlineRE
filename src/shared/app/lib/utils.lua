@@ -193,4 +193,10 @@ function utils.dvec(dx, dy)
   else return 0,0 end
 end
 
+function utils.sanitizeInt(v)
+  if v ~= v then return 0 -- NaN
+  elseif math.abs(v) == 1/0 then return 0 -- inf
+  else return math.floor(v) end
+end
+
 return utils
