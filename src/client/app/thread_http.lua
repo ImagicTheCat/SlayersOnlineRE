@@ -11,6 +11,6 @@ while true do
   if body and code == 200 then
     cout:push(utils.pack(love.data.newByteData(body)))
   else
-    cout:push(utils.pack())
+    cout:push(utils.pack(nil, code))
   end
 end

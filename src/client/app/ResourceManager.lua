@@ -1,6 +1,7 @@
 local msgpack = require("MessagePack")
 local sha2 = require("sha2")
 local utils = require("app.lib.utils")
+local URL = require("socket.url")
 
 local ResourceManager = class("ResourceManager")
 
@@ -37,8 +38,9 @@ function ResourceManager:isBusy()
   return self.http_tasks[1] or self.ioc_tasks[1]
 end
 
--- (async) request HTTP file body
--- return body as Data or nil on failure
+-- (async) Request HTTP file body.
+-- url: valid url, must be escaped if necessary
+-- return body as Data or (nil, err) on failure
 function ResourceManager:requestHTTP(url)
   self.busy_hint = "Downloading "..url.."..."
   local r = async()
@@ -151,17 +153,15 @@ function ResourceManager:requestResource(path)
     end
     if not lhash or lhash ~= rhash then -- download/update
       print("download resource "..path)
-      local data = self:requestHTTP(self.client.cfg.resource_repository..path)
+      local data, err = self:requestHTTP(self.client.cfg.resource_repository..URL.escape(path))
       if data then
         -- write file
         local ok, err = self:writeFile("resources_repository/"..path, data)
         if ok then -- add manifest entry
           self.local_manifest[path] = self:computeMD5(data)
-        else
-          print(err)
-        end
-        ret = ok
-      end
+          ret = true
+        else print(err) end
+      else print("download error "..path..": "..err) end
     else -- already same as remote
       ret = true
     end
