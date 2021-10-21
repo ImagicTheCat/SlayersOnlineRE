@@ -54,8 +54,8 @@ function packet:MOTD_LOGIN(data)
     -- login process
     local pseudo = self:prompt(data.motd.."\n\nPseudo: ")
     local password = self:prompt(data.motd.."\n\nMot de passe: ", "", true)
-    local pass_hash = sha2.hex2bin(sha2.sha512(client_salt..pseudo..password))
-    self:sendPacket(net.LOGIN, {pseudo = pseudo, password = pass_hash})
+    local password_hash = sha2.hex2bin(sha2.sha512(client_salt..pseudo:lower()..password))
+    self:sendPacket(net.LOGIN, {pseudo = pseudo, password_hash = password_hash})
   end)
 end
 function packet:MAP(data)
@@ -445,7 +445,7 @@ function Client:__construct(cfg)
 
   self.touches = {} -- map of id => control
 
-  self.rsc_manager = ResourceManager(self)
+  self.rsc_manager = ResourceManager()
   self.last_manifest_save = scheduler.time
   self.stats = {}
 

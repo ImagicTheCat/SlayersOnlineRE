@@ -589,8 +589,7 @@ local EEgg_self_talk = {
 commands.msg = {10, function(self, client, args)
   if client and client.user_id and client:canChat() then
     if not args[2] or #args[2] == 0 then return true end
-
-    local tclient = self.clients_by_pseudo[args[2]]
+    local tclient = self:getClientByPseudo(args[2])
     if tclient then
       if tclient == client then -- easter egg: speak to self
         client:send(Client.makePacket(net.PRIVATE_CHAT, {
@@ -663,7 +662,7 @@ end, "", "afficher la date et l'heure"}
 commands.reput = {10, function(self, client, args)
   if #args < 2 then return true end
   if client then
-    local target = self.clients_by_pseudo[args[2]]
+    local target = self:getClientByPseudo(args[2])
     if target then client:sendChatMessage(args[2].." a "..target.reputation.." de réputation.")
     else client:sendChatMessage("Joueur introuvable.") end
   end
@@ -672,7 +671,7 @@ end, "<pseudo>", "afficher la réputation d'un joueur connecté"}
 commands.lvl = {10, function(self, client, args)
   if #args < 2 then return true end
   if client then
-    local target = self.clients_by_pseudo[args[2]]
+    local target = self:getClientByPseudo(args[2])
     if target then client:sendChatMessage(args[2].." est niveau "..target.level..".")
     else client:sendChatMessage("Joueur introuvable.") end
   end
@@ -701,7 +700,7 @@ commands.ignore = {10, function(self, client, args)
       client:sendChatMessage("Messages privés: "..(client.ignores.msg and "ignorés" or "visibles"))
     elseif itype == "player" then
       if not args[3] then return true end
-      local target = self.clients_by_pseudo[args[3]]
+      local target = self:getClientByPseudo(args[3])
       if target then
         client.ignores.msg_players[args[3]] = not client.ignores.msg_players[args[3]]
         client:sendChatMessage("Messages privés ("..args[3].."): "..(client.ignores.msg_players[args[3]] and "ignorés" or "visibles"))
@@ -754,7 +753,7 @@ commands.ban = {2, function(self, client, args)
     if not client then print(affected == 0 and "no-op" or "player banned")
     else client:sendChatMessage(affected == 0 and "no-op" or "Joueur banni.") end
     -- kick
-    local target = self.clients_by_pseudo[pseudo]
+    local target = self:getClientByPseudo(pseudo)
     if target then target:kick("Banni "..hours.." heure(s): "..reason) end
   end)
 end, "<pseudo> <reason> [hours]", "bannir un joueur (1 heure par défaut, virgule possible)"}
@@ -775,7 +774,7 @@ commands.kick = {2, function(self, client, args)
   local pseudo, reason = args[2], args[3]
   if not pseudo or #pseudo == 0 or not reason or #reason == 0 then return true end
   -- kick
-  local target = self.clients_by_pseudo[pseudo]
+  local target = self:getClientByPseudo(pseudo)
   if target then target:kick(reason) end
   -- output
   if not client then print(not target and "player not found" or "player kicked")
@@ -862,7 +861,7 @@ function Server:__construct(cfg)
   --
   self.clients = {} -- map of peer => client
   self.clients_by_id = {} -- map of user id => logged client
-  self.clients_by_pseudo = {} -- map of pseudo => logged client
+  self.clients_by_pseudo = {} -- map of pseudo (lowercase) => logged client
   self.maps = {} -- map of id => map instances
   self.vars = {} -- server variables, map of id (str) => value (string or number)
   self.changed_vars = {} -- map of server var id
@@ -1014,7 +1013,7 @@ function Server:tick(dt)
     elseif event.type == "connect" then
       -- disable throttle deceleration (issue with unsequenced packets not sent)
       event.peer:throttle_configure(5000, 1, 0)
-      local client = Client(self, event.peer)
+      local client = Client(event.peer)
       self.clients[event.peer] = client
 
       print("client connection "..tostring(event.peer))
@@ -1039,13 +1038,18 @@ function Server:tick(dt)
   end
 end
 
+-- case insensitive
+function Server:getClientByPseudo(pseudo)
+  return self.clients_by_pseudo[pseudo:lower()]
+end
+
 -- return map instance or nil
 function Server:getMap(id)
   local map = self.maps[id]
   if not map then -- load
     local map_data = self.project.maps[id]
     if map_data and map_data.loaded then
-      map = Map(self, id, map_data)
+      map = Map(id, map_data)
       self.maps[id] = map
     else print("couldn't load \""..id.."\" map data") end
   end

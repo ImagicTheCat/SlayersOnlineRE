@@ -81,7 +81,7 @@ function packet:VERSION_CHECK(data)
   if type(data) == "string" and data == client_version then
     self.valid = true
     -- send motd (start login)
-    self:send(Client.makePacket(net.MOTD_LOGIN, {motd = self.server.motd}))
+    self:send(Client.makePacket(net.MOTD_LOGIN, {motd = server.motd}))
   else
     self:kick("Version du client incompatible avec le serveur, téléchargez la dernière version pour résoudre le problème.")
   end
@@ -90,23 +90,23 @@ function packet:LOGIN(data)
   if self.user_id or not self.valid then return end
   -- check inputs
   if type(data) ~= "table" or type(data.pseudo) ~= "string"
-    or type(data.password) ~= "string" or #data.pseudo > 50 then return end
+    or type(data.password_hash) ~= "string" or #data.pseudo > 50 then return end
   -- login request
   async(function()
     -- get salt
     local salt
     do
-      local result = self.server.db:query("user/getSalt", {data.pseudo})
+      local result = server.db:query("user/getSalt", {data.pseudo})
       if result and result.rows[1] then salt = result.rows[1].salt end
     end
     -- authenticate
-    local pass_hash = sha2.hex2bin(sha2.sha512((salt or "")..data.password))
-    local rows = self.server.db:query("user/login", {data.pseudo, pass_hash}).rows
+    local password_hash = sha2.hex2bin(sha2.sha512((salt or "")..data.password_hash))
+    local rows = server.db:query("user/login", {data.pseudo, password_hash}).rows
     if rows[1] then
       local user_row = rows[1]
       local user_id = user_row.id
       -- check connected
-      if self.server.clients_by_id[user_id] then
+      if server.clients_by_id[user_id] then
         self:kick("Déjà connecté.")
         return
       end
@@ -118,15 +118,15 @@ function packet:LOGIN(data)
       end
       local ok = xpcall(function()
         -- accepted
-        self.server.clients_by_id[user_id] = self
+        server.clients_by_id[user_id] = self
         self.pseudo = user_row.pseudo
         -- load skin infos
         self.allowed_skins = {}
         --- prune invalid skins
-        self.server.db:query("user/pruneSkins", {user_id})
+        server.db:query("user/pruneSkins", {user_id})
         --- load
         do
-          local rows = self.server.db:query("user/getSkins", {user_id}).rows
+          local rows = server.db:query("user/getSkins", {user_id}).rows
           for _, row in ipairs(rows) do self.allowed_skins[row.name] = true end
         end
         -- load user data
@@ -150,40 +150,40 @@ function packet:LOGIN(data)
         self.guild = user_row.guild
         self.guild_rank = user_row.guild_rank
         self.guild_rank_title = user_row.guild_rank_title
-        local class_data = self.server.project.classes[self.class]
+        local class_data = server.project.classes[self.class]
         self:setSounds(string.sub(class_data.attack_sound, 7), string.sub(class_data.hurt_sound, 7))
         --- config
         self:applyConfig(user_row.config and msgpack.unpack(user_row.config) or {}, true)
         --- vars
-        local rows = self.server.db:query("user/getVars", {user_id}).rows
+        local rows = server.db:query("user/getVars", {user_id}).rows
         for _, row in ipairs(rows) do self.vars[row.id] = row.value end
-        rows = self.server.db:query("user/getBoolVars", {user_id}).rows
+        rows = server.db:query("user/getBoolVars", {user_id}).rows
         for _, row in ipairs(rows) do self.bool_vars[row.id] = row.value end
         --- inventories
-        self.inventory = Inventory(user_id, 1, self.server.cfg.inventory_size)
-        self.chest_inventory = Inventory(user_id, 2, self.server.cfg.chest_size)
-        self.spell_inventory = Inventory(user_id, 3, self.server.cfg.spell_inventory_size)
-        self.inventory:load(self.server.db)
-        self.chest_inventory:load(self.server.db)
-        self.spell_inventory:load(self.server.db)
+        self.inventory = Inventory(user_id, 1, server.cfg.inventory_size)
+        self.chest_inventory = Inventory(user_id, 2, server.cfg.chest_size)
+        self.spell_inventory = Inventory(user_id, 3, server.cfg.spell_inventory_size)
+        self.inventory:load(server.db)
+        self.chest_inventory:load(server.db)
+        self.spell_inventory:load(server.db)
         ---- on item update
         function self.inventory.onItemUpdate(inv, id)
           local data
           local amount = inv.items[id]
-          local object = self.server.project.objects[id]
+          local object = server.project.objects[id]
           if object and amount then
-            data = Client.serializeItem(self.server, object, amount)
+            data = Client.serializeItem(server, object, amount)
           end
           self:send(Client.makePacket(net.INVENTORY_UPDATE_ITEMS, {{id,data}}))
         end
         ---- send inventory init items
         do
-          local objects = self.server.project.objects
+          local objects = server.project.objects
           local items = {}
           for id, amount in pairs(self.inventory.items) do
             local object = objects[id]
             if object then
-              table.insert(items, {id, Client.serializeItem(self.server, object, amount)})
+              table.insert(items, {id, Client.serializeItem(server, object, amount)})
             end
           end
           self:send(Client.makePacket(net.INVENTORY_UPDATE_ITEMS, items))
@@ -193,9 +193,9 @@ function packet:LOGIN(data)
           if not self.chest_task then return end -- chest isn't open
           local data
           local amount = inv.items[id]
-          local object = self.server.project.objects[id]
+          local object = server.project.objects[id]
           if object and amount then
-            data = Client.serializeItem(self.server, object, amount)
+            data = Client.serializeItem(server, object, amount)
           end
           self:send(Client.makePacket(net.CHEST_UPDATE_ITEMS, {{id,data}}))
         end
@@ -203,20 +203,20 @@ function packet:LOGIN(data)
         function self.spell_inventory.onItemUpdate(inv, id)
           local data
           local amount = inv.items[id]
-          local spell = self.server.project.spells[id]
+          local spell = server.project.spells[id]
           if spell and amount then
-            data = Client.serializeSpell(self.server, spell, amount)
+            data = Client.serializeSpell(server, spell, amount)
           end
           self:send(Client.makePacket(net.SPELL_INVENTORY_UPDATE_ITEMS, {{id,data}}))
         end
         ---- send spell inventory init items
         do
-          local spells = self.server.project.spells
+          local spells = server.project.spells
           local items = {}
           for id, amount in pairs(self.spell_inventory.items) do
             local spell = spells[id]
             if spell then
-              table.insert(items, {id, Client.serializeSpell(self.server, spell, amount)})
+              table.insert(items, {id, Client.serializeSpell(server, spell, amount)})
             end
           end
           self:send(Client.makePacket(net.SPELL_INVENTORY_UPDATE_ITEMS, items))
@@ -230,7 +230,7 @@ function packet:LOGIN(data)
         ---- location
         local map, x, y
         if state.location then
-          map = self.server:getMap(state.location.map)
+          map = server:getMap(state.location.map)
           x,y = state.location.x, state.location.y
         end
         if state.orientation then
@@ -246,8 +246,8 @@ function packet:LOGIN(data)
         self.blocked_chat = state.blocked_chat
         -- default spawn
         if not map then
-          local spawn_location = self.server.cfg.spawn_location
-          map = self.server:getMap(spawn_location.map)
+          local spawn_location = server.cfg.spawn_location
+          map = server:getMap(spawn_location.map)
           x,y = spawn_location.cx*16, spawn_location.cy*16
         end
         if map then map:addEntity(self) end
@@ -271,18 +271,18 @@ function packet:LOGIN(data)
         -- mark as logged
       end, error_handler)
       if ok then -- login completed
-        self.server.clients_by_pseudo[self.pseudo] = self
+        server.clients_by_pseudo[self.pseudo:lower()] = self
         self.user_id = user_id
         self:sendChatMessage("Identifié.")
       else -- login error
-        self.server.clients_by_id[user_id] = nil
+        server.clients_by_id[user_id] = nil
         print("<= login error for user#"..user_id.." \""..user_row.pseudo.."\"")
         self:kick("Erreur du serveur.")
       end
     else -- login failed
       self:sendChatMessage("Identification échouée.")
       -- send motd (start login)
-      self:send(Client.makePacket(net.MOTD_LOGIN, {motd = self.server.motd}))
+      self:send(Client.makePacket(net.MOTD_LOGIN, {motd = server.motd}))
     end
   end)
 end
@@ -312,9 +312,9 @@ function packet:INPUT_CHAT(data)
   if not self.user_id then return end
   if type(data) == "string" and string.len(data) > 0 and string.len(data) < 1000 then
     if string.sub(data, 1, 1) == "/" then -- parse command
-      local args = self.server.parseCommand(string.sub(data, 2))
+      local args = server.parseCommand(string.sub(data, 2))
       if #args > 0 then
-        self.server:processCommand(self, args)
+        server:processCommand(self, args)
       end
     elseif self:canChat() then -- message
       self:mapChat(data)
@@ -399,7 +399,7 @@ function packet:ITEM_BUY(data)
   if not self.user_id then return end
   if self.shop_task and type(data) == "table" then
     local id, amount = tonumber(data[1]) or 0, tonumber(data[2]) or 0
-    local item = self.server.project.objects[id]
+    local item = server.project.objects[id]
     if item and amount > 0 then
       if item.price*amount <= self.gold then
         for i=1,amount do -- buy one by one
@@ -415,7 +415,7 @@ end
 function packet:ITEM_SELL(data)
   if not self.user_id then return end
   local id = tonumber(data) or 0
-  local item = self.server.project.objects[id]
+  local item = server.project.objects[id]
   if self.shop_task and item then
     if self.inventory:take(id) then
       self.gold = self.gold+math.ceil(item.price*0.1)
@@ -454,7 +454,7 @@ end
 function packet:ITEM_EQUIP(data)
   if not self.user_id then return end
   local id = tonumber(data) or 0
-  local item = self.server.project.objects[id]
+  local item = server.project.objects[id]
   -- valid and equipable
   if item and EQUIPABLE_ITEM_TYPES[item.type] and self:checkItemRequirements(item) then
     -- compute preview delta
@@ -487,7 +487,7 @@ function packet:ITEM_EQUIP(data)
     elseif item.type == "shield" then
       self.shield_slot = id
       -- check for two-handed weapon
-      local weapon = self.server.project.objects[self.weapon_slot]
+      local weapon = server.project.objects[self.weapon_slot]
       if weapon and weapon.type == "two-handed-weapon" then
         self.weapon_slot = 0
       end
@@ -556,7 +556,7 @@ function packet:ITEM_EQUIP(data)
           if self.shield_slot > 0 then self.inventory:put(self.shield_slot) end
           self.shield_slot = id
           -- check for two-handed weapon
-          local weapon = self.server.project.objects[self.weapon_slot]
+          local weapon = server.project.objects[self.weapon_slot]
           if weapon and weapon.type == "two-handed-weapon" then
             self.inventory:put(self.weapon_slot)
             self.weapon_slot = 0
@@ -609,10 +609,10 @@ function packet:QUICK_ACTION_BIND(data)
     if id then -- bind
       local ok = false
       if data.type == "item" then -- check item bind
-        local item = self.server.project.objects[id]
+        local item = server.project.objects[id]
         if item and item.type == "usable" then ok = true end
       elseif data.type == "spell" then -- check spell bind
-        local spell = self.server.project.spells[id]
+        local spell = server.project.spells[id]
         if spell then ok = true end
       end
       if ok then
@@ -639,7 +639,7 @@ end
 function packet:SPELL_CAST(data)
   if not self.user_id then return end
   local id = tonumber(data) or 0
-  local spell = self.server.project.spells[id]
+  local spell = server.project.spells[id]
   if spell and self:canCast(spell) then
     if self.spell_inventory.items[id] > 0 then -- check owned
       async(function() self:tryCastSpell(spell) end)
@@ -707,11 +707,10 @@ end
 
 -- METHODS
 
-function Client:__construct(server, peer)
+function Client:__construct(peer)
   Player.__construct(self)
   self.nettype = "Player"
 
-  self.server = server
   self.peer = peer
   self.valid = false
   do -- quotas
@@ -947,7 +946,7 @@ end
 function Client:openChest(title)
   self.chest_task = async()
   -- send init items
-  local objects = self.server.project.objects
+  local objects = server.project.objects
   local items = {}
   for id, amount in pairs(self.chest_inventory.items) do
     local object = objects[id]
@@ -970,13 +969,13 @@ end
 function Client:openShop(title, items)
   self.shop_task = async()
 
-  local objects = self.server.project.objects
+  local objects = server.project.objects
 
   local buy_items = {}
   for _, id in ipairs(items) do
     local object = objects[id]
     if object then
-      local data = Client.serializeItem(self.server, object, 0)
+      local data = Client.serializeItem(server, object, 0)
       data.price = object.price
       data.id = id
       table.insert(buy_items, data)
@@ -987,7 +986,7 @@ function Client:openShop(title, items)
   for id, amount in pairs(self.inventory.items) do
     local object = objects[id]
     if object then
-      local data = Client.serializeItem(self.server, object, amount)
+      local data = Client.serializeItem(server, object, amount)
       data.id = id
       data.price = object.price
       table.insert(sell_items, data)
@@ -1007,13 +1006,13 @@ function Client:openTrade(player)
   -- init trading data
   self.trade = {
     peer = player,
-    inventory = Inventory(-1, -1, self.server.cfg.inventory_size),
+    inventory = Inventory(-1, -1, server.cfg.inventory_size),
     gold = 0,
     locked = false
   }
   player.trade = {
     peer = self,
-    inventory = Inventory(-1, -1, self.server.cfg.inventory_size),
+    inventory = Inventory(-1, -1, server.cfg.inventory_size),
     gold = 0,
     locked = false
   }
@@ -1022,8 +1021,8 @@ function Client:openTrade(player)
   local function update_item(inv, id, pleft, pright)
     local data
     local amount = inv.items[id]
-    local object = self.server.project.objects[id]
-    if object and amount then data = Client.serializeItem(self.server, object, amount) end
+    local object = server.project.objects[id]
+    if object and amount then data = Client.serializeItem(server, object, amount) end
     pleft:send(Client.makePacket(net.TRADE_LEFT_UPDATE_ITEMS, {{id,data}}))
     pright:send(Client.makePacket(net.TRADE_RIGHT_UPDATE_ITEMS, {{id,data}}))
   end
@@ -1133,14 +1132,14 @@ function Client:onDisconnect()
   local map_data = (self.map and self.map.data)
   if map_data and map_data.si_v >= 0 then
     if self:getVariable("var", map_data.si_v) >= map_data.v_c then
-      self.server:setVariable(map_data.svar, map_data.sval)
+      server:setVariable(map_data.svar, map_data.sval)
     end
   end
   self:setGroup(nil)
   self:cancelTrade()
   async(function()
     -- save
-    self.server.db:transactionWrap(function() self:save() end)
+    server.db:transactionWrap(function() self:save() end)
     -- remove player
     if self.map then
       self.map:removeEntity(self)
@@ -1150,9 +1149,9 @@ function Client:onDisconnect()
     self.data_quota:stop()
     self.chat_quota:stop()
     -- unreference
-    if self.pseudo then self.server.clients_by_pseudo[self.pseudo] = nil end
+    if self.pseudo then server.clients_by_pseudo[self.pseudo:lower()] = nil end
     if self.user_id then
-      self.server.clients_by_id[self.user_id] = nil
+      server.clients_by_id[self.user_id] = nil
       self.user_id = nil
     end
   end)
@@ -1218,13 +1217,13 @@ end
 
 -- target: LivingEntity
 function Client:triggerGearSpells(target)
-  local objs = self.server.project.objects
+  local objs = server.project.objects
   local gears = {
     objs[self.helmet_slot], objs[self.armor_slot],
     objs[self.weapon_slot], objs[self.shield_slot]
   }
   for _, item in pairs(gears) do
-    local spell = self.server.project.spells[item.spell]
+    local spell = server.project.spells[item.spell]
     if spell then self:castSpell(target, spell, "nocast") end
   end
 end
@@ -1347,7 +1346,7 @@ end
 -- dry: (optional) if passed/truthy, will not trigger any update (but affects properties)
 --- used for temporary characteristics modulation
 function Client:updateCharacteristics(dry)
-  local class_data = self.server.project.classes[self.class]
+  local class_data = server.project.classes[self.class]
 
   self.strength = self.strength_pts+class_data.strength
   self.dexterity = self.dexterity_pts+class_data.dexterity
@@ -1359,10 +1358,10 @@ function Client:updateCharacteristics(dry)
   self.ch_attack = 0
 
   -- gears
-  local helmet = self.server.project.objects[self.helmet_slot]
-  local armor = self.server.project.objects[self.armor_slot]
-  local weapon = self.server.project.objects[self.weapon_slot]
-  local shield = self.server.project.objects[self.shield_slot]
+  local helmet = server.project.objects[self.helmet_slot]
+  local armor = server.project.objects[self.armor_slot]
+  local weapon = server.project.objects[self.weapon_slot]
+  local shield = server.project.objects[self.shield_slot]
 
   local gears = {weapon, shield, helmet, armor}
   for _, item in pairs(gears) do
@@ -1415,7 +1414,7 @@ end
 function Client:save()
   if not self.user_id or self.running_event then return false end
   -- base data
-  self.server.db:_query("user/setData", {
+  server.db:_query("user/setData", {
     user_id = self.user_id,
     level = self.level,
     alignment = self.alignment,
@@ -1435,21 +1434,21 @@ function Client:save()
   })
   -- vars
   for var in pairs(self.changed_vars) do
-    self.server.db:_query("user/setVar", {self.user_id, var, self.vars[var]})
+    server.db:_query("user/setVar", {self.user_id, var, self.vars[var]})
   end
   self.changed_vars = {}
   -- bool vars
   for var in pairs(self.changed_bool_vars) do
-    self.server.db:_query("user/setBoolVar", {self.user_id, var, self.bool_vars[var]})
+    server.db:_query("user/setBoolVar", {self.user_id, var, self.bool_vars[var]})
   end
   self.changed_bool_vars = {}
   -- inventories
-  self.inventory:save(self.server.db)
-  self.chest_inventory:save(self.server.db)
-  self.spell_inventory:save(self.server.db)
+  self.inventory:save(server.db)
+  self.chest_inventory:save(server.db)
+  self.spell_inventory:save(server.db)
   -- config
   if self.player_config_changed then
-    self.server.db:_query("user/setConfig", {self.user_id, msgpack.pack(self.player_config)})
+    server.db:_query("user/setConfig", {self.user_id, msgpack.pack(self.player_config)})
     self.player_config_changed = false
   end
   -- state
@@ -1457,7 +1456,7 @@ function Client:save()
   if self.map then
     -- location
     if self.map.data.disconnect_respawn then
-      local location = (self.respawn_point or self.server.cfg.spawn_location)
+      local location = (self.respawn_point or server.cfg.spawn_location)
       state.location = {
         map = location.map,
         x = location.cx*16,
@@ -1482,7 +1481,7 @@ function Client:save()
   state.blocked_defend = self.blocked_defend
   state.blocked_cast = self.blocked_cast
   state.blocked_chat = self.blocked_chat
-  self.server.db:_query("user/setState", {self.user_id, msgpack.pack(state)})
+  server.db:_query("user/setState", {self.user_id, msgpack.pack(state)})
   return true
 end
 
@@ -1558,7 +1557,7 @@ end
 -- id: key (string) or falsy to just leave
 function Client:setGroup(id)
   if self.group then -- leave old group
-    local group = self.server.groups[self.group]
+    local group = server.groups[self.group]
     if group then
       -- broadcast leave packet to group member on the map and to self (self included)
       if self.map then
@@ -1592,16 +1591,16 @@ function Client:setGroup(id)
 
       group[self] = nil
       -- remove if empty
-      if not next(group) then self.server.groups[self.group] = nil end
+      if not next(group) then server.groups[self.group] = nil end
       self.group = nil
     end
   end
 
   if id then -- join
-    local group = self.server.groups[id]
+    local group = server.groups[id]
     if not group then -- create group
       group = {}
-      self.server.groups[id] = group
+      server.groups[id] = group
     end
 
     group[self] = true
@@ -1622,7 +1621,7 @@ end
 -- send group update packet (join/data)
 function Client:sendGroupUpdate()
   -- broadcast update packet to group members on the map and to self (self included)
-  local group = self.group and self.server.groups[self.group]
+  local group = self.group and server.groups[self.group]
   if group and self.map then
     local packet = Client.makePacket(net.ENTITY_PACKET, {
       id = self.id,
@@ -1639,7 +1638,7 @@ end
 -- send group update packet for other group members
 function Client:receiveGroupUpdates()
   -- update packet for each group member on the map to self
-  local group = self.group and self.server.groups[self.group]
+  local group = self.group and server.groups[self.group]
   if group and self.map then
     for client in pairs(group) do
       if client ~= self and client.map == self.map then
@@ -1716,7 +1715,7 @@ function Client:respawn()
     -- respawn
     local respawned = false
     if self.respawn_point then -- res point respawn
-      local map = self.server:getMap(self.respawn_point.map)
+      local map = server:getMap(self.respawn_point.map)
       if map then
         map:addEntity(self)
         self:teleport(self.respawn_point.cx*16, self.respawn_point.cy*16)
@@ -1724,8 +1723,8 @@ function Client:respawn()
       end
     end
     if not respawned then -- default respawn
-      local spawn_location = self.server.cfg.spawn_location
-      local map = self.server:getMap(spawn_location.map)
+      local spawn_location = server.cfg.spawn_location
+      local map = server:getMap(spawn_location.map)
       if map then
         map:addEntity(self)
         self:teleport(spawn_location.cx*16, spawn_location.cy*16)
