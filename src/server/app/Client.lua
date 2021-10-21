@@ -1236,13 +1236,18 @@ function Client:serializeNet()
 end
 
 function Client:interact()
-  -- event interact check
-  local entities = self:raycastEntities(2)
-  for _, entity in ipairs(entities) do
-    if class.is(entity, Event) and entity.client == self and entity.trigger_interact then
-      entity:trigger("interact")
-      break
+  -- prevent interact spamming
+  if not self.interacting then
+    self.interacting = true
+    -- event interact check
+    local entities = self:raycastEntities(2)
+    for _, entity in ipairs(entities) do
+      if class.is(entity, Event) and entity.client == self and entity.trigger_interact then
+        entity:trigger("interact")
+        break
+      end
     end
+    timer(0.25, function() self.interacting = false end)
   end
 end
 
