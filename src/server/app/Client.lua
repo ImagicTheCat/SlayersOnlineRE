@@ -77,9 +77,9 @@ end
 local packet = {}
 
 function packet:VERSION_CHECK(data)
-  if self.user_id or self.valid then return end
+  if self.status ~= "connecting" then return end
   if type(data) == "string" and data == client_version then
-    self.valid = true
+    self.status = "logging-in"
     -- send motd (start login)
     self:send(Client.makePacket(net.MOTD_LOGIN, {motd = server.motd}))
   else
@@ -87,7 +87,7 @@ function packet:VERSION_CHECK(data)
   end
 end
 function packet:LOGIN(data)
-  if self.user_id or not self.valid then return end
+  if self.status ~= "logging-in" then return end
   -- check inputs
   if type(data) ~= "table" or type(data.pseudo) ~= "string"
     or type(data.password_hash) ~= "string" or #data.pseudo > 50 then return end
@@ -273,6 +273,7 @@ function packet:LOGIN(data)
       if ok then -- login completed
         server.clients_by_pseudo[self.pseudo:lower()] = self
         self.user_id = user_id
+        self.status = "logged"
         self:sendChatMessage("Identifié.")
       else -- login error
         server.clients_by_id[user_id] = nil
@@ -287,29 +288,29 @@ function packet:LOGIN(data)
   end)
 end
 function packet:INPUT_ORIENTATION(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   if self:canMove() then self:setOrientation(tonumber(data) or 0) end
 end
 function packet:INPUT_MOVE_FORWARD(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   -- update input state (used to stop/resume movements correctly)
   self.move_forward_input = not not data
   if self:canMove() then self:setMoveForward(self.move_forward_input) end
 end
 function packet:INPUT_ATTACK(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   if self:canAttack() then self:attack() end
 end
 function packet:INPUT_DEFEND(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   if self:canDefend() then self:defend() end
 end
 function packet:INPUT_INTERACT(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   if self:canInteract() then self:interact() end
 end
 function packet:INPUT_CHAT(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   if type(data) == "string" and string.len(data) > 0 and string.len(data) < 1000 then
     if string.sub(data, 1, 1) == "/" then -- parse command
       local args = server.parseCommand(string.sub(data, 2))
@@ -324,7 +325,7 @@ function packet:INPUT_CHAT(data)
   end
 end
 function packet:EVENT_MESSAGE_SKIP(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   local r = self.message_task
   if r then
     self.message_task = nil
@@ -332,7 +333,7 @@ function packet:EVENT_MESSAGE_SKIP(data)
   end
 end
 function packet:EVENT_INPUT_QUERY_ANSWER(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   local r = self.input_query_task
   if r and type(data) == "number" then
     self.input_query_task = nil
@@ -340,7 +341,7 @@ function packet:EVENT_INPUT_QUERY_ANSWER(data)
   end
 end
 function packet:EVENT_INPUT_STRING_ANSWER(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   local r = self.input_string_task
   if r and type(data) == "string" then
     self.input_string_task = nil
@@ -348,7 +349,7 @@ function packet:EVENT_INPUT_STRING_ANSWER(data)
   end
 end
 function packet:CHEST_CLOSE(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   local r = self.chest_task
   if r then
     self.chest_task = nil
@@ -356,7 +357,7 @@ function packet:CHEST_CLOSE(data)
   end
 end
 function packet:SHOP_CLOSE(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   local r = self.shop_task
   if r then
     self.shop_task = nil
@@ -364,7 +365,7 @@ function packet:SHOP_CLOSE(data)
   end
 end
 function packet:GOLD_STORE(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   local amount = tonumber(data) or 0
   if self.chest_task and amount <= self.gold then
     self.chest_gold = self.chest_gold+amount
@@ -373,7 +374,7 @@ function packet:GOLD_STORE(data)
   end
 end
 function packet:GOLD_WITHDRAW(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   local amount = tonumber(data) or 0
   if self.chest_task and amount <= self.chest_gold then
     self.chest_gold = self.chest_gold-amount
@@ -382,21 +383,21 @@ function packet:GOLD_WITHDRAW(data)
   end
 end
 function packet:ITEM_STORE(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   local id = tonumber(data) or 0
   if self.chest_task and self.inventory:take(id, true) and self.chest_inventory:put(id) then
     self.inventory:take(id)
   end
 end
 function packet:ITEM_WITHDRAW(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   local id = tonumber(data) or 0
   if self.chest_task and self.chest_inventory:take(id, true) and self.inventory:put(id) then
     self.chest_inventory:take(id)
   end
 end
 function packet:ITEM_BUY(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   if self.shop_task and type(data) == "table" then
     local id, amount = tonumber(data[1]) or 0, tonumber(data[2]) or 0
     local item = server.project.objects[id]
@@ -413,7 +414,7 @@ function packet:ITEM_BUY(data)
   end
 end
 function packet:ITEM_SELL(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   local id = tonumber(data) or 0
   local item = server.project.objects[id]
   if self.shop_task and item then
@@ -424,17 +425,17 @@ function packet:ITEM_SELL(data)
   end
 end
 function packet:ITEM_USE(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   local id = tonumber(data) or 0
   if self:canUseItem() then async(function() self:tryUseItem(id) end) end
 end
 function packet:ITEM_TRASH(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   local id = tonumber(data) or 0
   self.inventory:take(id)
 end
 function packet:SPEND_CHARACTERISTIC_POINT(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   if self.remaining_pts > 0 then
     local done = true
     if data == "strength" then
@@ -452,7 +453,7 @@ function packet:SPEND_CHARACTERISTIC_POINT(data)
   end
 end
 function packet:ITEM_EQUIP(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   local id = tonumber(data) or 0
   local item = server.project.objects[id]
   -- valid and equipable
@@ -572,7 +573,7 @@ function packet:ITEM_EQUIP(data)
   end
 end
 function packet:SLOT_UNEQUIP(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   local done = true
   if data == "helmet" then
     if self.helmet_slot > 0 and self.inventory:put(self.helmet_slot) then
@@ -594,7 +595,7 @@ function packet:SLOT_UNEQUIP(data)
   if done then self:updateCharacteristics() end
 end
 function packet:SCROLL_END(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   local r = self.scroll_task
   if r then
     self.scroll_task = nil
@@ -602,7 +603,7 @@ function packet:SCROLL_END(data)
   end
 end
 function packet:QUICK_ACTION_BIND(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   if type(data) == "table" and type(data.type) == "string" --
       and type(data.n) == "number" and data.n >= 1 and data.n <= 3 then
     local id = tonumber(data.id)
@@ -624,7 +625,7 @@ function packet:QUICK_ACTION_BIND(data)
   end
 end
 function packet:TARGET_PICK(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   local r = self.pick_target_task
   if r then
     self.pick_target_task = nil
@@ -637,7 +638,7 @@ function packet:TARGET_PICK(data)
   end
 end
 function packet:SPELL_CAST(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   local id = tonumber(data) or 0
   local spell = server.project.spells[id]
   if spell and self:canCast(spell) then
@@ -647,7 +648,7 @@ function packet:SPELL_CAST(data)
   end
 end
 function packet:TRADE_SEEK(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   async(function()
     -- pick target
     local entity = self:requestPickTarget("player", 7)
@@ -671,13 +672,13 @@ function packet:TRADE_SEEK(data)
   end)
 end
 function packet:TRADE_SET_GOLD(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   if self.trade and not self.trade.locked then
     self:setTradeGold(tonumber(data) or 0)
   end
 end
 function packet:TRADE_PUT_ITEM(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   local id = tonumber(data) or 0
   if self.trade and not self.trade.locked and self.inventory:take(id) then
     self.trade.inventory:put(id)
@@ -685,7 +686,7 @@ function packet:TRADE_PUT_ITEM(data)
   end
 end
 function packet:TRADE_TAKE_ITEM(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   local id = tonumber(data) or 0
   if self.trade and not self.trade.locked and self.trade.inventory:take(id) then
     self.inventory:put(id)
@@ -693,15 +694,15 @@ function packet:TRADE_TAKE_ITEM(data)
   end
 end
 function packet:TRADE_LOCK(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   self:setTradeLock(true)
 end
 function packet:TRADE_CLOSE(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   self:cancelTrade()
 end
 function packet:DIALOG_RESULT(data)
-  if not self.user_id then return end
+  if self.status ~= "logged" then return end
   if self.dialog_task then self.dialog_task(tonumber(data)) end
 end
 
@@ -712,7 +713,7 @@ function Client:__construct(peer)
   self.nettype = "Player"
 
   self.peer = peer
-  self.valid = false
+  self.status = "connecting"
   do -- quotas
     local quotas = server.cfg.quotas
     self.packets_quota = Quota(quotas.packets[1], quotas.packets[2], function()
@@ -790,9 +791,7 @@ function Client:timerTick()
 end
 
 function Client:minuteTick()
-  if self.user_id then
-    self:setAlignment(self.alignment+1)
-  end
+  if self.status == "logged" then self:setAlignment(self.alignment+1) end
 end
 
 local function event_error_handler(err)
@@ -821,13 +820,10 @@ end
 
 -- event handling
 function Client:eventTick(timer_ticks)
-  if self.map and not self.running_event then
+  if self.status == "logged" and self.map and not self.running_event then
     -- Timer increments.
-    if self.user_id then
-      -- increment timers
-      for i, time in ipairs(self.timers) do
-        self.timers[i] = time+timer_ticks
-      end
+    for i, time in ipairs(self.timers) do
+      self.timers[i] = time+timer_ticks
     end
     -- Misc.
     -- reset last attacker
@@ -1113,6 +1109,7 @@ function Client:kick(reason)
 end
 
 function Client:onDisconnect()
+  self.status = "disconnecting"
   -- Rollback event effects on disconnection. Effectively handles interruption
   -- by server shutdown too.
   local event = self.running_event
@@ -1152,6 +1149,7 @@ function Client:onDisconnect()
       server.clients_by_id[self.user_id] = nil
       self.user_id = nil
     end
+    self.status = "disconnected"
   end)
 end
 
