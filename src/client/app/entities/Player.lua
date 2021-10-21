@@ -1,5 +1,5 @@
 local utf8 = require("utf8")
-local utils = require("app.lib.utils")
+local utils = require("app.utils")
 local LivingEntity = require("app.entities.LivingEntity")
 local GUI = require("app.gui.GUI")
 local Window = require("app.gui.Window")

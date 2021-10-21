@@ -1,5 +1,5 @@
 local Widget = require("ALGUI.Widget")
-local utils = require("app.lib.utils")
+local utils = require("app.utils")
 local Window = require("app.gui.Window")
 local GridInterface = require("app.gui.GridInterface")
 local Text = require("app.gui.Text")

@@ -3,7 +3,7 @@ local msgpack = require("MessagePack")
 local URL = require("socket.url")
 local sha2 = require("sha2")
 
-local utils = require("app.lib.utils")
+local utils = require("app.utils")
 local Map = require("app.Map")
 local LivingEntity = require("app.entities.LivingEntity")
 local Mob = require("app.entities.Mob")

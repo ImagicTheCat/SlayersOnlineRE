@@ -1,6 +1,6 @@
 -- HTTP request thread
 local http = require("socket.http")
-local utils = require("app.lib.utils")
+local utils = require("app.utils")
 
 local cin, cout = ...
 while true do
