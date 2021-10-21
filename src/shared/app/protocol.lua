@@ -2,7 +2,6 @@ local utils = require("app.lib.utils")
 
 -- Net packet protocol.
 return utils.rmap{
-  "PROTOCOL",
   "MAP",
   "ENTITY_ADD",
   "ENTITY_REMOVE",

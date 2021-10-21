@@ -75,7 +75,7 @@ end
 
 function special_vars:Classe(value)
   if not value then
-    local class_data = self.client.server.project.classes[self.client.class]
+    local class_data = server.project.classes[self.client.class]
     return class_data.name
   end
 end
@@ -395,28 +395,28 @@ end
 
 function special_vars:Arme(value)
   if not value then
-    local item = self.client.server.project.objects[self.client.weapon_slot]
+    local item = server.project.objects[self.client.weapon_slot]
     return item and item.name or ""
   end
 end
 
 function special_vars:Bouclier(value)
   if not value then
-    local item = self.client.server.project.objects[self.client.shield_slot]
+    local item = server.project.objects[self.client.shield_slot]
     return item and item.name or ""
   end
 end
 
 function special_vars:Casque(value)
   if not value then
-    local item = self.client.server.project.objects[self.client.helmet_slot]
+    local item = server.project.objects[self.client.helmet_slot]
     return item and item.name or ""
   end
 end
 
 function special_vars:Armure(value)
   if not value then
-    local item = self.client.server.project.objects[self.client.armor_slot]
+    local item = server.project.objects[self.client.armor_slot]
     return item and item.name or ""
   end
 end
@@ -692,7 +692,7 @@ local command_functions = {}
 
 function command_functions:AddObject(name, amount)
   amount = tonumber(amount) or 1
-  local id = self.client.server.project.objects_by_name[name]
+  local id = server.project.objects_by_name[name]
   if id and amount > 0 then
     -- save
     if not self.transaction.items[id] then
@@ -709,7 +709,7 @@ end
 
 function command_functions:DelObject(name, amount)
   amount = tonumber(amount) or 1
-  local id = self.client.server.project.objects_by_name[name]
+  local id = server.project.objects_by_name[name]
   if id and amount > 0 then
     -- save
     if not self.transaction.items[id] then
@@ -729,7 +729,7 @@ function command_functions:Teleport(map_name, cx, cy)
   local cy = tonumber(cy)
 
   if map_name and cx and cy then
-    local map = self.client.server:getMap(map_name)
+    local map = server:getMap(map_name)
     if map then
       map:addEntity(self.client)
       self.client:teleport(cx*16, cy*16)
@@ -794,7 +794,7 @@ end
 
 function command_functions:Magasin(title, ...)
   local items, items_id = {...}, {}
-  local objects_by_name = self.client.server.project.objects_by_name
+  local objects_by_name = server.project.objects_by_name
   for _, item in ipairs(items) do
     local id = objects_by_name[item]
     if id then table.insert(items_id, id) end
@@ -810,7 +810,7 @@ end
 function command_functions:GenereMonstre(name, x, y, amount)
   x,y,amount = tonumber(x), tonumber(y), tonumber(amount) or 0
   if name and x and y and amount > 0 then
-    local mob_data = self.client.server.project.mobs[self.client.server.project.mobs_by_name[name]]
+    local mob_data = server.project.mobs[server.project.mobs_by_name[name]]
     if mob_data then
       for i=1,amount do
         local mob = Mob(mob_data)
@@ -828,7 +828,7 @@ end
 
 function command_functions:AddMagie(name, amount)
   amount = tonumber(amount) or 1
-  local id = self.client.server.project.spells_by_name[name]
+  local id = server.project.spells_by_name[name]
   if id and amount > 0 then
     -- save
     if not self.transaction.spells[id] then
@@ -845,7 +845,7 @@ end
 
 function command_functions:DelMagie(name, amount)
   amount = tonumber(amount) or 1
-  local id = self.client.server.project.spells_by_name[name]
+  local id = server.project.spells_by_name[name]
   if id and amount > 0 then
     -- save
     if not self.transaction.spells[id] then
@@ -946,7 +946,7 @@ function Event:__construct(client, data, page_index)
       end
       -- set
       server:setVariable(id, value)
-    else return self.client.server:getVariable(id) end
+    else return server:getVariable(id) end
   end
   local function special_var(id, value)
     local f = special_vars[id]
@@ -980,7 +980,7 @@ function Event:__construct(client, data, page_index)
   end
   local function inventory(item)
     -- return item quantity in inventory
-    local id = self.client.server.project.objects_by_name[item]
+    local id = server.project.objects_by_name[item]
     return id and self.client.inventory.items[id] or 0
   end
   self.env = {var, bool_var, server_var, special_var, func_var, event_var, func, inventory}
