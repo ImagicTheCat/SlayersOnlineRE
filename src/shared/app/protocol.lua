@@ -1,4 +1,4 @@
-local utils = require("app.lib.utils")
+local utils = require("app.utils")
 
 -- Net packet protocol.
 return utils.rmap{

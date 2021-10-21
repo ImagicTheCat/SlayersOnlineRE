@@ -1,4 +1,4 @@
-local utils = require("app.lib.utils")
+local utils = require("app.utils")
 local LivingEntity = require("app.entities.LivingEntity")
 
 local Projectile = class("Projectile", LivingEntity)

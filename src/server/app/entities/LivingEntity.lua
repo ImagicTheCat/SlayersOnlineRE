@@ -1,4 +1,4 @@
-local utils = require("app.lib.utils")
+local utils = require("app.utils")
 local Entity = require("app.Entity")
 local XPtable = require("app.XPtable")
 local cfg = require("config")

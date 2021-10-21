@@ -1,6 +1,6 @@
 local Window = require("app.gui.Window")
 local Text = require("app.gui.Text")
-local utils = require("app.lib.utils")
+local utils = require("app.utils")
 
 local ChatHistory = class("ChatHistory", Window)
 

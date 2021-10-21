@@ -1,5 +1,5 @@
 local LivingEntity = require("app.entities.LivingEntity")
-local utils = require("app.lib.utils")
+local utils = require("app.utils")
 
 local Event = class("Event", LivingEntity)
 

@@ -4,7 +4,7 @@ local GridInterface = require("app.gui.GridInterface")
 local Text = require("app.gui.Text")
 local TextInput = require("app.gui.TextInput")
 local Inventory = require("app.gui.Inventory")
-local utils = require("app.lib.utils")
+local utils = require("app.utils")
 
 local Chest = class("Chest", Widget)
 

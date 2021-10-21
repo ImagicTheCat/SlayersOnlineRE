@@ -1,6 +1,6 @@
 local msgpack = require("MessagePack")
 local sha2 = require("sha2")
-local utils = require("app.lib.utils")
+local utils = require("app.utils")
 local URL = require("socket.url")
 
 local ResourceManager = class("ResourceManager")

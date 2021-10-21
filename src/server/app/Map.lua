@@ -1,7 +1,7 @@
 local Client = require("app.Client")
 local net = require("app.protocol")
 local Mob = require("app.entities.Mob")
-local utils = require("app.lib.utils")
+local utils = require("app.utils")
 
 local Map = class("Map")
 

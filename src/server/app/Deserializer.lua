@@ -1,6 +1,6 @@
 local struct = require("struct")
 local iconv = require("iconv")
-local utils = require("app.lib.utils")
+local utils = require("app.utils")
 
 local Deserializer = class("Deserializer")
 
