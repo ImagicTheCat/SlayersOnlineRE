@@ -934,9 +934,9 @@ function Client:requestDialog(text, options, no_busy)
   if not self.dialog_task then
     self.dialog_task = async()
     self:send(Client.makePacket(net.DIALOG_QUERY, {ftext = text, options = options, no_busy = no_busy}))
-    local r = tonumber(self.dialog_task:wait())
+    local r = self.dialog_task:wait()
     self.dialog_task = nil
-    if r == nil or options[r] then return r end
+    if not r or options[r] then return r end
   end
 end
 
