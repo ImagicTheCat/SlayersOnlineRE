@@ -1516,6 +1516,7 @@ function Client:setGold(gold)
 end
 
 function Client:setXP(xp)
+  local old_level = self.level
   self.xp = utils.sanitizeInt(xp)
   local current = XPtable[self.level]
   if self.xp < current then self.xp = current -- reset to current level XP
@@ -1529,15 +1530,18 @@ function Client:setXP(xp)
     end
     self:setRemainingPoints(self.remaining_pts+new_points)
   end
-
   self:send(Client.makePacket(net.STATS_UPDATE, {
     xp = self.xp,
     current_xp = XPtable[self.level] or 0,
     next_xp = XPtable[self.level+1] or self.xp,
     level = self.level
   }))
-
   self:updateCharacteristics()
+  if self.level > old_level then -- level up effects
+    self:emitSound("Holy2.wav")
+    self:emitAnimation("heal.png", 0, 0, 48, 56, 0.75)
+    self:emitHint({{1, 0.78, 0}, utils.fn("LEVEL UP!")})
+  end
 end
 
 function Client:setAlignment(alignment)
