@@ -5,8 +5,7 @@ local URL = require("socket.url")
 
 local ResourceManager = class("ResourceManager")
 
-function ResourceManager:__construct(client)
-  self.client = client
+function ResourceManager:__construct()
   -- create HTTP thread
   self.http_thread = love.thread.newThread("app/thread_http.lua")
   self.http_cin = love.thread.newChannel()
@@ -112,7 +111,7 @@ end
 -- (async)
 -- return true on success or false
 function ResourceManager:loadRemoteManifest()
-  local data = self:requestHTTP(self.client.cfg.resource_repository.."repository.manifest")
+  local data = self:requestHTTP(client.cfg.resource_repository.."repository.manifest")
   if data then
     local lines = utils.split(data:getString(), "\n")
     for _, line in ipairs(lines) do
@@ -153,7 +152,7 @@ function ResourceManager:requestResource(path)
     end
     if not lhash or lhash ~= rhash then -- download/update
       print("download resource "..path)
-      local data, err = self:requestHTTP(self.client.cfg.resource_repository..URL.escape(path))
+      local data, err = self:requestHTTP(client.cfg.resource_repository..URL.escape(path))
       if data then
         -- write file
         local ok, err = self:writeFile("resources_repository/"..path, data)

@@ -7,8 +7,7 @@ local Map = class("Map")
 
 -- METHODS
 
-function Map:__construct(server, id, data)
-  self.server = server
+function Map:__construct(id, data)
   self.id = id
   self.id_gen = 0
   self.data = data -- map data
@@ -285,7 +284,7 @@ function Map:mobAreaSpawnTask(index)
 
   if def then
     if area.mob_count < def.max_mobs then -- try to spawn
-      local mob_data = self.server.project.mobs[def.type+1]
+      local mob_data = server.project.mobs[def.type+1]
       if mob_data then
         local mob = Mob(mob_data, area)
         -- find position

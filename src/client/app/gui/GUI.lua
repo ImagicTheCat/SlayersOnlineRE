@@ -4,10 +4,8 @@ local TextInput = require("app.gui.TextInput")
 local GUI = class("GUI", Base)
 
 -- wrap: (optional) if true, will wrap/extend on content
-function GUI:__construct(client, wrap)
+function GUI:__construct(wrap)
   Base.__construct(self)
-
-  self.client = client
   self.wrap = wrap
 end
 
@@ -30,7 +28,7 @@ end
 -- play unspatialized GUI sound
 -- return source
 function GUI:playSound(path)
-  local source = self.client:playSound(path)
+  local source = client:playSound(path)
   return source
 end
 
