@@ -770,8 +770,6 @@ function Client:__construct(peer)
     guild_chan = false,
     group_chan = false
   }
-
-  self:send(Client.makePacket(net.PROTOCOL, net)) -- send protocol
 end
 
 function Client:onPacket(protocol, data)

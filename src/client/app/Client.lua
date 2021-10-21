@@ -24,6 +24,7 @@ local DialogBox = require("app.gui.DialogBox")
 local TextureAtlas = require("app.TextureAtlas")
 local Phial = require("app.gui.Phial")
 local XPBar = require("app.gui.XPBar")
+local net = require("app.protocol")
 local client_version = require("app.client_version")
 local client_salt = require("app.client_salt")
 
@@ -32,22 +33,11 @@ local Client = class("Client")
 -- STATICS
 
 local GAMEPAD_DEAD_RADIUS = 0.4 -- stick dead center radius
-local net = utils.rmap{"PROTOCOL"}
 
 -- Packet handlers.
 local packet = {}
 
 function packet:PROTOCOL(data)
-  net = data
-  self:sendPacket(net.VERSION_CHECK, client_version)
-  async(function()
-    -- load remote manifest
-    if not self.rsc_manager:loadRemoteManifest() then
-      print("couldn't reach remote resources repository manifest")
-      self.chat_history:addMessage({{0,1,0.5}, "Impossible de joindre le dépôt distant de ressources."})
-      return
-    end
-  end)
 end
 function packet:MOTD_LOGIN(data)
   async(function()
@@ -711,13 +701,13 @@ function Client:tick(dt)
   -- net
   local event = self.host:service()
   while event do
-    if event.type == "receive" then
+    if event.type == "connect" then self:onConnect()
+    elseif event.type == "disconnect" then self:onDisconnect()
+    elseif event.type == "receive" then
       local packet = msgpack.unpack(event.data)
       self:onPacket(packet[1], packet[2])
-    elseif event.type == "disconnect" then
-      self:onDisconnect()
     end
-
+    -- next
     event = self.host:service()
   end
   -- resource manager
@@ -826,6 +816,18 @@ end
 -- unsequenced: unsequenced if true/passed, reliable otherwise
 function Client:sendPacket(protocol, data, unsequenced)
   self.peer:send(msgpack.pack({protocol, data}), 0, (unsequenced and "unsequenced" or "reliable"))
+end
+
+function Client:onConnect()
+  self:sendPacket(net.VERSION_CHECK, client_version)
+  async(function()
+    -- load remote manifest
+    if not self.rsc_manager:loadRemoteManifest() then
+      print("couldn't reach remote resources repository manifest")
+      self.chat_history:addMessage({{0,1,0.5}, "Impossible de joindre le dépôt distant de ressources."})
+      return
+    end
+  end)
 end
 
 function Client:onDisconnect()
