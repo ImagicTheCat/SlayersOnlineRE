@@ -16,12 +16,13 @@ function Map:__construct(data)
   -- load map resources
   async(function()
     if client.rsc_manager:requestResource("textures/sets/"..data.tileset) then
-      self.tileset = client:loadTexture("resources/textures/sets/"..data.tileset)
+      local tileset = client:loadTexture("resources/textures/sets/"..data.tileset, "non-fatal")
+      if tileset then self.tileset = tileset end
       self:build(data)
     else print("failed to load map tileset \""..data.tileset.."\"") end
     if #data.background > 0 then
       if client.rsc_manager:requestResource("textures/sets/"..data.background) then
-        self.background = client:loadTexture("resources/textures/sets/"..data.background)
+        self.background = client:loadTexture("resources/textures/sets/"..data.background, "non-fatal")
       else print("failed to load map background \""..data.background.."\"") end
     end
     if data.music then
@@ -109,14 +110,16 @@ end
 function Map:playAnimation(path, x, y, w, h, duration, alpha)
   async(function()
     if client.rsc_manager:requestResource("textures/sets/"..path) then
-      local texture = client:loadTexture("resources/textures/sets/"..path)
-      local anim = {
-        texture = texture,
-        atlas = client:getTextureAtlas(0, 0, texture:getWidth(), texture:getHeight(), w, h),
-        x = x, y = y, time = 0, duration = duration,
-        alpha = alpha or 1
-      }
-      table.insert(self.animations, anim)
+      local texture = client:loadTexture("resources/textures/sets/"..path, "non-fatal")
+      if texture then
+        local anim = {
+          texture = texture,
+          atlas = client:getTextureAtlas(0, 0, texture:getWidth(), texture:getHeight(), w, h),
+          x = x, y = y, time = 0, duration = duration,
+          alpha = alpha or 1
+        }
+        table.insert(self.animations, anim)
+      end
     else print("failed to load animation \""..path.."\"") end
   end)
 end
@@ -127,9 +130,11 @@ function Map:playSound(path, x, y)
   async(function()
     if client.rsc_manager:requestResource("audio/"..path) then
       local source = client:playSound("resources/audio/"..path)
-      source:setPosition(x, y, 0)
-      source:setAttenuationDistances(16, 16*15)
-      source:setRelative(false)
+      if source then
+        source:setPosition(x, y, 0)
+        source:setAttenuationDistances(16, 16*15)
+        source:setRelative(false)
+      end
     else print("failed to load path \""..path.."\"") end
   end)
 end
