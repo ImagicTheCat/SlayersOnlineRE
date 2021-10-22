@@ -428,7 +428,7 @@ end, "", "envoyer un message serveur"}
 commands.create_account = {0, "server", function(self, client, args)
   if #args < 3 or #args[2] == 0 or #args[3] == 0 then return true end -- wrong parameters
   local pseudo = args[2]
-  local client_password = sha2.hex2bin(sha2.sha512(client_salt..pseudo..args[3]))
+  local client_password = sha2.hex2bin(sha2.sha512(client_salt..pseudo:lower()..args[3]))
   -- generate salt
   local urandom = io.open("/dev/urandom")
   if not urandom then print("couldn't open /dev/urandom"); return end
