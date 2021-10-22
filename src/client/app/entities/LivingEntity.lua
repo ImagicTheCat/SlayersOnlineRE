@@ -106,7 +106,7 @@ function LivingEntity:setCharaset(charaset)
     async(function()
       -- load texture
       local texture = (client.rsc_manager:requestResource("textures/sets/"..charaset.path) and
-        client:loadTexture("resources/textures/sets/"..charaset.path))
+        client:loadTexture("resources/textures/sets/"..charaset.path, "non-fatal"))
       if texture then
         self.texture = texture
         self.atlas = client:getTextureAtlas(charaset.x, charaset.y, texture:getWidth(), texture:getHeight(), charaset.w, charaset.h)
@@ -134,9 +134,11 @@ function LivingEntity:emitSound(sound)
   async(function()
     if client.rsc_manager:requestResource("audio/"..sound) then
       local source = client:playSound("resources/audio/"..sound)
-      source:setPosition(self.x+8, self.y+8, 0)
-      source:setAttenuationDistances(16, 16*15)
-      source:setRelative(false)
+      if source then
+        source:setPosition(self.x+8, self.y+8, 0)
+        source:setAttenuationDistances(16, 16*15)
+        source:setRelative(false)
+      end
     else print("failed to load sound \""..sound.."\"") end
   end)
 end
@@ -149,17 +151,19 @@ end
 function LivingEntity:emitAnimation(path, x, y, w, h, duration, alpha)
   async(function()
     if client.rsc_manager:requestResource("textures/sets/"..path) then
-      local texture = client:loadTexture("resources/textures/sets/"..path)
-      local anim = {
-        texture = texture,
-        atlas = client:getTextureAtlas(0, 0, texture:getWidth(), texture:getHeight(), w, h),
-        x = x,
-        y = y,
-        time = 0,
-        duration = duration,
-        alpha = alpha or 1
-      }
-      table.insert(self.animations, anim)
+      local texture = client:loadTexture("resources/textures/sets/"..path, "non-fatal")
+      if texture then
+        local anim = {
+          texture = texture,
+          atlas = client:getTextureAtlas(0, 0, texture:getWidth(), texture:getHeight(), w, h),
+          x = x,
+          y = y,
+          time = 0,
+          duration = duration,
+          alpha = alpha or 1
+        }
+        table.insert(self.animations, anim)
+      end
     else print("failed to load animation \""..path.."\"") end
   end)
 end

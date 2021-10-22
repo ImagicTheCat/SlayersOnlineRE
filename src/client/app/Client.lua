@@ -318,38 +318,47 @@ function packet:MAP_EFFECT(data)
   if self.map_effect == "rain" and not self.fx_rain then
     async(function()
       if self.rsc_manager:requestResource("textures/sets/pluie.png") then
-        self.fx_rain = love.graphics.newParticleSystem(self:loadTexture("resources/textures/sets/pluie.png"))
-        self.fx_rain:setEmissionRate(20)
-        self.fx_rain:setSpeed(64)
-        self.fx_rain:setParticleLifetime(20*16/64)
-        self.fx_rain:setEmissionArea("uniform", love.graphics.getWidth()/self.world_scale, 16)
-        self.fx_rain:setDirection(3*math.pi/4)
-        self.fx_rain:start()
+        local tex = self:loadTexture("resources/textures/sets/pluie.png", "non-fatal")
+        if tex then
+          self.fx_rain = love.graphics.newParticleSystem(tex)
+          self.fx_rain:setEmissionRate(20)
+          self.fx_rain:setSpeed(64)
+          self.fx_rain:setParticleLifetime(20*16/64)
+          self.fx_rain:setEmissionArea("uniform", love.graphics.getWidth()/self.world_scale, 16)
+          self.fx_rain:setDirection(3*math.pi/4)
+          self.fx_rain:start()
+        end
       else print("failed to load resource \"pluie.png\"") end
     end)
   elseif self.map_effect == "snow" and not self.fx_snow then
     async(function()
       if self.rsc_manager:requestResource("textures/sets/neige.png") then
-        self.fx_snow = love.graphics.newParticleSystem(self:loadTexture("resources/textures/sets/neige.png"))
-        self.fx_snow:setEmissionRate(10)
-        self.fx_snow:setSpeed(32)
-        self.fx_snow:setParticleLifetime(16*16/32)
-        self.fx_snow:setEmissionArea("uniform", love.graphics.getWidth()/self.world_scale, 16)
-        self.fx_snow:setDirection(math.pi/2)
-        self.fx_snow:setSizes(1, 0.5)
-        self.fx_snow:setSpread(0.25)
-        self.fx_snow:start()
+        local tex = self:loadTexture("resources/textures/sets/neige.png", "non-fatal")
+        if tex then
+          self.fx_snow = love.graphics.newParticleSystem(tex)
+          self.fx_snow:setEmissionRate(10)
+          self.fx_snow:setSpeed(32)
+          self.fx_snow:setParticleLifetime(16*16/32)
+          self.fx_snow:setEmissionArea("uniform", love.graphics.getWidth()/self.world_scale, 16)
+          self.fx_snow:setDirection(math.pi/2)
+          self.fx_snow:setSizes(1, 0.5)
+          self.fx_snow:setSpread(0.25)
+          self.fx_snow:start()
+        end
       else print("failed to load resource \"neige.png\"") end
     end)
   elseif self.map_effect == "fog" and not self.fx_fog then
     async(function()
       if self.rsc_manager:requestResource("textures/sets/brouillard.png") then
-        self.fx_fog = {}
-        self.fx_fog.tex = self:loadTexture("resources/textures/sets/brouillard.png")
-        self.fx_fog.tex:setWrap("repeat")
-        local w,h = self.fx_fog.tex:getDimensions()
-        self.fx_fog.quad = love.graphics.newQuad(0, 0, w*2, h*2, w, h)
-        self.fx_fog.speed = 2 -- world units/s
+        local tex = self:loadTexture("resources/textures/sets/brouillard.png", "non-fatal")
+        if tex then
+          self.fx_fog = {}
+          self.fx_fog.tex = tex
+          self.fx_fog.tex:setWrap("repeat")
+          local w,h = self.fx_fog.tex:getDimensions()
+          self.fx_fog.quad = love.graphics.newQuad(0, 0, w*2, h*2, w, h)
+          self.fx_fog.speed = 2 -- world units/s
+        end
       else print("failed to load resource \"brouillard.png\"") end
     end)
   end
@@ -1552,11 +1561,21 @@ function Client:sellItem(id, amount)
   self:sendPacket(net.ITEM_SELL, id)
 end
 
-function Client:loadTexture(path)
+-- mode: (optional) "non-fatal"
+-- return texture or nil on failure ("non-fatal" only)
+function Client:loadTexture(path, mode)
   local image = self.textures[path]
   if not image then
-    image = love.graphics.newImage(path)
-    self.textures[path] = image
+    if mode == "non-fatal" then
+      local ok, r = pcall(love.graphics.newImage, path)
+      if ok then
+        image = r
+        self.textures[path] = image
+      else print("failed to load texture \""..path.."\": "..r) end
+    elseif not mode then
+      image = love.graphics.newImage(path)
+      self.textures[path] = image
+    else error("invalid mode") end
   end
   return image
 end
@@ -1669,22 +1688,22 @@ function Client:playMusic(path)
   end
 end
 
--- play a relative sound source and return it
--- return source
+-- Play a relative sound source and return it.
+-- return source or nil on failure
 function Client:playSound(path)
-  local data = self.sounds[path]
+  local ok, data = true, self.sounds[path]
   if not data then -- load
-    data = love.sound.newSoundData(path)
-    self.sounds[path] = data
+    ok, data = pcall(love.sound.newSoundData, path)
+    if ok then self.sounds[path] = data
+    else print("failed to load sound data for \""..path.."\": "..data) end
   end
-
-  local source = love.audio.newSource(data, "static")
-  source:setRelative(true)
-  source:play()
-
-  table.insert(self.sound_sources, source)
-
-  return source
+  if ok then
+    local source = love.audio.newSource(data, "static")
+    source:setRelative(true)
+    source:play()
+    table.insert(self.sound_sources, source)
+    return source
+  end
 end
 
 function Client:showLoading()
