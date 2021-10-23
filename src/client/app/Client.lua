@@ -1222,8 +1222,10 @@ function Client:pressControl(id)
     if id == "fullscreen" then
       if love.window.getFullscreen() then
         love.window.setMode(800, 600, {fullscreen = false, resizable = true})
+        self:onResize(love.graphics.getDimensions())
       else
         love.window.setMode(800, 600, {fullscreen = true})
+        self:onResize(love.graphics.getDimensions())
       end
     end
     -- gameplay handling
