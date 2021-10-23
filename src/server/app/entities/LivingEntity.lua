@@ -133,9 +133,10 @@ function caster_vars:Vie(value, state)
     if delta > 0 then self:emitHint({{0,1,0}, utils.fn(delta)})
     elseif delta < 0 then
       self:broadcastPacket("damage", -delta)
-      -- add damages to bingo book
-      if class.is(self, Mob) and class.is(state.caster, Client) then
-        self:addToBingoBook(state.caster, -delta)
+      -- handle Bingo Book and last player hit
+      if class.is(state.caster, Client) then
+        if class.is(self, Mob) then self:addToBingoBook(state.caster, -delta)
+        elseif class.is(self, Client) then self.last_attacker = state.caster end
       end
     end
     self:setHealth(value)
