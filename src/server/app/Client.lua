@@ -1750,11 +1750,11 @@ end
 function Client:canFight(target)
   if self == target or not self.map or self.map ~= target.map then return false end
   if self.map.data.type == "PvE" then return false end -- PVE only check
-  if self.group and self.group == attacker.group then return false end -- group check
+  if self.group and self.group == target.group then return false end -- group check
   if self.map.data.type == "PvE-PvP" -- PVE/PVP guild/group check
-    and self.guild and self.guild == attacker.guild -- same guild
-    and self.group == attacker.group then return false end -- same group or none
-  if math.abs(self.level-attacker.level) >= 10 then return false end -- level check
+    and #self.guild > 0 and self.guild == target.guild -- same guild
+    and self.group == target.group then return false end -- same group or none
+  if math.abs(self.level-target.level) >= 10 then return false end -- level check
   return true
 end
 
