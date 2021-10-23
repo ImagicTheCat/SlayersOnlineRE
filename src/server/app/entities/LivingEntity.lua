@@ -1,6 +1,7 @@
 local utils = require("app.utils")
 local Entity = require("app.Entity")
 local XPtable = require("app.XPtable")
+local net = require("app.protocol")
 local cfg = require("config")
 -- deferred
 local Client, Projectile, Mob
@@ -105,8 +106,8 @@ function caster_vars:Attaque(value)
   else
     self.ch_attack = value
     if class.is(self, Client) then
-      self.client:send(Client.makePacket(net.STATS_UPDATE, {
-        attack = self.client.ch_attack,
+      self:send(Client.makePacket(net.STATS_UPDATE, {
+        attack = self.ch_attack,
       }))
     end
   end
@@ -116,8 +117,8 @@ function caster_vars:Defense(value)
   else
     self.ch_defense = value
     if class.is(self, Client) then
-      self.client:send(Client.makePacket(net.STATS_UPDATE, {
-        defense = self.client.ch_defense,
+      self:send(Client.makePacket(net.STATS_UPDATE, {
+        defense = self.ch_defense,
       }))
     end
   end
