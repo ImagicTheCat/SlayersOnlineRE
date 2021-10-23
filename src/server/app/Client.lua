@@ -1198,13 +1198,13 @@ function Client:onAttack(attacker)
     return true
   elseif class.is(attacker, Client) then -- player
     if not attacker:canFight(self) then return false end
-    self.last_attacker = attacker
     -- alignment loss
     local amount = attacker:computeAttack(self)
     if amount and self.map.data.type == "PvE-PvP" then
       attacker:setAlignment(attacker.alignment-5)
       attacker:emitHint("-5 alignement")
     end
+    if amount then self.last_attacker = attacker end
     self:damage(amount)
     attacker:triggerGearSpells(self)
     return true
