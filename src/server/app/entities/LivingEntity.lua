@@ -478,7 +478,7 @@ end
 function LivingEntity:moveToEntity(target, speed_factor)
   -- movements
   while self.map and self.map == target.map and
-      self.cx ~= target.cx or self.cy ~= target.cy do
+      not (self.cx == target.cx and self.cy == target.cy) do
     local dx, dy = utils.dvec(target.cx-self.cx, target.cy-self.cy)
     if not self:moveToCell(self.cx+dx, self.cy+dy, true, speed_factor) then break end
   end
@@ -666,7 +666,7 @@ function LivingEntity:applySpell(caster, spell)
     async(function()
       for i=1, steps do
         -- interrupt effect if invalid
-        if not map == caster.map then break end
+        if map ~= caster.map then break end
         -- audio/visual effects
         if #spell.set > 0 then
           for tile_i=1, tiles_per_axis do
@@ -714,10 +714,11 @@ function LivingEntity:applySpell(caster, spell)
       end
     end)
   else -- regular spell, apply steps
+    local map = self.map
     async(function()
       for i=1, steps do
         -- interrupt effect if invalid
-        if not self.map then break end
+        if self.map ~= map or self.ghost then break end
         applySpellStep(state)
         -- next
         wait(duration)
