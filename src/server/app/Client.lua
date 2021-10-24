@@ -1559,7 +1559,7 @@ function Client:setRemainingPoints(remaining_pts)
 end
 
 -- leave current group and join new group
--- id: key (string) or falsy to just leave
+-- id: case insensitive key or falsy to just leave
 function Client:setGroup(id)
   if self.group then -- leave old group
     local group = server.groups[self.group]
@@ -1570,12 +1570,10 @@ function Client:setGroup(id)
           id = self.id,
           act = "group_remove"
         })
-
         for client in pairs(group) do
           if client.map == self.map then
             -- leave packet to other group member
             if client ~= self then client:send(packet) end
-
             -- leave packet to self
             self:send(Client.makePacket(net.ENTITY_PACKET, {
               id = client.id,
@@ -1584,7 +1582,6 @@ function Client:setGroup(id)
           end
         end
       end
-
       -- notify
       for client in pairs(group) do
         if client ~= self then
@@ -1593,21 +1590,20 @@ function Client:setGroup(id)
           client:sendChatMessage("Vous avez quitté le groupe \""..self.group.."\".")
         end
       end
-
       group[self] = nil
       -- remove if empty
       if not next(group) then server.groups[self.group] = nil end
       self.group = nil
     end
   end
-
-  if id then -- join
+  -- join
+  if id then
+    id = id:lower()
     local group = server.groups[id]
     if not group then -- create group
       group = {}
       server.groups[id] = group
     end
-
     group[self] = true
     self.group = id
     self:sendGroupUpdate()
