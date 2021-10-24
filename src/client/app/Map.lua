@@ -4,8 +4,11 @@ local TextureAtlas = require("app.TextureAtlas")
 
 local Map = class("Map")
 
-local function sort_entities(a, b)
+local function sort_entities_back(a, b)
   return a.top < b.top or (a.top == b.top and a.id < b.id)
+end
+local function sort_entities_front(a, b)
+  return a.y < b.y or (a.y == b.y and a.id < b.id)
 end
 
 -- METHODS
@@ -183,9 +186,9 @@ function Map:tick(dt)
     end
   end
   -- sort entities by Y-top position (top-down sorting)
-  table.sort(self.back_draw_list, sort_entities)
-  table.sort(self.dynamic_draw_list, sort_entities)
-  table.sort(self.front_draw_list, sort_entities)
+  table.sort(self.back_draw_list, sort_entities_back)
+  table.sort(self.dynamic_draw_list, sort_entities_back)
+  table.sort(self.front_draw_list, sort_entities_front)
 end
 
 function Map:draw()
