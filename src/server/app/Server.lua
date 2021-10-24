@@ -323,12 +323,18 @@ commands.count = {10, "shared", function(self, client, args)
 end, "", "afficher le nombre de joueurs en ligne"}
 
 commands.where = {10, "client", function(self, client, args)
-  if client.map then
-    client:sendChatMessage(client.map.id.." "..client.cx..","..client.cy)
+  local target
+  if args[2] then
+    target = self:getClientByPseudo(args[2])
+    if not target then client:sendChatMessage("Joueur introuvable."); return end
+  else target = client end
+  -- fetch info
+  if target.map then
+    client:sendChatMessage(target.map.id.." "..target.cx..","..target.cy)
   else
-    client:sendChatMessage("pas sur une map")
+    client:sendChatMessage("Pas sur une map.")
   end
-end, "", "afficher sa position"}
+end, "[pseudo]", "afficher sa position ou celle d'un autre joueur"}
 
 commands.skin = {10, "client", function(self, client, args)
   if not args[2] then return true end
