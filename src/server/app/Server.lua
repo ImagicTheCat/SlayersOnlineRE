@@ -67,9 +67,9 @@ commands.help = {10, "shared", function(self, client, args)
       local msg = "help: commande \""..id.."\" inconnue"
       if client then client:sendChatMessage(msg) else print(msg) end
     end
-  else -- all commands
+  else -- general help, all commands
     local lines = {}
-    table.insert(lines, "Commandes:")
+    table.insert(lines, [[Commandes (échapper un espace avec '\s' ou '\ '):]])
     for id, cmd in pairs(commands) do
       if rank <= cmd[1] and cmd_check_side(cmd[2], client) then
         table.insert(lines, "  "..id.." "..cmd[4])
@@ -729,20 +729,15 @@ end
 
 -- STATICS
 
--- parse [cmd arg1 arg2 "arg 3" ...]
+-- parse [cmd arg1 arg2 arg\ 3 ...]
 -- return command args
 function Server.parseCommand(str)
-  str = string.gsub(str, "\"(.-)\"", function(content)
-    return string.gsub(content, " ", "\\s")
-  end)
-
   local args = {}
-
+  str = string.gsub(str, "\\ ", "\\s")
   for arg in string.gmatch(str, "([^ ]+)") do
     arg = string.gsub(arg, "\\s", " ")
     table.insert(args, arg)
   end
-
   return args
 end
 
