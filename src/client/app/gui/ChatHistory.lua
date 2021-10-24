@@ -33,6 +33,7 @@ end
 function ChatHistory:scroll(amount)
   self.scroll_h = utils.clamp(self.scroll_h+amount, 0, self.inner_h-self.content.h)
   self.content:setInnerShift(0, self.content.h-self.inner_h+self.scroll_h) -- scroll to bottom
+  self:show(10)
 end
 
 -- time: (optional) seconds or nil (infinite)
@@ -54,15 +55,16 @@ end
 
 -- ftext: string or coloredtext (see löve)
 function ChatHistory:addMessage(ftext)
+  -- insert
   local text = Text()
   text:set(ftext)
   self.content:add(text)
   table.insert(self.messages, 1, text)
-
+  -- prune
   if #self.messages > self.max then
     self.content:remove(table.remove(self.messages))
   end
-
+  -- display
   self:show(10)
 end
 
