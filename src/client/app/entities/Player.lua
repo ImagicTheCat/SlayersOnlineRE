@@ -72,11 +72,11 @@ function Player:drawUnder()
     local inv_scale = 1/client.world_scale
     local x = (self.x+8)-self.name_tag:getWidth()/2*inv_scale
     local y = self.y+16
-    love.graphics.setColor(0,0,0,0.50)
+    love.graphics.setColor(0,0,0, 0.50*(self.afterimage or 1))
     love.graphics.draw(self.name_tag, x+2*inv_scale, y+2*inv_scale, 0, inv_scale) -- shadowing
-    love.graphics.setColor(1,1,1)
+    love.graphics.setColor(1,1,1, self.afterimage)
     love.graphics.draw(self.name_tag, x, y, 0, inv_scale)
-
+    love.graphics.setColor(1,1,1)
     -- draw health (group)
     if self.group_data and self.id ~= client.id then
       local p = self.group_data.health/self.group_data.max_health
