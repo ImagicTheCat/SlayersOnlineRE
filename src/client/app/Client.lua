@@ -82,8 +82,8 @@ function packet:MAP_CHAT(data)
     end
   end
 end
-function packet:CHAT_MESSAGE_SERVER(data)
-  self.chat_history:addMessage({{0,1,0.5}, data})
+function packet:CHAT_MESSAGE(data)
+  self.chat_history:addMessage(data)
 end
 function packet:EVENT_MESSAGE(data)
   self.message_window_text:set(data)
@@ -234,18 +234,6 @@ function packet:SCROLL_TO(data)
 end
 function packet:SCROLL_RESET(data) self.scroll = nil end
 function packet:VIEW_SHIFT_UPDATE(data) self.view_shift = data end
-function packet:GLOBAL_CHAT(data)
-  self.chat_history:addMessage({{0.68,0.57,0.81}, data.pseudo.."(all): ", {1,1,1}, data.msg})
-end
-function packet:GROUP_CHAT(data)
-  self.chat_history:addMessage({{0.97,0.65,0.32}, data.pseudo.."(grp): ", {1,1,1}, data.msg})
-end
-function packet:GUILD_CHAT(data)
-  self.chat_history:addMessage({{0.42,0.7,0.98}, data.pseudo.."(gui): ", {1,1,1}, data.msg})
-end
-function packet:PRIVATE_CHAT(data)
-  self.chat_history:addMessage({{0.45,0.83,0.22}, data.pseudo.."(msg): ", {1,1,1}, data.msg})
-end
 function packet:TARGET_PICK(data)
   local entities = {}
   if self.map then -- add valid entities
