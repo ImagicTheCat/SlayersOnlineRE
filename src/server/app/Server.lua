@@ -173,7 +173,7 @@ commands.gui = {10, "client", function(self, client, args)
   elseif param == "chat_height" then
     client:applyConfig({gui = {chat_height = tonumber(value) or 0.25}})
   else
-    client:print("invalid parameter \""..param.."\"")
+    client:print("paramètre invalide \""..param.."\"")
   end
 end, "<parameter> <value>", [[changer les paramètres de la GUI
     - font_size (taille en pixels)
@@ -406,7 +406,6 @@ commands.pick = {1, "client", function(self, client, args)
   end)
 end, "[type] [radius]", "selectionner une entité"}
 
--- testing command
 commands.kill = {10, "client", function(self, client, args)
   client:setHealth(0)
 end, "", "se suicider"}
@@ -466,15 +465,14 @@ end, "<pseudo> <password> [rank]", "créer un compte"}
 -- join group
 commands.join = {10, "client", function(self, client, args)
   if not client:canChangeGroup() then
-    client:print("Changement de groupe impossible.")
-    return
+    client:print("Changement de groupe impossible."); return
   end
   if not args[2] or #args[2] <= GROUP_ID_LIMIT then
     client:setGroup(args[2])
   else
     client:print("Nom de groupe trop long.")
   end
-end, "[groupe]", "rejoindre un groupe ou juste quitter l'actuel si non spécifié"}
+end, "[groupe]", "rejoindre un groupe ou quitter l'actuel si non spécifié"}
 
 -- group chat
 commands.party = {10, "client", function(self, client, args)
@@ -622,7 +620,7 @@ commands.giveitem = {1, "client", function(self, client, args)
   if id then
     for i=1,math.floor(tonumber(args[3]) or 1) do client.inventory:put(id) end
     client:print("Objet(s) créé(s).")
-  end
+  else client:print("Objet invalide.") end
 end, "<name> [amount]", "créer des objets"}
 
 -- give spell
@@ -634,7 +632,7 @@ commands.givespell = {1, "client", function(self, client, args)
       client.spell_inventory:put(id)
     end
     client:print("Magie(s) créée(s).")
-  end
+  else client:print("Magie invalide.") end
 end, "<name> [amount]", "créer des magies"}
 
 -- give gold
@@ -734,13 +732,13 @@ commands.ban = {2, "shared", function(self, client, args)
     -- set ban
     local affected = self.db:query("user/setBan", {pseudo = pseudo, timestamp = os.time()+math.floor(hours*3600)}).affected_rows
     -- output
-    if not client then print(affected == 0 and "no-op" or "player banned")
-    else client:print(affected == 0 and "no-op" or "Joueur banni.") end
+    if not client then print(affected == 0 and "player not found" or "player banned")
+    else client:print(affected == 0 and "Joueur introuvable." or "Joueur banni.") end
     -- kick
     local target = self:getClientByPseudo(pseudo)
     if target then target:kick("Banni "..hours.." heure(s): "..reason) end
   end)
-end, "<pseudo> <reason> [hours]", "bannir un joueur (1 heure par défaut, virgule possible)"}
+end, "<pseudo> <reason> [hours]", "bannir un joueur (1 heure par défaut, non entier possible)"}
 
 commands.unban = {2, "shared", function(self, client, args)
   local pseudo = args[2]
@@ -749,8 +747,8 @@ commands.unban = {2, "shared", function(self, client, args)
     -- set ban
     local affected = self.db:query("user/setBan", {pseudo = pseudo, timestamp = 0}).affected_rows
     -- output
-    if not client then print(affected == 0 and "no-op" or "player unbanned")
-    else client:print(affected == 0 and "no-op" or "Joueur débanni.") end
+    if not client then print(affected == 0 and "player not found or not banned" or "player unbanned")
+    else client:print(affected == 0 and "Joueur introuvable ou non banni." or "Joueur débanni.") end
   end)
 end, "<pseudo>", "débannir un joueur"}
 
