@@ -231,7 +231,7 @@ function Mob:onDeath()
         if gold_share > 0 then client:emitHint({{1,0.78,0}, utils.fn(gold_share, true)}) end
         -- notify if on a different map
         if client.map ~= self.map then
-          client:sendChatMessage("Loot récupéré du monstre "..self.data.name..
+          client:print("Loot récupéré du monstre "..self.data.name..
               " depuis la map "..self.map.data.name)
         end
       end

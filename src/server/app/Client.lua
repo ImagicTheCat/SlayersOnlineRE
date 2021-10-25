@@ -274,14 +274,14 @@ function packet:LOGIN(data)
         server.clients_by_pseudo[self.pseudo:lower()] = self
         self.user_id = user_id
         self.status = "logged"
-        self:sendChatMessage("Identifié.")
+        self:print("Identifié.")
       else -- login error
         server.clients_by_id[user_id] = nil
         print("<= login error for user#"..user_id.." \""..user_row.pseudo.."\"")
         self:kick("Erreur du serveur.")
       end
     else -- login failed
-      self:sendChatMessage("Identification échouée.")
+      self:print("Identification échouée.")
       -- send motd (start login)
       self:send(Client.makePacket(net.MOTD_LOGIN, {motd = server.motd}))
     end
@@ -321,7 +321,7 @@ function packet:INPUT_CHAT(data)
       self:mapChat(data)
     end
   else
-    self:sendChatMessage("Message trop long.")
+    self:print("Message trop long.")
   end
 end
 function packet:EVENT_MESSAGE_SKIP(data)
@@ -654,20 +654,20 @@ function packet:TRADE_SEEK(data)
     local entity = self:requestPickTarget("player", 7)
     if entity then
       if not entity.ignores.trade then
-        self:sendChatMessage("Requête envoyée.")
+        self:print("Requête envoyée.")
         -- open dialog
         local dialog_r = entity:requestDialog({{0,1,0.5}, self.pseudo, {1,1,1}, " souhaite lancer un échange avec vous."}, {"Accepter"})
         if dialog_r == 1 then
           if not (self.map == entity.map and self:openTrade(entity)) then
-            self:sendChatMessage("Échange impossible.")
-            entity:sendChatMessage("Échange impossible.")
+            self:print("Échange impossible.")
+            entity:print("Échange impossible.")
           end
         else
-          self:sendChatMessage("Joueur occupé / échange refusé.")
+          self:print("Joueur occupé / échange refusé.")
         end
-      else self:sendChatMessage("Joueur occupé.") end
+      else self:print("Joueur occupé.") end
     else
-      self:sendChatMessage("Cible invalide.")
+      self:print("Cible invalide.")
     end
   end)
 end
@@ -783,12 +783,12 @@ function Client:send(packet, unsequenced)
   self.peer:send(packet, 0, (unsequenced and "unsequenced" or "reliable"))
 end
 
-function Client:sendChatMessage(msg)
-  self:send(Client.makePacket(net.CHAT_MESSAGE_SERVER, msg))
+-- ftext: string or coloredtext (see LÖVE)
+function Client:sendChatMessage(ftext)
+  self:send(Client.makePacket(net.CHAT_MESSAGE, ftext))
 end
 
-function Client:timerTick()
-end
+function Client:print(msg) self:sendChatMessage({{0,1,0.5}, msg}) end
 
 function Client:minuteTick()
   if self.status == "logged" then self:setAlignment(self.alignment+1) end
@@ -1058,8 +1058,8 @@ function Client:setTradeLock(locked)
       -- close
       local p, msg = Client.makePacket(net.TRADE_CLOSE), "Échange effectué."
       self:send(p); peer:send(p)
-      self:sendChatMessage(msg)
-      peer:sendChatMessage(msg)
+      self:print(msg)
+      peer:print(msg)
       self.trade, peer.trade = nil, nil
     end
   end
@@ -1086,8 +1086,8 @@ function Client:cancelTrade()
 
     local p, msg = Client.makePacket(net.TRADE_CLOSE), "Échange annulé."
     self:send(p); peer:send(p)
-    self:sendChatMessage(msg)
-    peer:sendChatMessage(msg)
+    self:print(msg)
+    peer:print(msg)
     self.trade, peer.trade = nil, nil
   end
 end
@@ -1104,7 +1104,7 @@ function Client:resetScroll()
 end
 
 function Client:kick(reason)
-  self:sendChatMessage("[Kicked] "..reason)
+  self:print("[Kicked] "..reason)
   self.peer:disconnect_later()
 end
 
@@ -1257,7 +1257,7 @@ function Client:tryUseItem(id)
   -- checks
   if not item or item.type ~= "usable" then return end
   if not self:checkItemRequirements(item) then
-    self:sendChatMessage("Prérequis insuffisants."); return
+    self:print("Prérequis insuffisants."); return
   end
   if spell and (not self:canCast(spell) or not self:tryCastSpell(spell)) then return end
   -- consume
@@ -1287,11 +1287,11 @@ end
 -- return true on success
 function Client:tryCastSpell(spell)
   if spell.mp > self.mana then -- check mana
-    self:sendChatMessage("Pas assez de mana."); return
+    self:print("Pas assez de mana."); return
   end
   if self.level < spell.req_level or not
       (spell.usable_class == 0 or self.class == spell.usable_class) then
-    self:sendChatMessage("Prérequis insuffisants."); return
+    self:print("Prérequis insuffisants."); return
   end
   -- acquire target
   local target
@@ -1307,12 +1307,12 @@ function Client:tryCastSpell(spell)
     target = self
   end
   if not target then
-    self:sendChatMessage("Cible invalide.")
+    self:print("Cible invalide.")
     return
   end
   -- check line of sight
   if spell.type == "fireball" and not self:hasLOS(target.cx, target.cy) then
-    self:sendChatMessage("Pas de ligne de vue.")
+    self:print("Pas de ligne de vue.")
     return
   end
   -- cast
@@ -1585,9 +1585,9 @@ function Client:setGroup(id)
       -- notify
       for client in pairs(group) do
         if client ~= self then
-          client:sendChatMessage("\""..self.pseudo.."\" a quitté le groupe.")
+          client:print("\""..self.pseudo.."\" a quitté le groupe.")
         else
-          client:sendChatMessage("Vous avez quitté le groupe \""..self.group.."\".")
+          client:print("Vous avez quitté le groupe \""..self.group.."\".")
         end
       end
       group[self] = nil
@@ -1611,9 +1611,9 @@ function Client:setGroup(id)
     -- notify
     for client in pairs(group) do
       if client ~= self then
-        client:sendChatMessage("\""..self.pseudo.."\" a rejoint le groupe.")
+        client:print("\""..self.pseudo.."\" a rejoint le groupe.")
       else
-        client:sendChatMessage("Vous avez rejoint le groupe \""..self.group.."\".")
+        client:print("Vous avez rejoint le groupe \""..self.group.."\".")
       end
     end
   end

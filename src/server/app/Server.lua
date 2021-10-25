@@ -59,13 +59,13 @@ commands.help = {10, "shared", function(self, client, args)
       table.insert(lines, "  "..id.." "..cmd[4])
       table.insert(lines, "    "..cmd[5])
       if client then
-        client:sendChatMessage(table.concat(lines, "\n"))
+        client:print(table.concat(lines, "\n"))
       else
         print(table.concat(lines, "\n"))
       end
     else
       local msg = "help: commande \""..id.."\" inconnue"
-      if client then client:sendChatMessage(msg) else print(msg) end
+      if client then client:print(msg) else print(msg) end
     end
   else -- general help, all commands
     local lines = {}
@@ -77,7 +77,7 @@ commands.help = {10, "shared", function(self, client, args)
       end
     end
     if client then
-      client:sendChatMessage(table.concat(lines, "\n"))
+      client:print(table.concat(lines, "\n"))
     else
       print(table.concat(lines, "\n"))
     end
@@ -117,27 +117,27 @@ commands.bind = {10, "client", function(self, client, args)
       if not control_whitelist[control] then return true end
       if not bind_sc_blacklist[input] then
         client:applyConfig({scancode_controls = {[input] = control}})
-        client:sendChatMessage("scancode \""..input.."\" assigné à \""..control.."\"")
+        client:print("scancode \""..input.."\" assigné à \""..control.."\"")
       else
-        client:sendChatMessage("scancode \""..input.."\" ne peut pas être réassigné")
+        client:print("scancode \""..input.."\" ne peut pas être réassigné")
       end
     else
       local controls = client.player_config.scancode_controls
       local control = (controls and controls[input] or "none")
-      client:sendChatMessage("scancode \""..input.."\" est assigné à \""..control.."\"")
+      client:print("scancode \""..input.."\" est assigné à \""..control.."\"")
     end
   elseif itype == "gp" then -- gamepad
     if control then
       if not control_whitelist[control] then return true end
       client:applyConfig({gamepad_controls = {[input] = control}})
-      client:sendChatMessage("gamepad \""..input.."\" assigné à \""..control.."\"")
+      client:print("gamepad \""..input.."\" assigné à \""..control.."\"")
     else
       local controls = client.player_config.gamepad_controls
       local control = (controls and controls[input] or "none")
-      client:sendChatMessage("gamepad \""..input.."\" est assigné à \""..control.."\"")
+      client:print("gamepad \""..input.."\" est assigné à \""..control.."\"")
     end
   else
-    client:sendChatMessage("type d'input invalide")
+    client:print("type d'input invalide")
   end
 end, "<type:input> [control]", [[afficher ou assigner un (LÖVE/SDL) scancode à un contrôle
     types: sc (scancode) / gp (gamepad)
@@ -173,7 +173,7 @@ commands.gui = {10, "client", function(self, client, args)
   elseif param == "chat_height" then
     client:applyConfig({gui = {chat_height = tonumber(value) or 0.25}})
   else
-    client:sendChatMessage("invalid parameter \""..param.."\"")
+    client:print("invalid parameter \""..param.."\"")
   end
 end, "<parameter> <value>", [[changer les paramètres de la GUI
     - font_size (taille en pixels)
@@ -316,7 +316,7 @@ commands.count = {10, "shared", function(self, client, args)
     count = count+1
   end
   if client then
-    client:sendChatMessage(count.." joueurs en ligne")
+    client:print(count.." joueurs en ligne")
   else
     print(count.." joueurs en ligne")
   end
@@ -326,13 +326,13 @@ commands.where = {10, "client", function(self, client, args)
   local target
   if args[2] then
     target = self:getClientByPseudo(args[2])
-    if not target then client:sendChatMessage("Joueur introuvable."); return end
+    if not target then client:print("Joueur introuvable."); return end
   else target = client end
   -- fetch info
   if target.map then
-    client:sendChatMessage(target.map.id.." "..target.cx..","..target.cy)
+    client:print(target.map.id.." "..target.cx..","..target.cy)
   else
-    client:sendChatMessage("Pas sur une map.")
+    client:print("Pas sur une map.")
   end
 end, "[pseudo]", "afficher sa position ou celle d'un autre joueur"}
 
@@ -346,12 +346,12 @@ commands.skin = {10, "client", function(self, client, args)
         x = 0, y = 0,
         w = 24, h = 32
       })
-      client:sendChatMessage("skin assigné à \""..skin.."\"")
+      client:print("skin assigné à \""..skin.."\"")
     else
-      client:sendChatMessage("impossible de changer le skin")
+      client:print("impossible de changer le skin")
     end
   else
-    client:sendChatMessage("skin invalide")
+    client:print("skin invalide")
   end
 end, "<skin_name>", "changer son skin"}
 
@@ -367,7 +367,7 @@ commands.tp = {1, "client", function(self, client, args)
         map:addEntity(client)
         client:teleport(cx*16,cy*16)
       else
-        client:sendChatMessage("map \""..map_name.."\" invalide")
+        client:print("map \""..map_name.."\" invalide")
       end
     end
   end
@@ -388,7 +388,7 @@ end, "", "ouvrir un magasin (test)"}
 commands.pick = {1, "client", function(self, client, args)
   async(function()
     local entity = client:requestPickTarget(args[2] or "mob", tonumber(args[3]) or 7)
-    client:sendChatMessage("Entité selectionnée: "..tostring(entity))
+    client:print("Entité selectionnée: "..tostring(entity))
   end)
 end, "[type] [radius]", "selectionner une entité"}
 
@@ -402,18 +402,16 @@ commands.all = {10, "client", function(self, client, args)
   if client.user_id and client:canChat() then
     if client.chat_quota.exceeded then
       local max, period = unpack(self.cfg.quotas.chat_all)
-      client:sendChatMessage("Quota de chat global atteint ("..max.." message(s) / "..period.."s).")
+      client:print("Quota de chat global atteint ("..max.." message(s) / "..period.."s).")
       return
     end
     -- send
-    local packet = Client.makePacket(net.GLOBAL_CHAT, {
-      pseudo = client.pseudo,
-      msg = table.concat(args, " ", 2)
-    })
+    local ftext = {{0.68,0.57,0.81}, client.pseudo.."(all): ",
+        {1,1,1}, table.concat(args, " ", 2)}
     -- broadcast to all logged clients
-    for id, client in pairs(self.clients_by_id) do
-      if not client.ignores.all and not client.ignores.all_chan then
-        client:send(packet)
+    for id, recipient in pairs(self.clients_by_id) do
+      if not recipient.ignores.all and not recipient.ignores.all_chan then
+        recipient:sendChatMessage(ftext)
       end
     end
     -- quota
@@ -423,10 +421,9 @@ end, "", "chat global"}
 
 -- server chat
 commands.say = {0, "server", function(self, client, args)
-  local packet = Client.makePacket(net.CHAT_MESSAGE_SERVER, table.concat(args, " ", 2))
   -- broadcast to all logged clients
-  for id, client in pairs(self.clients_by_id) do
-    client:send(packet)
+  for id, recipient in pairs(self.clients_by_id) do
+    recipient:print(table.concat(args, " ", 2))
   end
 end, "", "envoyer un message serveur"}
 
@@ -455,13 +452,13 @@ end, "<pseudo> <password> [rank]", "créer un compte"}
 -- join group
 commands.join = {10, "client", function(self, client, args)
   if not client:canChangeGroup() then
-    client:sendChatMessage("Changement de groupe impossible.")
+    client:print("Changement de groupe impossible.")
     return
   end
   if not args[2] or #args[2] <= GROUP_ID_LIMIT then
     client:setGroup(args[2])
   else
-    client:sendChatMessage("Nom de groupe trop long.")
+    client:print("Nom de groupe trop long.")
   end
 end, "[groupe]", "rejoindre un groupe ou juste quitter l'actuel si non spécifié"}
 
@@ -470,18 +467,16 @@ commands.party = {10, "client", function(self, client, args)
   if client.user_id and client:canChat() then
     local group = client.group and self.groups[client.group]
     if group then
-      local packet = Client.makePacket(net.GROUP_CHAT, {
-        pseudo = client.pseudo,
-        msg = table.concat(args, " ", 2)
-      })
-
+      -- send
+      local ftext = {{0.97,0.65,0.32}, client.pseudo.."(grp): ",
+          {1,1,1}, table.concat(args, " ", 2)}
       -- broadcast to all group members
-      for client in pairs(group) do
-        if not client.ignores.all and not client.ignores.group then
-          client:send(packet)
+      for recipient in pairs(group) do
+        if not recipient.ignores.all and not recipient.ignores.group then
+          recipient:sendChatMessage(ftext)
         end
       end
-    else client:sendChatMessage("Pas dans un groupe.") end
+    else client:print("Pas dans un groupe.") end
   end
 end, "", "chat de groupe"}
 
@@ -490,7 +485,7 @@ commands.groups = {1, "shared", function(self, client, args)
   for id, group in pairs(self.groups) do
     local count = 0
     for _ in pairs(group) do count = count+1 end
-    if client then client:sendChatMessage(id..": "..count) else print(id, count) end
+    if client then client:print(id..": "..count) else print(id, count) end
   end
 end, "", "lister les groupes"}
 
@@ -522,17 +517,14 @@ end, "<pseudo> <rank|guild> ...", [=[changer des données persistantes d'un util
 commands.guild = {10, "client", function(self, client, args)
   if client.user_id and client:canChat() then
     if #client.guild > 0 then
-      local packet = Client.makePacket(net.GUILD_CHAT, {
-        pseudo = client.pseudo,
-        msg = table.concat(args, " ", 2)
-      })
-
+      local ftext = {{0.42,0.7,0.98}, client.pseudo.."(gui): ",
+          {1,1,1}, table.concat(args, " ", 2)}
       -- broadcast to all guild members
-      for id, tclient in pairs(self.clients_by_id) do
-        if tclient.guild == client.guild and not tclient.ignores.all --
-          and not tclient.ignores.guild then tclient:send(packet) end
+      for id, recipient in pairs(self.clients_by_id) do
+        if recipient.guild == client.guild and not recipient.ignores.all --
+          and not recipient.ignores.guild then recipient:sendChatMessage(ftext) end
       end
-    else client:sendChatMessage("Pas dans une guilde.") end
+    else client:print("Pas dans une guilde.") end
   end
 end, "", "chat de guilde"}
 
@@ -547,27 +539,67 @@ local EEgg_self_talk = {
 commands.msg = {10, "client", function(self, client, args)
   if client.user_id and client:canChat() then
     if not args[2] or #args[2] == 0 then return true end
-    local tclient = self:getClientByPseudo(args[2])
-    if tclient then
-      if tclient == client then -- easter egg: speak to self
-        client:send(Client.makePacket(net.PRIVATE_CHAT, {
-          pseudo = client.pseudo,
-          msg = EEgg_self_talk[math.random(#EEgg_self_talk)]
-        }))
+    local recipient = self:getClientByPseudo(args[2])
+    if recipient then
+      if recipient == client then -- easter egg: speak to self
+        client:sendChatMessage({{0.45,0.83,0.22}, client.pseudo.."(msg): ",
+            {1,1,1}, EEgg_self_talk[math.random(#EEgg_self_talk)]})
       else
-        local packet = Client.makePacket(net.PRIVATE_CHAT, {
-          pseudo = client.pseudo,
-          msg = table.concat(args, " ", 3)
-        })
-
-        client:send(packet)
-        if not tclient.ignores.msg and not tclient.ignores.msg_players[client.pseudo] then
-          tclient:send(packet)
+        local ftext = {{0.45,0.83,0.22}, client.pseudo.."(msg): ",
+            {1,1,1}, table.concat(args, " ", 3)}
+        client:sendChatMessage(ftext)
+        if not recipient.ignores.msg and not recipient.ignores.msg_players[client.pseudo] then
+          recipient:sendChatMessage(ftext)
         end
       end
-    else client:sendChatMessage("Joueur introuvable.") end
+    else client:print("Joueur introuvable.") end
   end
 end, "<pseudo> ...", "chat privé"}
+
+-- announce
+commands.ann = {1, "client", function(self, client, args)
+  if client.status == "logged" then
+    local msg = table.concat(args, " ", 2)
+    -- broadcast to all logged clients
+    for id, recipient in pairs(self.clients_by_id) do
+      if recipient.user_rank > 1 then
+        recipient:sendChatMessage({{0.94,0.71,0.94}, "ANNONCE: ", {1,1,1}, msg})
+      else
+        recipient:sendChatMessage({{0.94,0.71,0.94}, client.pseudo.."(ann): ", {1,1,1}, msg})
+      end
+    end
+  end
+end, "", "annonce"}
+
+-- admin message
+commands.adm = {1, "client", function(self, client, args)
+  if client.status == "logged" then
+    local msg = table.concat(args, " ", 2)
+    -- broadcast to all logged clients
+    for id, recipient in pairs(self.clients_by_id) do
+      if recipient.user_rank > 1 then
+        recipient:sendChatMessage({{0.97,0.78,0.61}, "ADMIN: ", {1,1,1}, msg})
+      else
+        recipient:sendChatMessage({{0.97,0.78,0.61}, client.pseudo.."(admin): ", {1,1,1}, msg})
+      end
+    end
+  end
+end, "", "message admin"}
+
+-- admin map message
+commands.admmap = {1, "client", function(self, client, args)
+  if client.status == "logged" and client.map then
+    local msg = table.concat(args, " ", 2)
+    -- broadcast to all logged clients
+    for recipient in pairs(client.map.clients) do
+      if recipient.user_rank > 1 then
+        recipient:sendChatMessage({{0.97,0.78,0.61}, "ADMIN MAP: ", {1,1,1}, msg})
+      else
+        recipient:sendChatMessage({{0.97,0.78,0.61}, client.pseudo.."(map): ", {1,1,1}, msg})
+      end
+    end
+  end
+end, "", "message admin de map"}
 
 -- give item
 commands.giveitem = {1, "client", function(self, client, args)
@@ -575,7 +607,7 @@ commands.giveitem = {1, "client", function(self, client, args)
   local id = self.project.objects_by_name[args[2]]
   if id then
     for i=1,math.floor(tonumber(args[3]) or 1) do client.inventory:put(id) end
-    client:sendChatMessage("Objet(s) créé(s).")
+    client:print("Objet(s) créé(s).")
   end
 end, "<name> [amount]", "créer des objets"}
 
@@ -587,7 +619,7 @@ commands.givespell = {1, "client", function(self, client, args)
     for i=1,math.floor(tonumber(args[3]) or 1) do
       client.spell_inventory:put(id)
     end
-    client:sendChatMessage("Magie(s) créée(s).")
+    client:print("Magie(s) créée(s).")
   end
 end, "<name> [amount]", "créer des magies"}
 
@@ -596,59 +628,59 @@ commands.givegold = {1, "client", function(self, client, args)
   if #args < 2 then return true end -- wrong parameters
   local amount = math.floor(tonumber(args[2]) or 0)
   client:setGold(client.gold+amount)
-  client:sendChatMessage("Or créé ("..amount..").")
+  client:print("Or créé ("..amount..").")
 end, "<amount>", "créer de l'or"}
 
 commands.time = {10, "shared", function(self, client, args)
   local formatted = os.date("%d/%m/%Y %H:%M")
-  if client then client:sendChatMessage(formatted)
+  if client then client:print(formatted)
   else print(formatted) end
 end, "", "afficher la date et l'heure"}
 
 commands.reput = {10, "client", function(self, client, args)
   if #args < 2 then return true end
   local target = self:getClientByPseudo(args[2])
-  if target then client:sendChatMessage(args[2].." a "..target.reputation.." de réputation.")
-  else client:sendChatMessage("Joueur introuvable.") end
+  if target then client:print(args[2].." a "..target.reputation.." de réputation.")
+  else client:print("Joueur introuvable.") end
 end, "<pseudo>", "afficher la réputation d'un joueur connecté"}
 
 commands.lvl = {10, "client", function(self, client, args)
   if #args < 2 then return true end
   local target = self:getClientByPseudo(args[2])
-  if target then client:sendChatMessage(args[2].." est niveau "..target.level..".")
-  else client:sendChatMessage("Joueur introuvable.") end
+  if target then client:print(args[2].." est niveau "..target.level..".")
+  else client:print("Joueur introuvable.") end
 end, "<pseudo>", "afficher le niveau d'un joueur connecté"}
 
 commands.ignore = {10, "client", function(self, client, args)
   local itype = args[2]
   if not itype then
     client.ignores.all = not client.ignores.all
-    client:sendChatMessage("Tous canaux: "..(client.ignores.all and "ignorés" or "visibles"))
+    client:print("Tous canaux: "..(client.ignores.all and "ignorés" or "visibles"))
   elseif itype == "all" then
     client.ignores.all_chan = not client.ignores.all_chan
-    client:sendChatMessage("Canal public: "..(client.ignores.all_chan and "ignoré" or "visible"))
+    client:print("Canal public: "..(client.ignores.all_chan and "ignoré" or "visible"))
   elseif itype == "guild" then
     client.ignores.guild_chan = not client.ignores.guild_chan
-    client:sendChatMessage("Canal de guilde: "..(client.ignores.guild_chan and "ignoré" or "visible"))
+    client:print("Canal de guilde: "..(client.ignores.guild_chan and "ignoré" or "visible"))
   elseif itype == "party" then
     client.ignores.group_chan = not client.ignores.group_chan
-    client:sendChatMessage("Canal de groupe: "..(client.ignores.group_chan and "ignoré" or "visible"))
+    client:print("Canal de groupe: "..(client.ignores.group_chan and "ignoré" or "visible"))
   elseif itype == "announce" then
     client.ignores.announce_chan = not client.ignores.announce_chan
-    client:sendChatMessage("Canal d'annonce: "..(client.ignores.announce_chan and "ignoré" or "visible"))
+    client:print("Canal d'annonce: "..(client.ignores.announce_chan and "ignoré" or "visible"))
   elseif itype == "msg" then
     client.ignores.msg = not client.ignores.msg
-    client:sendChatMessage("Messages privés: "..(client.ignores.msg and "ignorés" or "visibles"))
+    client:print("Messages privés: "..(client.ignores.msg and "ignorés" or "visibles"))
   elseif itype == "player" then
     if not args[3] then return true end
     local target = self:getClientByPseudo(args[3])
     if target then
       client.ignores.msg_players[args[3]] = not client.ignores.msg_players[args[3]]
-      client:sendChatMessage("Messages privés ("..args[3].."): "..(client.ignores.msg_players[args[3]] and "ignorés" or "visibles"))
-    else client:sendChatMessage("Joueur introuvable.") end
+      client:print("Messages privés ("..args[3].."): "..(client.ignores.msg_players[args[3]] and "ignorés" or "visibles"))
+    else client:print("Joueur introuvable.") end
   elseif itype == "trade" then
     client.ignores.trade = not client.ignores.trade
-    client:sendChatMessage("Échanges: "..(client.ignores.trade and "ignorés" or "acceptés"))
+    client:print("Échanges: "..(client.ignores.trade and "ignorés" or "acceptés"))
   else return true end
 end, "<all|guild|party|announce|msg|player|trade> [pseudo]", "ignorer/dé-ignorer"}
 
@@ -689,7 +721,7 @@ commands.ban = {2, "shared", function(self, client, args)
     local affected = self.db:query("user/setBan", {pseudo = pseudo, timestamp = os.time()+math.floor(hours*3600)}).affected_rows
     -- output
     if not client then print(affected == 0 and "no-op" or "player banned")
-    else client:sendChatMessage(affected == 0 and "no-op" or "Joueur banni.") end
+    else client:print(affected == 0 and "no-op" or "Joueur banni.") end
     -- kick
     local target = self:getClientByPseudo(pseudo)
     if target then target:kick("Banni "..hours.." heure(s): "..reason) end
@@ -704,7 +736,7 @@ commands.unban = {2, "shared", function(self, client, args)
     local affected = self.db:query("user/setBan", {pseudo = pseudo, timestamp = 0}).affected_rows
     -- output
     if not client then print(affected == 0 and "no-op" or "player unbanned")
-    else client:sendChatMessage(affected == 0 and "no-op" or "Joueur débanni.") end
+    else client:print(affected == 0 and "no-op" or "Joueur débanni.") end
   end)
 end, "<pseudo>", "débannir un joueur"}
 
@@ -716,7 +748,7 @@ commands.kick = {2, "shared", function(self, client, args)
   if target then target:kick(reason) end
   -- output
   if not client then print(not target and "player not found" or "player kicked")
-  else client:sendChatMessage(not target and "Joueur introuvable." or "Joueur kické.") end
+  else client:print(not target and "Joueur introuvable." or "Joueur kické.") end
 end, "<pseudo> <reason>", "kick un joueur"}
 
 -- CONSOLE THREAD
@@ -1014,7 +1046,7 @@ function Server:processCommand(client, args)
     if command[3](self, client, args) then
       local msg = "utilisation: "..args[1].." "..command[4]
       if client then
-        client:sendChatMessage(msg)
+        client:print(msg)
       else
         print(msg)
       end
@@ -1022,7 +1054,7 @@ function Server:processCommand(client, args)
   else
     local msg = "commande \""..args[1].."\" inconnue (commande \"help\" pour la liste)"
     if client then
-      client:sendChatMessage(msg)
+      client:print(msg)
     else
       print(msg)
     end
