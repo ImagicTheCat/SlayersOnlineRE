@@ -168,16 +168,11 @@ function Parser:identifier_item()
   if not self:predict({';'}) then return self:token() end
 end
 
-local function escape_string(str)
-  -- escape \ and "
-  return str:gsub("\\", "\\\\"):gsub("\"", "\\\"")
-end
-
 function Parser:spell_command()
   if self:check('spell', ':') then
     local id = self:identifier()
     if not id then self:error("expecting spell identifier") end
-    return "spell(state, \""..escape_string(id).."\")"
+    return "spell(state, "..string.format("%q", id)..")"
   end
 end
 
