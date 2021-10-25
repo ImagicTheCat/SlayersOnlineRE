@@ -107,6 +107,7 @@ INSERT INTO users(
     WHERE users_skins.user_id = {1} AND self.guild != sharer.guild
   ]], {uint})
   db:prepare("user/getSkins", "SELECT name FROM users_skins WHERE user_id = {1}", {uint})
+  db:prepare("user/getStateByPseudo", "SELECT id, state FROM users WHERE pseudo = {1}", {pseudo_t})
   -- inventory
   db:prepare("inventory/getItems", "SELECT id, amount FROM users_items WHERE user_id = {1} AND inventory = {2}", {uint, uint})
   db:prepare("inventory/setItem", "INSERT INTO users_items(user_id, inventory, id, amount) VALUES({1},{2},{3},{4}) ON DUPLICATE KEY UPDATE amount = {4}", {uint, uint, uint, uint})

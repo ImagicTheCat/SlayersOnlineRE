@@ -356,23 +356,37 @@ commands.skin = {10, "client", function(self, client, args)
 end, "<skin_name>", "changer son skin"}
 
 commands.tp = {1, "client", function(self, client, args)
-  local ok
-  if #args >= 4 then
-    local map_name = args[2]
-    local cx, cy = tonumber(args[3]), tonumber(args[4])
-    if cx and cy then
-      ok = true
-      local map = self:getMap(map_name)
-      if map then
-        map:addEntity(client)
-        client:teleport(cx*16,cy*16)
-      else
-        client:print("map \""..map_name.."\" invalide")
-      end
-    end
+  -- arg checks
+  if #args < 4 then return true end
+  local arg_offset, pseudo = 0, client.pseudo
+  if #args >= 5 then arg_offset, pseudo = 1, args[2] end
+  local map_name = args[2+arg_offset]
+  local cx, cy = tonumber(args[3+arg_offset]), tonumber(args[4+arg_offset])
+  if not (cx and cy) then return true end
+  local map = self:getMap(map_name)
+  if not map then client:print("map \""..map_name.."\" invalide"); return end
+  -- teleport
+  local target = self:getClientByPseudo(pseudo)
+  if target then -- online
+    map:addEntity(target)
+    target:teleport(cx*16,cy*16)
+    client:print("Téléporté.")
+  else -- offline
+    async(function()
+      local r_state = self.db:query("user/getStateByPseudo", {pseudo})
+      local row = r_state and r_state.rows[1]
+      if row then
+        local state = msgpack.unpack(row.state)
+        state.location = {
+          map = map_name,
+          x = cx*16, y = cy*16
+        }
+        self.db:query("user/setState", {row.id, msgpack.pack(state)})
+        client:print("Téléporté (hors-ligne).")
+      else client:print("Joueur introuvable.") end
+    end)
   end
-  if not ok then return true end
-end, "<map> <cx> <cy>", "se teleporter"}
+end, "[pseudo] <map> <cx> <cy>", "se téléporter / téléporter un joueur"}
 
 -- testing command
 commands.chest = {1, "client", function(self, client, args)
