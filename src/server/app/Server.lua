@@ -388,6 +388,31 @@ commands.tp = {1, "client", function(self, client, args)
   end
 end, "[pseudo] <map> <cx> <cy>", "se téléporter / téléporter un joueur"}
 
+commands.respawn = {1, "client", function(self, client, args)
+  local pseudo = args[2] or client.pseudo
+  local target = self:getClientByPseudo(pseudo)
+  if target then -- online
+    target:respawn()
+    client:print("Respawned.")
+  else -- offline
+    async(function()
+      local r_state = self.db:query("user/getStateByPseudo", {pseudo})
+      local row = r_state and r_state.rows[1]
+      if row then
+        local state = msgpack.unpack(row.state)
+        local spawn = state.respawn_point or server.cfg.spawn_location
+        state.location = {
+          map = spawn.map,
+          x = spawn.cx*16,
+          y = spawn.cy*16
+        }
+        self.db:query("user/setState", {row.id, msgpack.pack(state)})
+        client:print("Respawned (hors-ligne).")
+      else client:print("Joueur introuvable.") end
+    end)
+  end
+end, "[pseudo]", "respawn soi-même ou un autre joueur"}
+
 -- testing command
 commands.chest = {1, "client", function(self, client, args)
   async(function() client:openChest("Test.") end)
