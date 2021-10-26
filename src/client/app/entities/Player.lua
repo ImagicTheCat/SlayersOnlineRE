@@ -79,7 +79,6 @@ function Player:drawUnder()
     love.graphics.draw(self.name_tag, x+2*inv_scale, y+2*inv_scale, 0, inv_scale) -- shadowing
     love.graphics.setColor(1,1,1, self.afterimage)
     love.graphics.draw(self.name_tag, x, y, 0, inv_scale)
-    love.graphics.setColor(1,1,1)
     -- draw health (group)
     if self.group_data and self.id ~= client.id then
       local p = self.group_data.health/self.group_data.max_health
@@ -87,6 +86,7 @@ function Player:drawUnder()
       love.graphics.draw(client.gui_renderer.system.tex, quad, --
         (self.x+8)-16, self.y+16+self.name_tag:getHeight()*inv_scale, 0, math.floor(p*32)/16, 3/16)
     end
+    love.graphics.setColor(1,1,1)
   end
 end
 
@@ -101,7 +101,6 @@ end
 function Player:drawOver()
   if self.visible then
     LivingEntity.drawOver(self)
-
     -- draw chat GUI
     if self.chat_timer then
       self.chat_gui:update()
@@ -120,7 +119,6 @@ function Player:onMapChat(msg)
   self.chat_timer = scheduler:timer(utils.clamp(utf8.len(msg)/5, 5, 20), function()
     self.chat_timer = nil
   end)
-
   self.chat_text:set(msg)
 end
 
