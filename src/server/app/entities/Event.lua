@@ -125,9 +125,7 @@ end
 function special_vars:Attaque(value)
   if value then
     self.client.ch_attack = tonumber(value) or 0
-    self.client:send(Client.makePacket(net.STATS_UPDATE, {
-      attack = self.client.ch_attack,
-    }))
+    self.client:sendPacket(net.STATS_UPDATE, {attack = self.client.ch_attack})
   else
     return self.client.ch_attack
   end
@@ -136,9 +134,7 @@ end
 function special_vars:Defense(value)
   if value then
     self.client.ch_defense = tonumber(value) or 0
-    self.client:send(Client.makePacket(net.STATS_UPDATE, {
-      defense = self.client.ch_defense,
-    }))
+    self.client:sendPacket(net.STATS_UPDATE, {defense = self.client.ch_defense})
   else
     return self.client.ch_defense
   end
@@ -327,7 +323,7 @@ end
 function special_vars:CentreX(value)
   if value then
     self.client.view_shift[1] = (tonumber(value) or 0)*(-16)
-    self.client:send(Client.makePacket(net.VIEW_SHIFT_UPDATE, self.client.view_shift))
+    self.client:sendPacket(net.VIEW_SHIFT_UPDATE, self.client.view_shift)
   else
     return self.client.view_shift[1]/-16
   end
@@ -336,7 +332,7 @@ end
 function special_vars:CentreY(value)
   if value then
     self.client.view_shift[2] = (tonumber(value) or 0)*(-16)
-    self.client:send(Client.makePacket(net.VIEW_SHIFT_UPDATE, self.client.view_shift))
+    self.client:sendPacket(net.VIEW_SHIFT_UPDATE, self.client.view_shift)
   else
     return self.client.view_shift[2]/-16
   end

@@ -810,9 +810,9 @@ function Client:onPacket(protocol, data)
   if handler then handler(self, data) end
 end
 
--- unsequenced: unsequenced if true/passed, reliable otherwise
-function Client:sendPacket(protocol, data, unsequenced)
-  self.peer:send(msgpack.pack({protocol, data}), 0, (unsequenced and "unsequenced" or "reliable"))
+-- mode: (optional) "reliable" (default), "unsequenced" (unreliable and unsequenced)
+function Client:sendPacket(protocol, data, mode)
+  self.peer:send(msgpack.pack({protocol, data}), 0, mode or "reliable")
 end
 
 function Client:onConnect()

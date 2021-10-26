@@ -106,9 +106,7 @@ function caster_vars:Attaque(value)
   else
     self.ch_attack = value
     if class.is(self, Client) then
-      self:send(Client.makePacket(net.STATS_UPDATE, {
-        attack = self.ch_attack,
-      }))
+      self:sendPacket(net.STATS_UPDATE, {attack = self.ch_attack})
     end
   end
 end
@@ -117,9 +115,7 @@ function caster_vars:Defense(value)
   else
     self.ch_defense = value
     if class.is(self, Client) then
-      self:send(Client.makePacket(net.STATS_UPDATE, {
-        defense = self.ch_defense,
-      }))
+      self:sendPacket(net.STATS_UPDATE, {defense = self.ch_defense})
     end
   end
 end
