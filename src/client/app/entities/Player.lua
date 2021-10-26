@@ -34,13 +34,15 @@ function Player:__construct(data)
   self.name_tag = love.graphics.newText(client.font)
   self:updateNameTag()
   self.visible = true
+  self.has_group = data.has_group
 end
 
 function Player:updateNameTag()
+  -- text
   local final = self.pseudo
   if #self.guild > 0 then final = final.."["..self.guild.."]" end
-  if self.group_data then final = "{"..final.."}" end
-
+  if self.has_group then final = "{"..final.."}" end
+  -- color
   local color = ALIGN_COLORS[math.floor(self.alignment/100*5)+1] or ALIGN_COLORS[5]
   self.name_tag:set({color, final})
 end
@@ -55,9 +57,10 @@ function Player:onPacket(action, data)
     client.map:updateEntityDrawOrder(self, data)
   elseif action == "group_update" then
     self.group_data = data
-    self:updateNameTag()
   elseif action == "group_remove" then
     self.group_data = nil
+  elseif action == "group-flag" then
+    self.has_group = data
     self:updateNameTag()
   elseif action == "update_alignment" then
     self.alignment = data
