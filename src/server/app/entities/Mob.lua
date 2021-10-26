@@ -55,15 +55,26 @@ local function waitAction(self, delay)
 end
 
 -- Seek target, if not in range move towards it (AI).
+-- target: Entity
 -- range: cells
 -- return true if in range
 local function seekTarget(self, target, range)
-  local dcx, dcy = target.cx-self.cx, target.cy-self.cy
-  if math.abs(dcx)+math.abs(dcy) > range then -- too far, seek target
+  local dx, dy = target.x-self.x, target.y-self.y
+  if math.sqrt(dx*dx+dy*dy) > range*16 then -- too far, seek target
     if self:canMove() then -- move to target
-      local dx, dy = utils.dvec(dcx, dcy)
-      if self:isCellPassable(self.cx+dx, self.cy+dy) then
-        self:moveToCell(self.cx+dx, self.cy+dy)
+      local sdx, sdy = utils.sign(dx), utils.sign(dy)
+      if math.abs(dx) > math.abs(dy) then
+        if self:isCellPassable(self.cx+sdx, self.cy) then
+          self:moveToCell(self.cx+sdx, self.cy)
+        elseif self:isCellPassable(self.cx, self.cy+sdy) then
+          self:moveToCell(self.cx, self.cy+sdy)
+        end
+      else
+        if self:isCellPassable(self.cx, self.cy+sdy) then
+          self:moveToCell(self.cx, self.cy+sdy)
+        elseif self:isCellPassable(self.cx+sdx, self.cy) then
+          self:moveToCell(self.cx+sdx, self.cy)
+        end
       end
     end
   else return true end
