@@ -81,7 +81,7 @@ function packet:VERSION_CHECK(data)
   if type(data) == "string" and data == client_version then
     self.status = "logging-in"
     -- send motd (start login)
-    self:send(Client.makePacket(net.MOTD_LOGIN, {motd = server.motd}))
+    self:sendPacket(net.MOTD_LOGIN, {motd = server.motd})
   else
     self:kick("Version du client incompatible avec le serveur, téléchargez la dernière version pour résoudre le problème.")
   end
@@ -174,7 +174,7 @@ function packet:LOGIN(data)
           if object and amount then
             data = Client.serializeItem(server, object, amount)
           end
-          self:send(Client.makePacket(net.INVENTORY_UPDATE_ITEMS, {{id,data}}))
+          self:sendPacket(net.INVENTORY_UPDATE_ITEMS, {{id,data}})
         end
         ---- send inventory init items
         do
@@ -186,7 +186,7 @@ function packet:LOGIN(data)
               table.insert(items, {id, Client.serializeItem(server, object, amount)})
             end
           end
-          self:send(Client.makePacket(net.INVENTORY_UPDATE_ITEMS, items))
+          self:sendPacket(net.INVENTORY_UPDATE_ITEMS, items)
         end
         ---- on chest item update
         function self.chest_inventory.onItemUpdate(inv, id)
@@ -197,7 +197,7 @@ function packet:LOGIN(data)
           if object and amount then
             data = Client.serializeItem(server, object, amount)
           end
-          self:send(Client.makePacket(net.CHEST_UPDATE_ITEMS, {{id,data}}))
+          self:sendPacket(net.CHEST_UPDATE_ITEMS, {{id,data}})
         end
         ---- on spell item update
         function self.spell_inventory.onItemUpdate(inv, id)
@@ -207,7 +207,7 @@ function packet:LOGIN(data)
           if spell and amount then
             data = Client.serializeSpell(server, spell, amount)
           end
-          self:send(Client.makePacket(net.SPELL_INVENTORY_UPDATE_ITEMS, {{id,data}}))
+          self:sendPacket(net.SPELL_INVENTORY_UPDATE_ITEMS, {{id,data}})
         end
         ---- send spell inventory init items
         do
@@ -219,7 +219,7 @@ function packet:LOGIN(data)
               table.insert(items, {id, Client.serializeSpell(server, spell, amount)})
             end
           end
-          self:send(Client.makePacket(net.SPELL_INVENTORY_UPDATE_ITEMS, items))
+          self:sendPacket(net.SPELL_INVENTORY_UPDATE_ITEMS, items)
         end
         --- state
         local state = user_row.state and msgpack.unpack(user_row.state) or {}
@@ -257,7 +257,7 @@ function packet:LOGIN(data)
         self:setHealth(state.health or self.max_health)
         self:setMana(state.mana or self.max_mana)
         self:setXP(self.xp) -- update level/XP
-        self:send(Client.makePacket(net.STATS_UPDATE, {
+        self:sendPacket(net.STATS_UPDATE, {
           gold = self.gold,
           alignment = self.alignment,
           name = self.pseudo,
@@ -267,7 +267,7 @@ function packet:LOGIN(data)
           reputation = self.reputation,
           mana = self.mana,
           inventory_size = self.inventory.max
-        }))
+        })
         -- mark as logged
       end, error_handler)
       if ok then -- login completed
@@ -283,7 +283,7 @@ function packet:LOGIN(data)
     else -- login failed
       self:print("Identification échouée.")
       -- send motd (start login)
-      self:send(Client.makePacket(net.MOTD_LOGIN, {motd = server.motd}))
+      self:sendPacket(net.MOTD_LOGIN, {motd = server.motd})
     end
   end)
 end
@@ -370,7 +370,7 @@ function packet:GOLD_STORE(data)
   if self.chest_task and amount <= self.gold then
     self.chest_gold = self.chest_gold+amount
     self.gold = self.gold-amount
-    self:send(Client.makePacket(net.STATS_UPDATE, {gold = self.gold, chest_gold = self.chest_gold}))
+    self:sendPacket(net.STATS_UPDATE, {gold = self.gold, chest_gold = self.chest_gold})
   end
 end
 function packet:GOLD_WITHDRAW(data)
@@ -379,7 +379,7 @@ function packet:GOLD_WITHDRAW(data)
   if self.chest_task and amount <= self.chest_gold then
     self.chest_gold = self.chest_gold-amount
     self.gold = self.gold+amount
-    self:send(Client.makePacket(net.STATS_UPDATE, {gold = self.gold, chest_gold = self.chest_gold}))
+    self:sendPacket(net.STATS_UPDATE, {gold = self.gold, chest_gold = self.chest_gold})
   end
 end
 function packet:ITEM_STORE(data)
@@ -408,7 +408,7 @@ function packet:ITEM_BUY(data)
             self.gold = self.gold-item.price
           else break end
         end
-        self:send(Client.makePacket(net.STATS_UPDATE, {gold = self.gold}))
+        self:sendPacket(net.STATS_UPDATE, {gold = self.gold})
       end
     end
   end
@@ -420,7 +420,7 @@ function packet:ITEM_SELL(data)
   if self.shop_task and item then
     if self.inventory:take(id) then
       self.gold = self.gold+math.ceil(item.price*0.1)
-      self:send(Client.makePacket(net.STATS_UPDATE, {gold = self.gold}))
+      self:sendPacket(net.STATS_UPDATE, {gold = self.gold})
     end
   end
 end
@@ -778,14 +778,18 @@ function Client:onPacket(protocol, data)
   if handler then handler(self, data) end
 end
 
--- unsequenced: unsequenced and unreliable if true/passed, reliable otherwise
-function Client:send(packet, unsequenced)
-  self.peer:send(packet, 0, (unsequenced and "unsequenced" or "reliable"))
+-- mode: (optional) "reliable" (default), "unsequenced" (unreliable and unsequenced)
+function Client:send(packet, mode)
+  self.peer:send(packet, 0, mode or "reliable")
+end
+
+function Client:sendPacket(protocol, data, mode)
+  self:send(Client.makePacket(protocol, data), mode)
 end
 
 -- ftext: string or coloredtext (see LÖVE)
 function Client:sendChatMessage(ftext)
-  self:send(Client.makePacket(net.CHAT_MESSAGE, ftext))
+  self:sendPacket(net.CHAT_MESSAGE, ftext)
 end
 
 function Client:print(msg) self:sendChatMessage({{0,1,0.5}, msg}) end
@@ -881,7 +885,7 @@ end
 -- return when the message is skipped by the client
 function Client:requestMessage(msg)
   self.message_task = async()
-  self:send(Client.makePacket(net.EVENT_MESSAGE, msg))
+  self:sendPacket(net.EVENT_MESSAGE, msg)
   self.message_task:wait()
 end
 
@@ -889,13 +893,13 @@ end
 -- return option index (may be invalid)
 function Client:requestInputQuery(title, options)
   self.input_query_task = async()
-  self:send(Client.makePacket(net.EVENT_INPUT_QUERY, {title = title, options = options}))
+  self:sendPacket(net.EVENT_INPUT_QUERY, {title = title, options = options})
   return self.input_query_task:wait()
 end
 
 function Client:requestInputString(title)
   self.input_string_task = async()
-  self:send(Client.makePacket(net.EVENT_INPUT_STRING, {title = title}))
+  self:sendPacket(net.EVENT_INPUT_STRING, {title = title})
   return self.input_string_task:wait()
 end
 
@@ -908,7 +912,7 @@ end
 -- return picked entity or nothing if invalid
 function Client:requestPickTarget(type, radius)
   self.pick_target_task = async()
-  self:send(Client.makePacket(net.TARGET_PICK, {type = type, radius = radius*16}))
+  self:sendPacket(net.TARGET_PICK, {type = type, radius = radius*16})
   local entity = self.pick_target_task:wait()
   if entity and entity ~= self then
     local dx = math.abs(self.x-entity.x)
@@ -929,7 +933,7 @@ end
 function Client:requestDialog(text, options, no_busy)
   if not self.dialog_task then
     self.dialog_task = async()
-    self:send(Client.makePacket(net.DIALOG_QUERY, {ftext = text, options = options, no_busy = no_busy}))
+    self:sendPacket(net.DIALOG_QUERY, {ftext = text, options = options, no_busy = no_busy})
     local r = self.dialog_task:wait()
     self.dialog_task = nil
     if not r or options[r] then return r end
@@ -952,8 +956,8 @@ function Client:openChest(title)
       }})
     end
   end
-  self:send(Client.makePacket(net.CHEST_OPEN, {title, items}))
-  self:send(Client.makePacket(net.STATS_UPDATE, {chest_gold = self.chest_gold}))
+  self:sendPacket(net.CHEST_OPEN, {title, items})
+  self:sendPacket(net.STATS_UPDATE, {chest_gold = self.chest_gold})
 
   self.chest_task:wait()
 end
@@ -987,7 +991,7 @@ function Client:openShop(title, items)
     end
   end
 
-  self:send(Client.makePacket(net.SHOP_OPEN, {title, buy_items, sell_items}))
+  self:sendPacket(net.SHOP_OPEN, {title, buy_items, sell_items})
 
   self.shop_task:wait()
 end
@@ -1017,8 +1021,8 @@ function Client:openTrade(player)
     local amount = inv.items[id]
     local object = server.project.objects[id]
     if object and amount then data = Client.serializeItem(server, object, amount) end
-    pleft:send(Client.makePacket(net.TRADE_LEFT_UPDATE_ITEMS, {{id,data}}))
-    pright:send(Client.makePacket(net.TRADE_RIGHT_UPDATE_ITEMS, {{id,data}}))
+    pleft:sendPacket(net.TRADE_LEFT_UPDATE_ITEMS, {{id,data}})
+    pright:sendPacket(net.TRADE_RIGHT_UPDATE_ITEMS, {{id,data}})
   end
 
   function self.trade.inventory.onItemUpdate(inv, id)
@@ -1028,8 +1032,8 @@ function Client:openTrade(player)
     update_item(inv, id, player, self)
   end
 
-  self:send(Client.makePacket(net.TRADE_OPEN, {title_l = self.pseudo, title_r = player.pseudo}))
-  player:send(Client.makePacket(net.TRADE_OPEN, {title_l = player.pseudo, title_r = self.pseudo}))
+  self:sendPacket(net.TRADE_OPEN, {title_l = self.pseudo, title_r = player.pseudo})
+  player:sendPacket(net.TRADE_OPEN, {title_l = player.pseudo, title_r = self.pseudo})
 
   return true
 end
@@ -1038,8 +1042,8 @@ function Client:setTradeLock(locked)
   if self.trade.locked ~= locked then
     local peer = self.trade.peer
     self.trade.locked = locked
-    self:send(Client.makePacket(net.TRADE_LOCK, locked))
-    peer:send(Client.makePacket(net.TRADE_PEER_LOCK, locked))
+    self:sendPacket(net.TRADE_LOCK, locked)
+    peer:sendPacket(net.TRADE_PEER_LOCK, locked)
 
     -- check both locked: complete transaction
     if locked and peer.trade.locked then
@@ -1068,7 +1072,7 @@ end
 function Client:setTradeGold(gold)
   if self.trade.gold ~= gold then
     self.trade.gold = gold
-    self.trade.peer:send(Client.makePacket(net.TRADE_SET_GOLD, gold))
+    self.trade.peer:sendPacket(net.TRADE_SET_GOLD, gold)
     self.trade.peer:setTradeLock(false)
   end
 end
@@ -1095,12 +1099,12 @@ end
 -- (async) scroll client view to position
 function Client:scrollTo(x,y)
   self.scroll_task = async()
-  self:send(Client.makePacket(net.SCROLL_TO, {x,y}))
+  self:sendPacket(net.SCROLL_TO, {x,y})
   self.scroll_task:wait()
 end
 
 function Client:resetScroll()
-  self:send(Client.makePacket(net.SCROLL_RESET))
+  self:sendPacket(net.SCROLL_RESET)
 end
 
 function Client:kick(reason)
@@ -1159,7 +1163,7 @@ function Client:onMapChange()
   if self.map then -- join map
     self.prevent_next_contact = true -- prevent cell contact on map join
     -- send map
-    self:send(Client.makePacket(net.MAP, {map = self.map:serializeNet(self), id = self.id}))
+    self:sendPacket(net.MAP, {map = self.map:serializeNet(self), id = self.id})
     self:setMapEffect(self.map.data.effect)
     -- build events
     for _, event_data in ipairs(self.map.data.events) do
@@ -1323,15 +1327,15 @@ function Client:tryCastSpell(spell)
 end
 
 function Client:playMusic(path)
-  self:send(Client.makePacket(net.PLAY_MUSIC, path))
+  self:sendPacket(net.PLAY_MUSIC, path)
 end
 
 function Client:stopMusic()
-  self:send(Client.makePacket(net.STOP_MUSIC))
+  self:sendPacket(net.STOP_MUSIC)
 end
 
 function Client:playSound(path)
-  self:send(Client.makePacket(net.PLAY_SOUND, path))
+  self:sendPacket(net.PLAY_SOUND, path)
 end
 
 -- modify player config
@@ -1341,7 +1345,7 @@ function Client:applyConfig(config, no_save)
   if not no_save then
     self.player_config_changed = true
   end
-  self:send(Client.makePacket(net.PLAYER_CONFIG, config))
+  self:sendPacket(net.PLAYER_CONFIG, config)
 end
 
 -- update characteristics/gears based on gears/effects/etc
@@ -1389,7 +1393,7 @@ function Client:updateCharacteristics(dry)
     self:setHealth(self.health)
     self:setMana(self.mana)
 
-    self:send(Client.makePacket(net.STATS_UPDATE, {
+    self:sendPacket(net.STATS_UPDATE, {
       strength = self.strength,
       dexterity = self.dexterity,
       constitution = self.constitution,
@@ -1400,7 +1404,7 @@ function Client:updateCharacteristics(dry)
       armor_slot = {name = armor and armor.name or ""},
       weapon_slot = {name = weapon and weapon.name or ""},
       shield_slot = {name = shield and shield.name or ""}
-    }))
+    })
   end
 end
 
@@ -1495,14 +1499,14 @@ end
 -- override
 function Client:setHealth(health)
   Player.setHealth(self, health)
-  self:send(Client.makePacket(net.STATS_UPDATE, {health = self.health, max_health = self.max_health}))
+  self:sendPacket(net.STATS_UPDATE, {health = self.health, max_health = self.max_health})
   self:sendGroupUpdate()
 end
 
 -- override
 function Client:setMana(mana)
   Player.setMana(self, mana)
-  self:send(Client.makePacket(net.STATS_UPDATE, {mana = self.mana, max_mana = self.max_mana}))
+  self:sendPacket(net.STATS_UPDATE, {mana = self.mana, max_mana = self.max_mana})
 end
 
 -- Note: extra sanitization on important values. If for some reason (e.g. a
@@ -1511,7 +1515,7 @@ end
 
 function Client:setGold(gold)
   self.gold = math.max(0, utils.sanitizeInt(gold))
-  self:send(Client.makePacket(net.STATS_UPDATE, {gold = self.gold}))
+  self:sendPacket(net.STATS_UPDATE, {gold = self.gold})
 end
 
 function Client:setXP(xp)
@@ -1529,12 +1533,12 @@ function Client:setXP(xp)
     end
     self:setRemainingPoints(self.remaining_pts+new_points)
   end
-  self:send(Client.makePacket(net.STATS_UPDATE, {
+  self:sendPacket(net.STATS_UPDATE, {
     xp = self.xp,
     current_xp = XPtable[self.level] or 0,
     next_xp = XPtable[self.level+1] or self.xp,
     level = self.level
-  }))
+  })
   self:updateCharacteristics()
   if self.level > old_level then -- level up effects
     self:emitSound("Holy2.wav")
@@ -1545,18 +1549,18 @@ end
 
 function Client:setAlignment(alignment)
   self.alignment = utils.clamp(utils.sanitizeInt(alignment), 0, 100)
-  self:send(Client.makePacket(net.STATS_UPDATE, {alignment = self.alignment}))
+  self:sendPacket(net.STATS_UPDATE, {alignment = self.alignment})
   self:broadcastPacket("update_alignment", self.alignment)
 end
 
 function Client:setReputation(reputation)
   self.reputation = utils.sanitizeInt(reputation)
-  self:send(Client.makePacket(net.STATS_UPDATE, {reputation = self.reputation}))
+  self:sendPacket(net.STATS_UPDATE, {reputation = self.reputation})
 end
 
 function Client:setRemainingPoints(remaining_pts)
   self.remaining_pts = math.max(0, utils.sanitizeInt(remaining_pts))
-  self:send(Client.makePacket(net.STATS_UPDATE, {points = self.remaining_pts}))
+  self:sendPacket(net.STATS_UPDATE, {points = self.remaining_pts})
 end
 
 -- leave current group and join new group
@@ -1576,10 +1580,10 @@ function Client:setGroup(id)
             -- leave packet to other group member
             if client ~= self then client:send(packet) end
             -- leave packet to self
-            self:send(Client.makePacket(net.ENTITY_PACKET, {
+            self:sendPacket(net.ENTITY_PACKET, {
               id = client.id,
               act = "group_remove"
-            }))
+            })
           end
         end
       end
@@ -1646,11 +1650,11 @@ function Client:receiveGroupUpdates()
   if group and self.map then
     for client in pairs(group) do
       if client ~= self and client.map == self.map then
-        self:send(Client.makePacket(net.ENTITY_PACKET, {
+        self:sendPacket(net.ENTITY_PACKET, {
           id = client.id,
           act = "group_update",
           data = {health = client.health, max_health = client.max_health}
-        }))
+        })
       end
     end
   end
@@ -1739,7 +1743,7 @@ end
 
 function Client:setMapEffect(effect)
   self.map_effect = effect
-  self:send(Client.makePacket(net.MAP_EFFECT, effect))
+  self:sendPacket(net.MAP_EFFECT, effect)
 end
 
 -- restriction checks

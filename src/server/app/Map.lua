@@ -116,7 +116,7 @@ function Map:addEntity(entity)
     -- send entity packet to bound or all map clients
     if entity.nettype then
       if entity.client and self.clients[entity.client] then
-        entity.client:send(Client.makePacket(net.ENTITY_ADD, entity:serializeNet()))
+        entity.client:sendPacket(net.ENTITY_ADD, entity:serializeNet())
       else
         self:broadcastPacket(net.ENTITY_ADD, entity:serializeNet())
       end
@@ -154,7 +154,7 @@ function Map:removeEntity(entity)
     -- send entity packet to bound or all map clients
     if entity.nettype then
       if entity.client and self.clients[entity.client] then
-        entity.client:send(Client.makePacket(net.ENTITY_REMOVE, id))
+        entity.client:sendPacket(net.ENTITY_REMOVE, id)
       else
         self:broadcastPacket(net.ENTITY_REMOVE, id)
       end
@@ -212,10 +212,10 @@ function Map:isCellPassable(entity, x, y)
 end
 
 -- broadcast to all map clients
-function Map:broadcastPacket(protocol, data, unsequenced)
+function Map:broadcastPacket(protocol, data, mode)
   local packet = Client.makePacket(protocol, data)
   for client in pairs(self.clients) do
-    client:send(packet, unsequenced)
+    client:send(packet, mode)
   end
 end
 
@@ -245,21 +245,18 @@ end
 function Map:tick(dt)
   -- build continuous movement packet
   local data = {entities = {}}
-
   for entity in pairs(self.living_entity_updates) do
     if entity.map == self then
       table.insert(data.entities, {entity.id, entity.x, entity.y})
     end
   end
-  
   -- send packet update with map and packet indexes to prevent invalid updates
   if next(data.entities) then
     self.movement_packet_count = self.movement_packet_count+1
     data.mi = self.data.index
     data.pi = self.movement_packet_count
-    self:broadcastPacket(net.MAP_MOVEMENTS, data, true) -- unsequenced
+    self:broadcastPacket(net.MAP_MOVEMENTS, data, "unsequenced")
   end
-
   self.living_entity_updates = {}
 end
 
