@@ -48,6 +48,7 @@ INSERT INTO users(
   password = password_t,
   rank = utint
 })
+  db:prepare("user/deleteAccount", "DELETE FROM users WHERE pseudo = {1}", {pseudo_t})
   db:prepare("user/setRank", "UPDATE users SET rank = {rank} WHERE pseudo = {pseudo}", {rank = utint, pseudo = pseudo_t})
   db:prepare("user/setGuild", "UPDATE users SET guild = {guild}, guild_rank = {rank}, guild_rank_title = {title} WHERE pseudo = {pseudo}", {
     guild = "VARCHAR(100)", rank = utint,
@@ -56,6 +57,7 @@ INSERT INTO users(
   db:prepare("user/setBan", "UPDATE users SET ban_timestamp = {timestamp} WHERE pseudo = {pseudo}", {pseudo = pseudo_t, timestamp = "INTEGER"})
   db:prepare("server/getFreeSkins", "SELECT name FROM skins WHERE free = TRUE")
   -- user
+  db:prepare("user/getId", "SELECT id FROM users WHERE pseudo = {1}", {pseudo_t})
   db:prepare("user/getSalt", "SELECT salt FROM users WHERE pseudo = {1}", {pseudo_t})
   db:prepare("user/login", "SELECT * FROM users WHERE pseudo = {1} AND password = {2}", {pseudo_t, password_t})
   db:prepare("user/getVars", "SELECT id,value FROM users_vars WHERE user_id = {1}", {uint})
@@ -64,6 +66,7 @@ INSERT INTO users(
   db:prepare("user/setBoolVar", "INSERT INTO users_bool_vars(user_id, id, value) VALUES({1},{2},{3}) ON DUPLICATE KEY UPDATE value = {3}", {uint, uint, "TINYINT"})
   db:prepare("user/setConfig", "UPDATE users SET config = {2} WHERE id = {1}", {uint, "BLOB(65535)"})
   db:prepare("user/setState", "UPDATE users SET state = {2} WHERE id = {1}", {uint, "BLOB(65535)"})
+  db:prepare("user/getState", "SELECT state FROM users WHERE id = {1}", {uint})
   db:prepare("user/setData", [[
     UPDATE users SET
     level = {level},
@@ -107,7 +110,9 @@ INSERT INTO users(
     WHERE users_skins.user_id = {1} AND self.guild != sharer.guild
   ]], {uint})
   db:prepare("user/getSkins", "SELECT name FROM users_skins WHERE user_id = {1}", {uint})
-  db:prepare("user/getStateByPseudo", "SELECT id, state FROM users WHERE pseudo = {1}", {pseudo_t})
+  db:prepare("user/deleteVars", "DELETE FROM users_vars WHERE user_id = {1}", {uint})
+  db:prepare("user/deleteBoolVars", "DELETE FROM users_bool_vars WHERE user_id = {1}", {uint})
+  db:prepare("user/deleteItems", "DELETE FROM users_items WHERE user_id = {1}", {uint})
   -- inventory
   db:prepare("inventory/getItems", "SELECT id, amount FROM users_items WHERE user_id = {1} AND inventory = {2}", {uint, uint})
   db:prepare("inventory/setItem", "INSERT INTO users_items(user_id, inventory, id, amount) VALUES({1},{2},{3},{4}) ON DUPLICATE KEY UPDATE amount = {4}", {uint, uint, uint, uint})
