@@ -562,7 +562,7 @@ function event_vars:TypeAnim(value)
       data.animation_wc = math.max(self.page.animation_number, 1)
       data.animation_hc = math.max(self.page.animation_mod, 1)
     end
-    self:moveAI() -- re-launch move random behavior
+    self:startAI()
     self:broadcastPacket("ch_animation_type", data)
   else
     return self.animation_type
@@ -1117,46 +1117,56 @@ function Event:serializeNet()
   return data
 end
 
--- randomly move the event if type is "character_random"
--- (starts a unique loop, will call itself again)
-function Event:moveAI()
-  local atype = self.animation_type
-  if self.map and not self.move_ai_timer and
-      (atype == "character-random" or atype == "character-follow") then
-    self.move_ai_timer = timer(utils.randf(1, 5)/self.speed*(atype == "character-follow" and 0.25 or 1.5), function()
-      if not self.client.running_event and self.map then -- prevent movement when an event is in execution
-        if self.animation_type == "character-follow" then -- follow mode
-          local dcx, dcy = self.client.cx-self.cx, self.client.cy-self.cy
-          if math.abs(dcx)+math.abs(dcy) > 1 then -- too far, move to target
-            local dx, dy = utils.sign(dcx), utils.sign(dcy)
-            if dx ~= 0 and math.abs(dcx) > math.abs(dy) and self.map:isCellPassable(self, self.cx+dx, self.cy) then
-              self:moveToCell(self.cx+dx, self.cy)
-            elseif dy ~= 0 and self.map:isCellPassable(self, self.cx, self.cy+dy) then
-              self:moveToCell(self.cx, self.cy+dy)
+-- async
+local function AI_thread(self)
+  self.ai_running = true
+  while self.map and (self.animation_type == "character-random" or
+      self.animation_type == "character-follow") do
+    if not self.client.running_event then -- prevent movement during event execution
+      if self.animation_type == "character-follow" then -- follow mode
+        local dx, dy = self.client.x-self.x, self.client.y-self.y
+        if math.sqrt(dx*dx+dy*dy) > 16 then -- too far, move to target
+          local sdx, sdy = utils.sign(dx), utils.sign(dy)
+          if math.abs(dx) > math.abs(dy) then
+            if self.map:isCellPassable(self, self.cx+sdx, self.cy) then
+              self:moveToCell(self.cx+sdx, self.cy)
+            elseif self.map:isCellPassable(self, self.cx, self.cy+sdy) then
+              self:moveToCell(self.cx, self.cy+sdy)
+            end
+          else
+            if self.map:isCellPassable(self, self.cx, self.cy+sdy) then
+              self:moveToCell(self.cx, self.cy+sdy)
+            elseif self.map:isCellPassable(self, self.cx+sdx, self.cy) then
+              self:moveToCell(self.cx+sdx, self.cy)
             end
           end
-        else -- idle mode
-          -- random movement
-          local ok
-          local ncx, ncy
-          -- search for a passable cell
-          local i = 1
-          while not ok and i <= 10 do
-            local orientation = math.random(0,3)
-            local dx, dy = LivingEntity.orientationVector(orientation)
-            ncx, ncy = self.cx+dx, self.cy+dy
-            ok = self.map:isCellPassable(self, ncx, ncy)
-            i = i+1
-          end
-          if ok then
-            self:moveToCell(ncx, ncy)
-          end
         end
+      else -- idle mode
+        -- random movements
+        -- search for a passable cell
+        local done, ncx, ncy
+        local dirs = {0,1,2,3}
+        while not done and #dirs > 0 do
+          local i = math.random(1, #dirs)
+          local orientation = dirs[i]
+          table.remove(dirs, i)
+          local dx, dy = LivingEntity.orientationVector(orientation)
+          ncx, ncy = self.cx+dx, self.cy+dy
+          if self.map:isCellPassable(self, ncx, ncy) then done = true end
+        end
+        if done then self:moveToCell(ncx, ncy) end
       end
-      -- next AI tick
-      self.move_ai_timer = nil
-      self:moveAI()
-    end)
+    end
+    wait(utils.randf(1,5)/self.speed *
+      (self.animation_type == "character-follow" and 0.25 or 1.5))
+  end
+  self.ai_running = nil
+end
+
+function Event:startAI()
+  if not self.ai_running and (self.animation_type == "character-random" or
+      self.animation_type == "character-follow") then
+    async(function() AI_thread(self) end)
   end
 end
 
@@ -1171,7 +1181,7 @@ end
 -- override
 function Event:onMapChange()
   if self.map then -- added to map
-    self:moveAI()
+    self:startAI()
     -- reference event by name
     self.client.events_by_name[self.name] = self
     -- auto trigger
