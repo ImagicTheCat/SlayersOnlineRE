@@ -373,7 +373,12 @@ commands.tp = {1, "client", function(self, client, args)
     client:print("Téléporté.")
   else -- offline
     async(function()
-      local r_state = self.db:query("user/getStateByPseudo", {pseudo})
+      -- id
+      local r_id = self.db:query("user/getId", {pseudo})
+      local user_id = r_id and r_id.rows[1] and r_id.rows[1].id
+      if not user_id then client:print("Joueur introuvable."); return end
+      -- update
+      local r_state = self.db:query("user/getState", {user_id})
       local row = r_state and r_state.rows[1]
       if row then
         local state = msgpack.unpack(row.state)
@@ -381,9 +386,9 @@ commands.tp = {1, "client", function(self, client, args)
           map = map_name,
           x = cx*16, y = cy*16
         }
-        self.db:query("user/setState", {row.id, msgpack.pack(state)})
+        self.db:query("user/setState", {user_id, msgpack.pack(state)})
         client:print("Téléporté (hors-ligne).")
-      else client:print("Joueur introuvable.") end
+      end
     end)
   end
 end, "[pseudo] <map> <cx> <cy>", "se téléporter / téléporter un joueur"}
@@ -396,7 +401,12 @@ commands.respawn = {1, "client", function(self, client, args)
     client:print("Respawned.")
   else -- offline
     async(function()
-      local r_state = self.db:query("user/getStateByPseudo", {pseudo})
+      -- id
+      local r_id = self.db:query("user/getId", {pseudo})
+      local user_id = r_id and r_id.rows[1] and r_id.rows[1].id
+      if not user_id then client:print("Joueur introuvable."); return end
+      -- update
+      local r_state = self.db:query("user/getState", {user_id})
       local row = r_state and r_state.rows[1]
       if row then
         local state = msgpack.unpack(row.state)
@@ -406,9 +416,9 @@ commands.respawn = {1, "client", function(self, client, args)
           x = spawn.cx*16,
           y = spawn.cy*16
         }
-        self.db:query("user/setState", {row.id, msgpack.pack(state)})
+        self.db:query("user/setState", {user_id, msgpack.pack(state)})
         client:print("Respawned (hors-ligne).")
-      else client:print("Joueur introuvable.") end
+      end
     end)
   end
 end, "[pseudo]", "respawn soi-même ou un autre joueur"}
@@ -787,6 +797,50 @@ commands.kick = {2, "shared", function(self, client, args)
   if not client then print(not target and "player not found" or "player kicked")
   else client:print(not target and "Joueur introuvable." or "Joueur kické.") end
 end, "<pseudo> <reason>", "kick un joueur"}
+
+commands.delete_account = {0, "server", function(self, client, args)
+  local pseudo = args[2]
+  if not pseudo or #pseudo == 0 then return true end
+  if self:getClientByPseudo(pseudo) then print("user is online"); return end
+  async(function()
+    local affected = self.db:query("user/deleteAccount", {pseudo}).affected_rows
+    print(affected == 0 and "account not found" or "account deleted")
+  end)
+end, "<pseudo>", "supprimer un compte"}
+
+commands.reset = {0, "server", function(self, client, args)
+  local pseudo = args[2]
+  if not pseudo or #pseudo == 0 then return true end
+  if self:getClientByPseudo(pseudo) then print("user is online"); return end
+  async(function()
+    local r_id = self.db:query("user/getId", {pseudo})
+    local user_id = r_id and r_id.rows[1] and r_id.rows[1].id
+    if not user_id then print("user not found"); return end
+    self.db:query("user/setData", {
+      level = 1,
+      alignment = 100,
+      reputation = 0,
+      gold = 0,
+      chest_gold = 0,
+      xp = 0,
+      strength_pts = 0,
+      dexterity_pts = 0,
+      constitution_pts = 0,
+      magic_pts = 0,
+      remaining_pts = 0,
+      weapon_slot = 0,
+      shield_slot = 0,
+      helmet_slot = 0,
+      armor_slot = 0,
+      user_id = user_id
+    })
+    self.db:query("user/setState", {user_id, msgpack.pack({})})
+    self.db:query("user/deleteVars", {user_id})
+    self.db:query("user/deleteBoolVars", {user_id})
+    self.db:query("user/deleteItems", {user_id})
+    print("user reset")
+  end)
+end, "<pseudo>", "reset un personnage"}
 
 -- CONSOLE THREAD
 local function console_main(flags, channel)
