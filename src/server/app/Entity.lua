@@ -11,17 +11,13 @@ function Entity:__construct()
   -- .map: map
   -- .id: map id
   -- .nettype
-
   -- position in pixels (top-left origin, the entity body is a 16x16 cell)
   self.x = 0
   self.y = 0
-
   -- cell coords
   self.cx = 0
   self.cy = 0
-
   self.obstacle = false
-
   self:updateCell()
 end
 
@@ -44,8 +40,20 @@ end
 -- should be called when the entity is not on a map
 function Entity:setClient(client)
   if self.map then error("can't bind/unbind a client when the entity is on a map") end
-
   self.client = client
+end
+
+-- Check if the entity perceives the target's realm (Client binding).
+-- The check is asymmetric. E.g. an Event can dodge a mob, but a mob can't
+-- perceive the Event.
+function Entity:perceivesRealm(entity)
+  if class.is(self, Client) then return not entity.client or entity.client == self
+  else -- not a client
+    if self.client then -- bound
+      if class.is(entity, Client) then return self.client == entity
+      else return not entity.client or self.client == entity.client end
+    else return not entity.client end -- unbound
+  end
 end
 
 -- position in pixels
@@ -53,7 +61,6 @@ function Entity:teleport(x,y)
   self.x = x
   self.y = y
   self:broadcastPacket("teleport", {x,y})
-
   self:updateCell()
 end
 

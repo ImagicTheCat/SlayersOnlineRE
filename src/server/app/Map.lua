@@ -172,42 +172,24 @@ function Map:isCellPassable(entity, x, y)
     local tdata = self.tileset_data
     local index = (x*self.h+y)*4+1
     local xl, xh, yl, yh = self.tiledata[index] or 0, self.tiledata[index+1] or 0, self.tiledata[index+2] or 0, self.tiledata[index+3] or 0
-
     --- check passable
     local l_passage, h_passable = true, true
     if xl > 0 and yl > 0 then
       l_passable = tdata.passable[(xl-1)*tdata.hc+yl]
     end
-
     if xh > 0 and yh > 0 then
       h_passable = tdata.passable[tdata.wc*tdata.hc+(xh-1)*tdata.hc+yh]
     end
-
-    if not l_passable or not h_passable then
-      return false
-    end
-
+    if not l_passable or not h_passable then return false end
     -- entities check
     local cell = self:getCell(x,y)
     if cell then
-      if class.is(entity, Client) then -- Client check
-        for c_entity in pairs(cell) do
-          if c_entity.obstacle and (not c_entity.client or c_entity.client == entity) then
-            return false
-          end
-        end
-      else -- regular entity
-        for c_entity in pairs(cell) do
-          if c_entity.obstacle and (not c_entity.client or c_entity.client == entity.client) then
-            return false
-          end
-        end
+      for c_entity in pairs(cell) do
+        if c_entity.obstacle and entity:perceivesRealm(c_entity) then return false end
       end
     end
-
     return true
   end
-
   return false
 end
 
@@ -235,7 +217,7 @@ function Map:serializeNet(client)
   -- serialize entities
   data.entities = {}
   for entity in pairs(self.entities) do
-    if entity.nettype and (not entity.client or entity.client == client) then
+    if entity.nettype and client:perceivesRealm(entity) then
       table.insert(data.entities, entity:serializeNet())
     end
   end

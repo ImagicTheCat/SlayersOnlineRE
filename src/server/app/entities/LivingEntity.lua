@@ -502,12 +502,9 @@ end
 
 function LivingEntity:attack()
   if self:act("attack", 1) then
-    -- Check if the attacker and the attacked are on the same realm.
-    -- E.g. client bound entities.
-    local client = (class.is(self, Client) and self or self.client)
     local entities = self:raycastEntities(1)
     for _, entity in ipairs(entities) do
-      if class.is(entity, LivingEntity) and (not entity.client or entity.client == client) then
+      if class.is(entity, LivingEntity) and self:perceivesRealm(entity) then
         if entity:onAttack(self) then break end
       end
     end
