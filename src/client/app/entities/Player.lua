@@ -51,18 +51,18 @@ end
 function Player:onPacket(action, data)
   LivingEntity.onPacket(self, action, data)
 
-  if action == "ch_visible" then
+  if action == "ch-visible" then
     self.visible = data
-  elseif action == "ch_draw_order" then
+  elseif action == "ch-draw-order" then
     client.map:updateEntityDrawOrder(self, data)
-  elseif action == "group_update" then
+  elseif action == "group-update" then
     self.group_data = data
-  elseif action == "group_remove" then
+  elseif action == "group-remove" then
     self.group_data = nil
   elseif action == "group-flag" then
     self.has_group = data
     self:updateNameTag()
-  elseif action == "update_alignment" then
+  elseif action == "update-alignment" then
     self.alignment = data
     self:updateNameTag()
   end

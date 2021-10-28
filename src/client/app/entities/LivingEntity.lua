@@ -52,7 +52,7 @@ function LivingEntity:onPacket(action, data)
     self.move_to_cell = nil
     self.anim_x = 1
     self.anim_move_index = 0
-  elseif action == "ch_orientation" then
+  elseif action == "ch-orientation" then
     self.anim_y = data
   elseif action == "act" then
     self.acting = data[1]
@@ -76,11 +76,11 @@ function LivingEntity:onPacket(action, data)
     else
       self:emitHint({color, utils.fn(amount)})
     end
-  elseif action == "ch_charaset" then
+  elseif action == "ch-charaset" then
     self:setCharaset(data)
-  elseif action == "ch_sounds" then
+  elseif action == "ch-sounds" then
     self.attack_sound, self.hurt_sound = data[1], data[2]
-  elseif action == "move_to_cell" then
+  elseif action == "move-to-cell" then
     data.x = self.x
     data.y = self.y
     data.dx = data.cx*16-data.x
@@ -89,13 +89,13 @@ function LivingEntity:onPacket(action, data)
     data.duration = data.dist/data.speed
     data.time = 0
     self.move_to_cell = data
-  elseif action == "ch_ghost" then
+  elseif action == "ch-ghost" then
     self.ghost = data
-  elseif action == "emit_sound" then
+  elseif action == "emit-sound" then
     self:emitSound(data)
-  elseif action == "emit_hint" then
+  elseif action == "emit-hint" then
     self:emitHint(data)
-  elseif action == "emit_animation" then
+  elseif action == "emit-animation" then
     self:emitAnimation(data.path, data.x, data.y, data.w, data.h, data.duration, data.alpha)
   end
 end

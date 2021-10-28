@@ -38,9 +38,9 @@ function Event:onPacket(action, data)
       -- Prevent erasing anim_x for moving events.
       self.anim_x = self.animation_number
     end
-  elseif action == "ch_active" then
+  elseif action == "ch-active" then
     self.active = data
-  elseif action == "ch_animation_type" then
+  elseif action == "ch-animation-type" then
     self.animation_type = data.animation_type
 
     self.animation_number = data.animation_number or 0
@@ -48,7 +48,7 @@ function Event:onPacket(action, data)
 
     self.anim_wc = data.animation_wc or 0
     self.anim_hc = data.animation_hc or 0
-  elseif action == "ch_animation_number" then
+  elseif action == "ch-animation-number" then
     self.animation_number = data.animation_number
     self.anim_x = self.animation_number
   end

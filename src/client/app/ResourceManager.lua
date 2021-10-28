@@ -65,7 +65,7 @@ function ResourceManager:writeFile(path, data)
   self.busy_hint = "Writing "..path.."..."
   local r = async()
   table.insert(self.ioc_tasks, r)
-  self.ioc_cin:push({"write_file", path, data})
+  self.ioc_cin:push({"write-file", path, data})
   return r:wait()
 end
 
@@ -75,7 +75,7 @@ function ResourceManager:readFile(path)
   self.busy_hint = "Reading "..path.."..."
   local r = async()
   table.insert(self.ioc_tasks, r)
-  self.ioc_cin:push({"read_file", path})
+  self.ioc_cin:push({"read-file", path})
   return r:wait()
 end
 

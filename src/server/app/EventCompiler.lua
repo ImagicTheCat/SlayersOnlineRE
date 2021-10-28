@@ -456,7 +456,7 @@ function Parser:condition_flag()
   -- handle special flag conditions
   if self:check('Appuie', ' ', 'sur', ' ', 'bouton') then return "interact"
   elseif self:check('Automatique') then return "auto"
-  elseif self:check('Auto', ' ', 'une', ' ', 'seul', ' ', 'fois') then return "auto_once"
+  elseif self:check('Auto', ' ', 'une', ' ', 'seul', ' ', 'fois') then return "auto-once"
   elseif self:check('En', ' ', 'contact') then return "contact"
   elseif self:check('Attaque') then return "attack"
   end
