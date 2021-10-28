@@ -836,7 +836,7 @@ function Client:eventTick(timer_ticks)
     local events = {}
     local max_delta = Event.TRIGGER_RADIUS*16
     for event, condition in pairs(self.triggered_events) do
-      if condition == "auto" or condition == "auto_once" then
+      if condition == "auto" or condition == "auto-once" then
         local dx = math.abs(event.cx*16-(self.cx*16+self.view_shift[1]))
         local dy = math.abs(event.cy*16-(self.cy*16+self.view_shift[2]))
         if dx <= max_delta and dy <= max_delta then
@@ -1550,7 +1550,7 @@ end
 function Client:setAlignment(alignment)
   self.alignment = utils.clamp(utils.sanitizeInt(alignment), 0, 100)
   self:sendPacket(net.STATS_UPDATE, {alignment = self.alignment})
-  self:broadcastPacket("update_alignment", self.alignment)
+  self:broadcastPacket("update-alignment", self.alignment)
 end
 
 function Client:setReputation(reputation)
@@ -1573,7 +1573,7 @@ function Client:setGroup(id)
       if self.map then
         local packet = Client.makePacket(net.ENTITY_PACKET, {
           id = self.id,
-          act = "group_remove"
+          act = "group-remove"
         })
         for client in pairs(group) do
           if client.map == self.map then
@@ -1582,7 +1582,7 @@ function Client:setGroup(id)
             -- leave packet to self
             self:sendPacket(net.ENTITY_PACKET, {
               id = client.id,
-              act = "group_remove"
+              act = "group-remove"
             })
           end
         end
@@ -1633,7 +1633,7 @@ function Client:sendGroupUpdate()
   if group and self.map then
     local packet = Client.makePacket(net.ENTITY_PACKET, {
       id = self.id,
-      act = "group_update",
+      act = "group-update",
       data = {health = self.health, max_health = self.max_health}
     })
 
@@ -1652,7 +1652,7 @@ function Client:receiveGroupUpdates()
       if client ~= self and client.map == self.map then
         self:sendPacket(net.ENTITY_PACKET, {
           id = client.id,
-          act = "group_update",
+          act = "group-update",
           data = {health = client.health, max_health = client.max_health}
         })
       end

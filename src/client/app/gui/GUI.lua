@@ -32,14 +32,14 @@ function GUI:playSound(path)
   return source
 end
 
--- trigger "control_press" on GUI and focused widget
+-- trigger "control-press" on GUI and focused widget
 function GUI:triggerControlPress(id)
   local focus = self.focus
   self:trigger("control-press", id)
   if focus then focus:trigger("control-press", id) end
 end
 
--- trigger "control_release" on GUI and focused widget
+-- trigger "control-release" on GUI and focused widget
 function GUI:triggerControlRelease(id)
   local focus = self.focus
   self:trigger("control-release", id)

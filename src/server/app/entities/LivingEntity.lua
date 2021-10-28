@@ -341,19 +341,19 @@ end
 
 function LivingEntity:setGhost(flag)
   self.ghost = flag
-  self:broadcastPacket("ch_ghost", flag)
+  self:broadcastPacket("ch-ghost", flag)
 end
 
 function LivingEntity:setSounds(attack_sound, hurt_sound)
   self.attack_sound = attack_sound
   self.hurt_sound = hurt_sound
-  self:broadcastPacket("ch_sounds", {self.attack_sound, self.hurt_sound})
+  self:broadcastPacket("ch-sounds", {self.attack_sound, self.hurt_sound})
 end
 
 function LivingEntity:setOrientation(orientation)
   if self.orientation ~= orientation and orientation >= 0 and orientation < 4 then
     self.orientation = orientation
-    self:broadcastPacket("ch_orientation", orientation)
+    self:broadcastPacket("ch-orientation", orientation)
   end
 end
 
@@ -443,7 +443,7 @@ function LivingEntity:moveToCell(cx, cy, blocking, speed_factor)
   local time = clock()
   local x, y = self.x, self.y
   self:setOrientation(LivingEntity.vectorOrientation(dx,dy))
-  self:broadcastPacket("move_to_cell", {cx = cx, cy = cy, speed = speed})
+  self:broadcastPacket("move-to-cell", {cx = cx, cy = cy, speed = speed})
   -- movement
   if self.move_timer then self.move_timer:remove() end
   self.move_timer = itimer(1/cfg.tickrate, function()
@@ -786,16 +786,16 @@ end
 --- w,h: cell dimensions
 function LivingEntity:setCharaset(charaset)
   self.charaset = charaset
-  self:broadcastPacket("ch_charaset", self.charaset)
+  self:broadcastPacket("ch-charaset", self.charaset)
 end
 
 -- play sound on self
 function LivingEntity:emitSound(sound)
-  self:broadcastPacket("emit_sound", sound)
+  self:broadcastPacket("emit-sound", sound)
 end
 
 function LivingEntity:emitHint(colored_text)
-  self:broadcastPacket("emit_hint", colored_text)
+  self:broadcastPacket("emit-hint", colored_text)
 end
 
 -- path: set path
@@ -804,7 +804,7 @@ end
 -- duration: seconds
 -- alpha: (optional) 0-1
 function LivingEntity:emitAnimation(path, x, y, w, h, duration, alpha)
-  self:broadcastPacket("emit_animation", {
+  self:broadcastPacket("emit-animation", {
     path = path,
     x = x, y = y,
     w = w, h = h,

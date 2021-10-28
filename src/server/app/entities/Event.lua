@@ -279,7 +279,7 @@ end
 function special_vars:Visible(value)
   if value then
     self.client.visible = (tonumber(value) or 0) > 0
-    self.client:broadcastPacket("ch_visible", visible)
+    self.client:broadcastPacket("ch-visible", visible)
   else
     return self.client.visible and 1 or 0
   end
@@ -314,7 +314,7 @@ end
 function special_vars:Position(value)
   if value then
     self.client.draw_order = tonumber(value) or 0
-    self.client:broadcastPacket("ch_draw_order", self.client.draw_order)
+    self.client:broadcastPacket("ch-draw-order", self.client.draw_order)
   else
     return self.client.draw_order
   end
@@ -541,7 +541,7 @@ end
 function event_vars:Visible(value)
   if value then
     self.active = ((tonumber(value) or 0) > 0)
-    self:broadcastPacket("ch_active", self.active)
+    self:broadcastPacket("ch-active", self.active)
   else
     return (self.active and 1 or 0)
   end
@@ -563,7 +563,7 @@ function event_vars:TypeAnim(value)
       data.animation_hc = math.max(self.page.animation_mod, 1)
     end
     self:startAI()
-    self:broadcastPacket("ch_animation_type", data)
+    self:broadcastPacket("ch-animation-type", data)
   else
     return self.animation_type
   end
@@ -644,7 +644,7 @@ end
 function event_vars:NumAnim(value)
   if value then
     self.animation_number = (tonumber(value) or 0)
-    self:broadcastPacket("ch_animation_number", self.animation_number)
+    self:broadcastPacket("ch-animation-number", self.animation_number)
   else
     return self.animation_number
   end
@@ -1199,7 +1199,7 @@ function Event:onMapChange()
       self:trigger("auto")
       iteration()
     elseif self.trigger_auto_once then
-      self:trigger("auto_once")
+      self:trigger("auto-once")
     end
   else -- removed from map
     -- unreference event by name
