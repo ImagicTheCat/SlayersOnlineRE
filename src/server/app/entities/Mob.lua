@@ -91,7 +91,7 @@ local function AI_thread(self)
           local dx, dy = client.x-self.x, client.y-self.y
           local dist = math.sqrt(dx*dx+dy*dy)
           if dist <= AGGRO_RANGE*16 then
-            self:addToBingoBook(client, dist/(AGGRO_RANGE*16))
+            self:addToBingoBook(client, 1-dist/(AGGRO_RANGE*16))
           end
         end
       end
@@ -220,7 +220,7 @@ function Mob:onDeath()
   if total > 0 then
     -- Distribute.
     -- Use a discrete cumulative distribution function (linear search) for the item.
-    -- The shares of disconnected players is lost.
+    -- The shares of disconnected players are lost.
     local item_rand = math.random()*total
     local item_done, item_sum = false, 0
     for user_id, priority in pairs(self.bingobook) do
