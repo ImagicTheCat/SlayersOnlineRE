@@ -7,7 +7,7 @@ local Map = class("Map")
 local function sort_entities_back(a, b)
   return a.top < b.top or (a.top == b.top and a.id < b.id)
 end
-local function sort_entities_front(a, b)
+local function sort_entities(a, b)
   return a.y < b.y or (a.y == b.y and a.id < b.id)
 end
 
@@ -187,8 +187,8 @@ function Map:tick(dt)
   end
   -- sort entities by Y-top position (top-down sorting)
   table.sort(self.back_draw_list, sort_entities_back)
-  table.sort(self.dynamic_draw_list, sort_entities_back)
-  table.sort(self.front_draw_list, sort_entities_front)
+  table.sort(self.dynamic_draw_list, sort_entities)
+  table.sort(self.front_draw_list, sort_entities)
 end
 
 function Map:draw()
