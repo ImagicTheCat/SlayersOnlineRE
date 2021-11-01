@@ -52,10 +52,10 @@ function packet:MAP(data)
   self:showLoading()
   self.map = Map(data.map)
   self.id = data.id -- entity id
-  if self.pick_target then
-    -- cancel target pick
-    self:sendPacket(net.TARGET_PICK)
-    self.pick_target = nil
+  if self.pick_entity then
+    -- cancel entity pick
+    self:sendPacket(net.ENTITY_PICK)
+    self.pick_entity = nil
   end
 end
 function packet:ENTITY_ADD(data)
@@ -234,31 +234,15 @@ function packet:SCROLL_TO(data)
 end
 function packet:SCROLL_RESET(data) self.scroll = nil end
 function packet:VIEW_SHIFT_UPDATE(data) self.view_shift = data end
-function packet:TARGET_PICK(data)
+function packet:ENTITY_PICK(data)
   local entities = {}
-  if self.map then -- add valid entities
-    local player = self.map.entities[self.id]
-    if player then
-      for id, entity in pairs(self.map.entities) do
-        local dx = math.abs(player.x-entity.x)
-        local dy = math.abs(player.y-entity.y)
-        if dx <= data.radius and dy <= data.radius --
-          and (data.type == "player" and class.is(entity, Player) --
-          or data.type == "mob" and (class.is(entity, Mob) or class.is(entity, Player))) then
-          table.insert(entities, {id, math.sqrt(dx*dx+dy*dy)})
-        end
-      end
-    end
+  if self.map then
+    for _, id in ipairs(data) do table.insert(entities, self.map.entities[id]) end
   end
   if #entities > 0 then
-    -- sort entities by distance
-    table.sort(entities, function(a,b) return a[2] < b[2] end)
-    self.pick_target = {
-      entities = entities, -- list of entities {id, dist}
-      selected = 1
-    }
-  else
-    self:sendPacket(net.TARGET_PICK) -- end/cancel
+    self.pick_entity = {entities = entities, selected = 1}
+  else -- end/cancel
+    self:sendPacket(net.ENTITY_PICK)
   end
 end
 function packet:TRADE_OPEN(data)
@@ -295,7 +279,7 @@ function packet:TRADE_CLOSE(data)
   self.gui:setFocus()
 end
 function packet:DIALOG_QUERY(data)
-  if data.no_busy or (not self.gui.focus and not self.pick_target) then -- not busy
+  if data.no_busy or (not self.gui.focus and not self.pick_entity) then -- not busy
     async(function()
       self:sendPacket(net.DIALOG_RESULT, self:dialog(data.ftext, data.options))
     end)
@@ -546,12 +530,12 @@ function Client:__construct(cfg)
   -- global GUI controls
   self.gui:listen("control-press", function(gui, id)
     if id == "return" then
-      if not gui.focus and not self.pick_target then
+      if not gui.focus and not self.pick_entity then
         self.w_input_chat:setVisible(true)
         gui:setFocus(self.input_chat)
       end
     elseif id == "menu" then
-      if not gui.focus and not self.pick_target then -- open menu
+      if not gui.focus and not self.pick_entity then -- open menu
         self.menu:setVisible(true)
         gui:setFocus(self.menu_grid)
       elseif gui.focus == self.menu_grid then -- close menu
@@ -727,7 +711,7 @@ function Client:tick(dt)
 
   self:setMoveForward(not self.gui.focus --
     and (not self.rsc_manager:isBusy() or not self.loading_screen_tex) -- not on loading screen
-    and not self.pick_target --
+    and not self.pick_entity --
     and self:isControlPressed(control))
 
   -- GUI
@@ -1217,7 +1201,7 @@ function Client:pressControl(id)
       end
     end
     -- gameplay handling
-    local pickt = self.pick_target
+    local pickt = self.pick_entity
     if not self.gui.focus and pickt and self.map then
       if id == "left" or id == "up" then -- previous
         pickt.selected = pickt.selected-1
@@ -1228,13 +1212,13 @@ function Client:pressControl(id)
         if pickt.selected > #pickt.entities then pickt.selected = 1 end
         self:playSound("resources/audio/Cursor1.wav")
       elseif id == "interact" then -- valid
-        local entry = pickt.entities[pickt.selected]
-        self:sendPacket(net.TARGET_PICK, entry and entry[1])
-        self.pick_target = nil
+        local entity = pickt.entities[pickt.selected]
+        self:sendPacket(net.ENTITY_PICK, entity and entity.id)
+        self.pick_entity = nil
         self:playSound("resources/audio/Item1.wav")
       elseif id == "menu" then -- cancel
-        self:sendPacket(net.TARGET_PICK)
-        self.pick_target = nil
+        self:sendPacket(net.ENTITY_PICK)
+        self.pick_entity = nil
       end
     elseif not self.gui.focus then -- character controls
       if id == "up" then self:pressOrientation(0)
@@ -1354,10 +1338,9 @@ function Client:draw()
     love.graphics.translate(-self.camera[1], -self.camera[2])
     self.map:draw()
 
-    -- draw target picking selection
-    if self.pick_target then
-      local entry = self.pick_target.entities[self.pick_target.selected]
-      local entity = self.map.entities[entry and entry[1]]
+    -- draw entity picking selection
+    if self.pick_entity then
+      local entity = self.pick_entity.entities[self.pick_entity.selected]
       if class.is(entity, LivingEntity) and scheduler.time%1 < 0.5 then -- blinking
         self.gui_renderer:drawBorders(self.gui_renderer.system.window_borders,
           entity.x-math.floor((entity.atlas.cell_w-16)/2),

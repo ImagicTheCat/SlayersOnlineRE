@@ -624,17 +624,12 @@ function packet:QUICK_ACTION_BIND(data)
     end
   end
 end
-function packet:TARGET_PICK(data)
+function packet:ENTITY_PICK(data)
   if self.status ~= "logged" then return end
-  local r = self.pick_target_task
-  if r then
-    self.pick_target_task = nil
-    local id = tonumber(data)
-    if id and self.map then
-      r(self.map.entities_by_id[id])
-    else
-      r()
-    end
+  local task = self.pick_entity_task
+  if task then
+    self.pick_entity_task = nil
+    task(type(data) == "number" and data)
   end
 end
 function packet:SPELL_CAST(data)
@@ -651,7 +646,7 @@ function packet:TRADE_SEEK(data)
   if self.status ~= "logged" then return end
   async(function()
     -- pick target
-    local entity = self:requestPickTarget("player", 7)
+    local entity = self:requestPickEntity(self:getSurroundingEntities("player", 7))
     if entity then
       if not entity.ignores.trade then
         self:print("Requête envoyée.")
@@ -903,26 +898,50 @@ function Client:requestInputString(title)
   return self.input_string_task:wait()
 end
 
+-- mode: "player-self", "player", "mob-player"
+-- radius: cells
+-- return list of entities, sorted by ascending distance
+function Client:getSurroundingEntities(mode, radius)
+  if not self.map then return end
+  -- prepare entities
+  local entities = {}
+  for client in pairs(self.map.clients) do
+    if client ~= self or mode == "player-self" then table.insert(entities, client) end
+  end
+  if mode == "mob-player" then
+    for mob in pairs(self.map.mobs) do table.insert(entities, mob) end
+  end
+  -- select/sort entries
+  local entries = {}
+  for _, entity in ipairs(entities) do
+    local dx, dy = entity.x-self.x, entity.y-self.y
+    local dist = math.sqrt(dx*dx+dy*dy)
+    if dist <= radius*16 then table.insert(entries, {entity, dist}) end
+  end
+  table.sort(entries, function(a,b) return a[2] < b[2] end)
+  -- pick
+  local list = {}
+  for _, entry in ipairs(entries) do table.insert(list, entry[1]) end
+  return list
+end
+
 -- (async)
--- Request to pick a target (self excluded).
--- type: target type (string)
---- "player" (only player)
---- "mob" (mob/player)
--- radius: square radius in cells
--- return picked entity or nothing if invalid
-function Client:requestPickTarget(type, radius)
-  self.pick_target_task = async()
-  self:sendPacket(net.TARGET_PICK, {type = type, radius = radius*16})
-  local entity = self.pick_target_task:wait()
-  if entity then
-    local dx = math.abs(self.x-entity.x)
-    local dy = math.abs(self.y-entity.y)
-    if dx <= radius*16 and dy <= radius*16 and
-        (type == "player" and class.is(entity, Player) or
-        type == "mob" and (class.is(entity, Mob) or class.is(entity, Player))) then
-      return entity
+-- Request to pick an entity.
+-- entities: list of candidates (same map)
+-- return picked entity or nil/nothing if invalid
+function Client:requestPickEntity(entities)
+  self.pick_entity_task = async()
+  local ids, check_table = {}, {}
+  for _, entity in ipairs(entities) do
+    if entity.map == self.map then
+      table.insert(ids, entity.id)
+      check_table[entity] = true
     end
   end
+  self:sendPacket(net.ENTITY_PICK, ids)
+  local id = self.pick_entity_task:wait()
+  local entity = self.map and self.map.entities_by_id[id]
+  return check_table[entity] and entity
 end
 
 -- (async) open dialog box
@@ -1301,11 +1320,16 @@ function Client:tryCastSpell(spell)
   -- acquire target
   local target
   if spell.target_type == "player" then
-    target = self:requestPickTarget("player", 7)
+    target = self:requestPickEntity(self:getSurroundingEntities("player-self", 7))
   elseif spell.target_type == "mob-player" then
-    target = self:requestPickTarget("mob", 7)
-    -- check for invalid player target
-    if class.is(target, Client) and not self:canFight(target) then target = nil end
+    local pre_entities = self:getSurroundingEntities("mob-player", 7)
+    local entities = {}
+    for _, entity in ipairs(pre_entities) do
+      if not class.is(entity, Client) or self:canFight(entity) then
+        table.insert(entities, entity)
+      end
+    end
+    target = self:requestPickEntity(entities)
   elseif spell.target_type == "self" then
     target = self
   elseif spell.target_type == "around" then

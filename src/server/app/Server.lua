@@ -423,23 +423,9 @@ commands.respawn = {1, "client", function(self, client, args)
   end
 end, "[pseudo]", "respawn soi-même ou un autre joueur"}
 
--- testing command
 commands.chest = {1, "client", function(self, client, args)
-  async(function() client:openChest("Test.") end)
-end, "", "ouvrir son coffre (test)"}
-
--- testing command
-commands.shop = {1, "client", function(self, client, args)
-  async(function() client:openShop("Test.", {1,2,3,4}) end)
-end, "", "ouvrir un magasin (test)"}
-
--- testing command
-commands.pick = {1, "client", function(self, client, args)
-  async(function()
-    local entity = client:requestPickTarget(args[2] or "mob", tonumber(args[3]) or 7)
-    client:print("Entité selectionnée: "..tostring(entity))
-  end)
-end, "[type] [radius]", "selectionner une entité"}
+  async(function() client:openChest("Coffre.") end)
+end, "", "ouvrir son coffre"}
 
 commands.kill = {10, "client", function(self, client, args)
   client:setHealth(0)
