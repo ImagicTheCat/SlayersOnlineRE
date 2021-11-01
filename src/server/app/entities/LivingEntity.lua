@@ -689,9 +689,9 @@ function LivingEntity:applySpell(caster, spell)
                   end
                 elseif spell.target_type == "player" then
                   if class.is(caster, Client) then
-                    touched = class.is(entity, Client) and entity ~= caster
+                    touched = class.is(entity, Client)
                   elseif class.is(caster, Mob) then
-                    touched = class.is(entity, Mob) and entity ~= caster
+                    touched = class.is(entity, Mob)
                   end
                 end
                 -- apply

@@ -914,7 +914,7 @@ function Client:requestPickTarget(type, radius)
   self.pick_target_task = async()
   self:sendPacket(net.TARGET_PICK, {type = type, radius = radius*16})
   local entity = self.pick_target_task:wait()
-  if entity and entity ~= self then
+  if entity then
     local dx = math.abs(self.x-entity.x)
     local dy = math.abs(self.y-entity.y)
     if dx <= radius*16 and dy <= radius*16 and

@@ -118,7 +118,7 @@ local function AI_thread(self)
             local targets = {}
             for mob in pairs(self.map.mobs) do
               local dx, dy = mob.x-self.x, mob.y-self.y
-              if mob ~= self and math.sqrt(dx*dx+dy*dy) <= AGGRO_RANGE*16 then
+              if math.sqrt(dx*dx+dy*dy) <= AGGRO_RANGE*16 then
                 table.insert(targets, mob)
               end
             end
