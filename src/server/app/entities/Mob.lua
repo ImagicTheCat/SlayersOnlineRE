@@ -107,7 +107,7 @@ local function AI_thread(self)
       self.target = targets[1] and targets[1][1]
     end
     -- active behavior
-    if not self.acting and not self.move_task then
+    if not self.acting and not self:isMoving() then
       if self.target then -- combat mode
         local spell = self:selectSpell()
         if spell then -- cast a spell

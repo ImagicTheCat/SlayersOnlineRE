@@ -361,14 +361,8 @@ function LivingEntity:setMoveForward(move_forward)
   if self.move_forward ~= move_forward then
     self.move_forward = move_forward
     if self.move_forward then
-      -- end timers/tasks
-      if self.move_task then
-        local task = self.move_task
-        self.move_task = nil
-        task(false)
-      end
-      if self.move_timer then self.move_timer:remove() end
-      if self.move_final_timer then self.move_final_timer:remove() end
+      self:stopMovements(false)
+      self.move_forward = true
       -- movement
       self.move_time = clock()
       self.move_timer = itimer(1/cfg.tickrate, function()
@@ -411,13 +405,10 @@ function LivingEntity:setMoveForward(move_forward)
         end
       end)
     else
-      if self.move_timer then
-        self.move_timer:remove()
-        self.move_timer = nil
-        -- final teleport
-        self.move_final_timer = timer(0.25, function()
-          self:teleport(self.x, self.y) -- end position
-        end)
+      if self:isMoving() then
+        self:stopMovements(true)
+        -- final teleport, end position
+        self.move_final_timer = timer(0.25, function() self:teleport(self.x, self.y) end)
       end
     end
   end
@@ -428,12 +419,7 @@ end
 -- speed_factor: (optional)
 -- return true on success when blocking
 function LivingEntity:moveToCell(cx, cy, blocking, speed_factor)
-  -- end previous task
-  if self.move_task then
-    local task = self.move_task
-    self.move_task = nil
-    task(false)
-  end
+  self:stopMovements(false)
   if blocking then self.move_task = async() end
   -- init
   local dx, dy = cx*16-self.x, cy*16-self.y
@@ -445,7 +431,6 @@ function LivingEntity:moveToCell(cx, cy, blocking, speed_factor)
   self:setOrientation(LivingEntity.vectorOrientation(dx,dy))
   self:broadcastPacket("move-to-cell", {cx = cx, cy = cy, speed = speed})
   -- movement
-  if self.move_timer then self.move_timer:remove() end
   self.move_timer = itimer(1/cfg.tickrate, function()
     local progress = (clock()-time)/duration
     if progress <= 1 then
@@ -454,17 +439,31 @@ function LivingEntity:moveToCell(cx, cy, blocking, speed_factor)
       self:updateCell()
     else -- end
       self:teleport(cx*16, cy*16)
-      self.move_timer:remove()
-      self.move_timer = nil
-      if blocking then
-        local task = self.move_task
-        self.move_task = nil
-        task(true)
-      end
+      self:stopMovements(true)
     end
   end)
   if blocking then return self.move_task:wait() end
 end
+
+-- status: boolean, success/failure if cancellation
+function LivingEntity:stopMovements(status)
+  self.move_forward = false
+  -- end timers
+  if self.move_timer then
+    self.move_timer:remove()
+    self.move_timer = nil
+  end
+  if self.move_final_timer then
+    self.move_final_timer:remove()
+    self.move_final_timer = nil
+  end
+  -- complete task
+  local move_task = self.move_task
+  self.move_task = nil
+  if move_task then move_task(status) end
+end
+
+function LivingEntity:isMoving() return self.move_timer ~= nil end
 
 -- (async)
 -- Move to entity. The targeted entity will be followed if moving.
