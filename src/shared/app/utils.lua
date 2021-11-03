@@ -72,18 +72,18 @@ function utils.floorScale(scale, size)
   else return math.floor(scale) end
 end
 
--- basic deep clone function (doesn't handle circular references)
-function utils.clone(t)
+-- Basic deep clone function (doesn't handle circular references).
+-- t: a Lua value
+-- depth: (optional) maximum depth
+--- 0: return the passed value
+--- 1: clone the value, not children
+function utils.clone(t, depth)
+  if depth == 0 then return t end
   if type(t) == "table" then
     local new = {}
-    for k,v in pairs(t) do
-      new[k] = clone(v)
-    end
-
+    for k,v in pairs(t) do new[k] = utils.clone(v, depth and depth-1) end
     return new
-  else
-    return t
-  end
+  else return t end
 end
 
 local function hex_conv(c)

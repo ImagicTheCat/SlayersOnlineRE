@@ -1,4 +1,5 @@
 -- Prepared statements.
+-- (async)
 return function(db)
   local uint = "INTEGER UNSIGNED"
   local ubint = "BIGINT UNSIGNED"
