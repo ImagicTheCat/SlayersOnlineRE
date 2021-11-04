@@ -179,7 +179,7 @@ function Deserializer.readProjectSpellEntry(file)
   return spell
 end
 
-local EVENT_ANIMATION_TYPES = utils.rmap{
+local EVENT_ANIMATION_TYPES = utils.bimap{
   [0] = "static",
   "static-character",
   "character-random",

@@ -17,7 +17,7 @@ local Event = class("Event", LivingEntity)
 
 Event.TRIGGER_RADIUS = 15 -- visibility/trigger radius in cells
 
-local ORIENTED_ANIMATION_TYPES = utils.rmap({
+local ORIENTED_ANIMATION_TYPES = utils.bimap({
   "static",
   "static-character",
   "character-random"

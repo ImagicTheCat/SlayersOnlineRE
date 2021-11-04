@@ -171,10 +171,10 @@ end
 
 function utils.pack(...) return {n = select("#", ...), ...} end
 
--- Reverse map.
+-- Bi-directional map.
 -- Build a table with (k,v) pairs and (v,k) pairs.
 -- v: (optional) override value for all (v,k) pairs
-function utils.rmap(t, v)
+function utils.bimap(t, v)
   local nt = {}
   for mk, mv in pairs(t) do
     nt[mk] = mv

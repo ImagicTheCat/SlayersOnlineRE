@@ -1,7 +1,7 @@
 local utils = require("app.utils")
 
 -- Net packet protocol.
-return utils.rmap{
+return utils.bimap{
   "MAP",
   "ENTITY_ADD",
   "ENTITY_REMOVE",
