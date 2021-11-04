@@ -28,7 +28,7 @@ function Client.makePacket(protocol, data)
   return msgpack.pack({protocol, data})
 end
 
-local EQUIPABLE_ITEM_TYPES = utils.rmap({
+local EQUIPABLE_ITEM_TYPES = utils.bimap({
   "one-handed-weapon",
   "two-handed-weapon",
   "helmet",
