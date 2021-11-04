@@ -373,22 +373,24 @@ commands.tp = {1, "client", function(self, client, args)
     client:print("Téléporté.")
   else -- offline
     async(function()
-      -- id
-      local r_id = self.db:query("user/getId", {pseudo})
-      local user_id = r_id and r_id.rows[1] and r_id.rows[1].id
-      if not user_id then client:print("Joueur introuvable."); return end
-      -- update
-      local r_state = self.db:query("user/getState", {user_id})
-      local row = r_state and r_state.rows[1]
-      if row then
-        local state = msgpack.unpack(row.state)
-        state.location = {
-          map = map_name,
-          x = cx*16, y = cy*16
-        }
-        self.db:query("user/setState", {user_id, msgpack.pack(state)})
-        client:print("Téléporté (hors-ligne).")
-      end
+      self.db:transactionWrap(function()
+        -- id
+        local r_id = self.db:query("user/getId", {pseudo})
+        local user_id = r_id.rows[1] and r_id.rows[1].id
+        if not user_id then client:print("Joueur introuvable."); return end
+        -- update
+        local r_state = self.db:query("user/getState", {user_id})
+        local row = r_state.rows[1]
+        if row then
+          local state = msgpack.unpack(row.state)
+          state.location = {
+            map = map_name,
+            x = cx*16, y = cy*16
+          }
+          self.db:query("user/setState", {user_id, msgpack.pack(state)})
+          client:print("Téléporté (hors-ligne).")
+        end
+      end)
     end)
   end
 end, "[pseudo] <map> <cx> <cy>", "se téléporter / téléporter un joueur"}
@@ -401,24 +403,26 @@ commands.respawn = {1, "client", function(self, client, args)
     client:print("Respawned.")
   else -- offline
     async(function()
-      -- id
-      local r_id = self.db:query("user/getId", {pseudo})
-      local user_id = r_id and r_id.rows[1] and r_id.rows[1].id
-      if not user_id then client:print("Joueur introuvable."); return end
-      -- update
-      local r_state = self.db:query("user/getState", {user_id})
-      local row = r_state and r_state.rows[1]
-      if row then
-        local state = msgpack.unpack(row.state)
-        local spawn = state.respawn_point or server.cfg.spawn_location
-        state.location = {
-          map = spawn.map,
-          x = spawn.cx*16,
-          y = spawn.cy*16
-        }
-        self.db:query("user/setState", {user_id, msgpack.pack(state)})
-        client:print("Respawned (hors-ligne).")
-      end
+      self.db:transactionWrap(function()
+        -- id
+        local r_id = self.db:query("user/getId", {pseudo})
+        local user_id = r_id.rows[1] and r_id.rows[1].id
+        if not user_id then client:print("Joueur introuvable."); return end
+        -- update
+        local r_state = self.db:query("user/getState", {user_id})
+        local row = r_state.rows[1]
+        if row then
+          local state = msgpack.unpack(row.state)
+          local spawn = state.respawn_point or server.cfg.spawn_location
+          state.location = {
+            map = spawn.map,
+            x = spawn.cx*16,
+            y = spawn.cy*16
+          }
+          self.db:query("user/setState", {user_id, msgpack.pack(state)})
+          client:print("Respawned (hors-ligne).")
+        end
+      end)
     end)
   end
 end, "[pseudo]", "respawn soi-même ou un autre joueur"}
@@ -474,12 +478,16 @@ commands.create_account = {0, "server", function(self, client, args)
   urandom:close()
   -- create account
   local password = sha2.hex2bin(sha2.sha512(salt..client_password))
-  self.db:query("user/createAccount", {
-    pseudo = args[2],
-    salt = salt,
-    password = password,
-    rank = tonumber(args[4]) or 10
-  })
+  async(function()
+    self.db:transactionWrap(function()
+      self.db:query("user/createAccount", {
+        pseudo = args[2],
+        salt = salt,
+        password = password,
+        rank = tonumber(args[4]) or 10
+      })
+    end)
+  end)
   print("compte créé")
 end, "<pseudo> <password> [rank]", "créer un compte"}
 
@@ -528,18 +536,22 @@ commands.uset = {0, "server", function(self, client, args)
   local pseudo, prop = args[2], args[3]
   if prop == "rank" then
     async(function()
-      local result = self.db:query("user/setRank", {pseudo = pseudo, rank = tonumber(args[4]) or 10})
-      print(result.affected_rows.." affected row(s)")
+      self.db:transactionWrap(function()
+        local result = self.db:query("user/setRank", {pseudo = pseudo, rank = tonumber(args[4]) or 10})
+        print(result.affected_rows.." affected row(s)")
+      end)
     end)
   elseif prop == "guild" then
     async(function()
-      local result = self.db:query("user/setGuild", {
-        pseudo = pseudo,
-        guild = args[4] or "" ,
-        rank = tonumber(args[5]) or 0,
-        title = args[6] or ""
-      })
-      print(result.affected_rows.." affected row(s)")
+      self.db:transactionWrap(function()
+        local result = self.db:query("user/setGuild", {
+          pseudo = pseudo,
+          guild = args[4] or "" ,
+          rank = tonumber(args[5]) or 0,
+          title = args[6] or ""
+        })
+        print(result.affected_rows.." affected row(s)")
+      end)
     end)
   else return true end
 end, "<pseudo> <rank|guild> ...", [=[changer des données persistantes d'un utilisateur
@@ -750,11 +762,13 @@ commands.ban = {2, "shared", function(self, client, args)
   local pseudo, reason, hours = args[2], args[3], tonumber(args[4]) or 1
   if not pseudo or #pseudo == 0 or not reason or #reason == 0 then return true end
   async(function()
-    -- set ban
-    local affected = self.db:query("user/setBan", {pseudo = pseudo, timestamp = os.time()+math.floor(hours*3600)}).affected_rows
-    -- output
-    if not client then print(affected == 0 and "player not found" or "player banned")
-    else client:print(affected == 0 and "Joueur introuvable." or "Joueur banni.") end
+    self.db:transactionWrap(function()
+      -- set ban
+      local affected = self.db:query("user/setBan", {pseudo = pseudo, timestamp = os.time()+math.floor(hours*3600)}).affected_rows
+      -- output
+      if not client then print(affected == 0 and "player not found" or "player banned")
+      else client:print(affected == 0 and "Joueur introuvable." or "Joueur banni.") end
+    end)
     -- kick
     local target = self:getClientByPseudo(pseudo)
     if target then target:kick("Banni "..hours.." heure(s): "..reason) end
@@ -765,11 +779,13 @@ commands.unban = {2, "shared", function(self, client, args)
   local pseudo = args[2]
   if not pseudo or #pseudo == 0 then return true end
   async(function()
-    -- set ban
-    local affected = self.db:query("user/setBan", {pseudo = pseudo, timestamp = 0}).affected_rows
-    -- output
-    if not client then print(affected == 0 and "player not found or not banned" or "player unbanned")
-    else client:print(affected == 0 and "Joueur introuvable ou non banni." or "Joueur débanni.") end
+    self.db:transactionWrap(function()
+      -- set ban
+      local affected = self.db:query("user/setBan", {pseudo = pseudo, timestamp = 0}).affected_rows
+      -- output
+      if not client then print(affected == 0 and "player not found or not banned" or "player unbanned")
+      else client:print(affected == 0 and "Joueur introuvable ou non banni." or "Joueur débanni.") end
+    end)
   end)
 end, "<pseudo>", "débannir un joueur"}
 
@@ -789,8 +805,10 @@ commands.delete_account = {0, "server", function(self, client, args)
   if not pseudo or #pseudo == 0 then return true end
   if self:getClientByPseudo(pseudo) then print("user is online"); return end
   async(function()
-    local affected = self.db:query("user/deleteAccount", {pseudo}).affected_rows
-    print(affected == 0 and "account not found" or "account deleted")
+    self.db:transactionWrap(function()
+      local affected = self.db:query("user/deleteAccount", {pseudo}).affected_rows
+      print(affected == 0 and "account not found" or "account deleted")
+    end)
   end)
 end, "<pseudo>", "supprimer un compte"}
 
@@ -799,32 +817,34 @@ commands.reset = {0, "server", function(self, client, args)
   if not pseudo or #pseudo == 0 then return true end
   if self:getClientByPseudo(pseudo) then print("user is online"); return end
   async(function()
-    local r_id = self.db:query("user/getId", {pseudo})
-    local user_id = r_id and r_id.rows[1] and r_id.rows[1].id
-    if not user_id then print("user not found"); return end
-    self.db:query("user/setData", {
-      level = 1,
-      alignment = 100,
-      reputation = 0,
-      gold = 0,
-      chest_gold = 0,
-      xp = 0,
-      strength_pts = 0,
-      dexterity_pts = 0,
-      constitution_pts = 0,
-      magic_pts = 0,
-      remaining_pts = 0,
-      weapon_slot = 0,
-      shield_slot = 0,
-      helmet_slot = 0,
-      armor_slot = 0,
-      user_id = user_id
-    })
-    self.db:query("user/setState", {user_id, msgpack.pack({})})
-    self.db:query("user/deleteVars", {user_id})
-    self.db:query("user/deleteBoolVars", {user_id})
-    self.db:query("user/deleteItems", {user_id})
-    print("user reset")
+    self.db:transactionWrap(function()
+      local r_id = self.db:query("user/getId", {pseudo})
+      local user_id = r_id.rows[1] and r_id.rows[1].id
+      if not user_id then print("user not found"); return end
+      self.db:query("user/setData", {
+        level = 1,
+        alignment = 100,
+        reputation = 0,
+        gold = 0,
+        chest_gold = 0,
+        xp = 0,
+        strength_pts = 0,
+        dexterity_pts = 0,
+        constitution_pts = 0,
+        magic_pts = 0,
+        remaining_pts = 0,
+        weapon_slot = 0,
+        shield_slot = 0,
+        helmet_slot = 0,
+        armor_slot = 0,
+        user_id = user_id
+      })
+      self.db:query("user/setState", {user_id, msgpack.pack({})})
+      self.db:query("user/deleteVars", {user_id})
+      self.db:query("user/deleteBoolVars", {user_id})
+      self.db:query("user/deleteItems", {user_id})
+      print("user reset")
+    end)
   end)
 end, "<pseudo>", "reset un personnage"}
 
@@ -1095,16 +1115,14 @@ end
 -- Fetch database commands and execute them.
 function Server:fetchCommands()
   async(function()
-    local r = self.db:query("server/getCommands")
-    if not r then return end
     -- execute commands
-    for _, row in ipairs(r.rows) do
+    for _, row in ipairs(self.db:query("server/getCommands").rows) do
       -- parse command
       print("DB> "..row.command)
       local args = Server.parseCommand(row.command)
       if #args > 0 then self:processCommand(nil, args) end
     end
-    self.db:query("server/clearCommands")
+    self.db:transactionWrap(function() self.db:query("server/clearCommands") end)
   end)
 end
 

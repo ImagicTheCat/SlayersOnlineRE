@@ -97,7 +97,7 @@ function packet:LOGIN(data)
     local salt
     do
       local result = server.db:query("user/getSalt", {data.pseudo})
-      if result and result.rows[1] then salt = result.rows[1].salt end
+      if result.rows[1] then salt = result.rows[1].salt end
     end
     -- authenticate
     local password_hash = sha2.hex2bin(sha2.sha512((salt or "")..data.password_hash))
@@ -275,6 +275,7 @@ function packet:LOGIN(data)
         self.user_id = user_id
         self.status = "logged"
         self:print("Identifié.")
+        print("client logged "..tostring(self.peer)..": user#"..user_id.." \""..self.pseudo.."\"")
       else -- login error
         server.clients_by_id[user_id] = nil
         print("<= login error for user#"..user_id.." \""..user_row.pseudo.."\"")
@@ -1157,7 +1158,8 @@ function Client:onDisconnect()
   self:cancelTrade()
   async(function()
     -- save
-    server.db:transactionWrap(function() self:save() end)
+    local ok = server.db:transactionWrap(function() self:save() end)
+    print("client save "..tostring(self.peer)..": "..(ok and "commited" or "aborted"))
     -- remove player
     if self.map then
       self.map:removeEntity(self)
