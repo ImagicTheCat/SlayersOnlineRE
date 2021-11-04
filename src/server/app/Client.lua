@@ -153,7 +153,10 @@ function packet:LOGIN(data)
         local class_data = server.project.classes[self.class]
         self:setSounds(string.sub(class_data.attack_sound, 7), string.sub(class_data.hurt_sound, 7))
         --- config
-        self:applyConfig(user_row.config and msgpack.unpack(user_row.config) or {}, true)
+        do
+          local ok, config = pcall(msgpack.unpack, user_row.config)
+          self:applyConfig(ok and config or {}, true)
+        end
         --- vars
         local rows = server.db:query("user/getVars", {user_id}).rows
         for _, row in ipairs(rows) do self.vars[row.id] = row.value end
@@ -222,7 +225,8 @@ function packet:LOGIN(data)
           self:sendPacket(net.SPELL_INVENTORY_UPDATE_ITEMS, items)
         end
         --- state
-        local state = user_row.state and msgpack.unpack(user_row.state) or {}
+        local ok, state = pcall(msgpack.unpack, user_row.state)
+        state = ok and state or {}
         ---- charaset
         if state.charaset then
           self:setCharaset(state.charaset)
