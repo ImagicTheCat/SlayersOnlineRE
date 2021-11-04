@@ -23,17 +23,19 @@ function Inventory:load(db)
   for _, row in ipairs(rows) do self.items[row.id] = row.amount end
 end
 
+-- (async)
 -- db: DBManager
 function Inventory:save(db)
-  for id in pairs(self.changed_items) do
+  local changed_items = self.changed_items
+  self.changed_items = {}
+  for id in pairs(changed_items) do
     local amount = self.items[id]
     if amount and amount > 0 then
-      db:_query("inventory/setItem", {self.user_id, self.id, id, amount})
+      db:query("inventory/setItem", {self.user_id, self.id, id, amount})
     else
-      db:_query("inventory/removeItem", {self.user_id, self.id, id})
+      db:query("inventory/removeItem", {self.user_id, self.id, id})
     end
   end
-  self.changed_items = {}
 end
 
 -- set item amount

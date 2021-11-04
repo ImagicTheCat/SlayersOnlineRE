@@ -1441,10 +1441,11 @@ function Client:checkItemRequirements(item)
     and item.req_magic <= self.magic
 end
 
+-- (async)
 function Client:save()
   if not self.user_id or self.running_event then return false end
   -- base data
-  server.db:_query("user/setData", {
+  server.db:query("user/setData", {
     user_id = self.user_id,
     level = self.level,
     alignment = self.alignment,
@@ -1463,22 +1464,24 @@ function Client:save()
     armor_slot = self.armor_slot
   })
   -- vars
-  for var in pairs(self.changed_vars) do
-    server.db:_query("user/setVar", {self.user_id, var, self.vars[var]})
-  end
+  local changed_vars = self.changed_vars
   self.changed_vars = {}
-  -- bool vars
-  for var in pairs(self.changed_bool_vars) do
-    server.db:_query("user/setBoolVar", {self.user_id, var, self.bool_vars[var]})
+  for var in pairs(changed_vars) do
+    server.db:query("user/setVar", {self.user_id, var, self.vars[var]})
   end
+  -- bool vars
+  local changed_bool_vars = self.changed_bool_vars
   self.changed_bool_vars = {}
+  for var in pairs(changed_bool_vars) do
+    server.db:query("user/setBoolVar", {self.user_id, var, self.bool_vars[var]})
+  end
   -- inventories
   self.inventory:save(server.db)
   self.chest_inventory:save(server.db)
   self.spell_inventory:save(server.db)
   -- config
   if self.player_config_changed then
-    server.db:_query("user/setConfig", {self.user_id, msgpack.pack(self.player_config)})
+    server.db:query("user/setConfig", {self.user_id, msgpack.pack(self.player_config)})
     self.player_config_changed = false
   end
   -- state
@@ -1511,7 +1514,7 @@ function Client:save()
   state.blocked_defend = self.blocked_defend
   state.blocked_cast = self.blocked_cast
   state.blocked_chat = self.blocked_chat
-  server.db:_query("user/setState", {self.user_id, msgpack.pack(state)})
+  server.db:query("user/setState", {self.user_id, msgpack.pack(state)})
   return true
 end
 

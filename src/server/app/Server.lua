@@ -474,7 +474,7 @@ commands.create_account = {0, "server", function(self, client, args)
   urandom:close()
   -- create account
   local password = sha2.hex2bin(sha2.sha512(salt..client_password))
-  self.db:_query("user/createAccount", {
+  self.db:query("user/createAccount", {
     pseudo = args[2],
     salt = salt,
     password = password,
@@ -915,9 +915,10 @@ function Server:__construct(cfg)
   -- DB
   local cfg_db = self.cfg.db
   self.db = DBManager(cfg_db.name, cfg_db.user, cfg_db.password, cfg_db.host, cfg_db.port)
-  require("app.queries")(self.db) -- prepare queries
   -- Loading.
   async(function()
+    -- prepare queries
+    require("app.queries")(self.db)
     -- load vars
     local count = 0
     local rows = self.db:query("server/getVars").rows
@@ -955,6 +956,8 @@ function Server:__construct(cfg)
     end)
   end
   self.save_timer = itimer(self.cfg.save_period, function() self:save() end)
+  -- DB tick
+  self.db_timer = itimer(1/self.cfg.db_tickrate, function() self.db:tick() end)
   -- event/timer tick
   local event_period = 0.03*1/self.cfg.event_frequency_factor
   local event_timer_ticks = math.floor(1/self.cfg.event_frequency_factor)
@@ -972,27 +975,22 @@ function Server:__construct(cfg)
   end)
 end
 
+-- (reentrant)
+-- return boolean status (success/failure)
 function Server:save()
   if self.saving then return false end
   self.saving = true
   async(function()
     local start_time = clock()
     local ok = self.db:transactionWrap(function()
-      -- save vars
-      for var in pairs(self.changed_vars) do
-        self.db:_query("server/setVar", {var, self.vars[var]})
-      end
+      -- save vars (clone for concurrent access)
+      local changed_vars = self.changed_vars
       self.changed_vars = {}
-      -- Save clients; fragment the task.
-      local clients = {}
-      for _, client in pairs(self.clients) do table.insert(clients, client) end
-      for _, client in ipairs(clients) do
-        client:save()
-        -- wait
-        local tnext = async()
-        timer(0.001, tnext)
-        tnext:wait()
+      for var in pairs(changed_vars) do
+        self.db:query("server/setVar", {var, self.vars[var]})
       end
+      -- save clients
+      for _, client in pairs(utils.clone(self.clients, 1)) do client:save() end
     end)
     local elapsed = clock()-start_time
     print("server save: "..(ok and "commited" or "aborted").." ("..utils.round(elapsed, 3).."s)")
@@ -1022,6 +1020,7 @@ function Server:close()
   self.host:flush()
   self.db:close()
   self.tick_timer:remove()
+  self.db_timer:remove()
 
   print("shutdown.")
 
@@ -1040,7 +1039,6 @@ function Server:tick(dt)
       self:processCommand(nil, args)
     end
   end
-
   -- net
   local event = self.host:service()
   while event do
@@ -1070,10 +1068,6 @@ function Server:tick(dt)
 
     event = self.host:service()
   end
-
-  -- DB
-  self.db:tick()
-
   -- maps tick
   for id, map in pairs(self.maps) do
     map:tick(dt)
@@ -1110,7 +1104,7 @@ function Server:fetchCommands()
       local args = Server.parseCommand(row.command)
       if #args > 0 then self:processCommand(nil, args) end
     end
-    self.db:_query("server/clearCommands")
+    self.db:query("server/clearCommands")
   end)
 end
 

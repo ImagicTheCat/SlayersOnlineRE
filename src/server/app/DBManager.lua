@@ -119,13 +119,15 @@ local function thread(ch_in, ch_out, db, user, password, host, port)
     if cmd == "prepare" then
       local ok = xpcall(prepare, error_handler, unpack(args))
       if not ok then io.stderr:write("<= prepare "..args[1].."\n") end
+      ch_out:push(msgpack.pack({ok}))
     elseif cmd == "query" then
       local ok, r = xpcall(query, error_handler, unpack(args))
       if not ok then io.stderr:write("<= query "..args[1].."\n") end
-      ch_out:push(ok and msgpack.pack(r))
+      ch_out:push(msgpack.pack({ok, r}))
     elseif cmd == "query-raw" then
       local ok, r = xpcall(raw_query, error_handler, unpack(args))
       if not ok then io.stderr:write("<= query-raw \""..args[1].."\"\n") end
+      ch_out:push(msgpack.pack({ok}))
     end
     -- next
     cmd, args = ch_in:pop()
@@ -138,18 +140,21 @@ function DBManager:__construct(db, user, password, host, port)
   self.ch_out = effil.channel()
   self.ch_in = effil.channel()
   self.thread = effil.thread(thread)(self.ch_in, self.ch_out, db, user, password, host, port)
-  self.queries = {} -- list of query callbacks, queue
+  self.tasks = {} -- queue (list) of tasks
   self.running = true
   self.txn = mutex()
 end
 
--- Prepare a statement.
+-- (async) Prepare a statement.
 -- id: statement identifier
 -- query: SQL query with parameters "{k}"
 --- E.g. "SELECT * FROM users WHERE id = {1} AND name = {name}"
 -- params: (optional) map of SQL parameter types
 function DBManager:prepare(id, query, params)
+  local task = async()
   self.ch_in:push("prepare", msgpack.pack({id, query, params or {}}))
+  table.insert(self.tasks, task)
+  if not task:wait() then error("prepare failed") end
 end
 
 -- (async) Query.
@@ -164,23 +169,20 @@ end
 function DBManager:query(id, params)
   local task = async()
   self.ch_in:push("query", msgpack.pack({id, params or {}}))
-  table.insert(self.queries, task)
-  return task:wait()
+  table.insert(self.tasks, task)
+  local ok, r = task:wait()
+  if not ok then error("query failed") end
+  return r
 end
 
--- Query (no result).
--- id: statement identifier
--- params: (optional) map of parameter values
-function DBManager:_query(id, params)
-  self.ch_in:push("query", msgpack.pack({id, params or {}}))
-  table.insert(self.queries, false) -- dummy task
-end
-
--- Raw query.
+-- (async) Raw query.
 -- No result, internally used for transactions. Some MariaDB servers don't
 -- support transaction queries in prepared statements.
 function DBManager:rawQuery(query)
+  local task = async()
   self.ch_in:push("query-raw", msgpack.pack({query}))
+  table.insert(self.tasks, task)
+  if not task:wait() then error("raw query failed") end
 end
 
 local function txn_error_handler(err)
@@ -205,8 +207,8 @@ function DBManager:tick()
   -- Fetch queries.
   while self.ch_out:size() > 0 do
     local r = self.ch_out:pop()
-    local task = table.remove(self.queries, 1)
-    if task then task(r and msgpack.unpack(r)) end
+    local task = table.remove(self.tasks, 1)
+    if task then task(unpack(msgpack.unpack(r))) end
   end
 end
 
