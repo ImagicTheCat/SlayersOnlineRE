@@ -732,12 +732,9 @@ function Client:__construct(peer)
   -- self.running_event
 
   self.vars = {} -- map of id (number)  => value (number)
-  self.var_listeners = {} -- map of id (number) => map of callback
   self.changed_vars = {} -- map of vars id
   self.bool_vars = {} -- map of id (number) => value (number)
-  self.bool_var_listeners = {} -- map of id (number) => map of callback
   self.changed_bool_vars = {} -- map of bool vars id
-  self.special_var_listeners = {} -- map of id (string) => map of callback
   self.timers = {0,0,0} -- %TimerX% vars (3), incremented every 30ms
   self.last_idle_swipe = clock()
   self.kill_player = 0
@@ -1852,82 +1849,15 @@ end
 function Client:setVariable(vtype, id, value)
   id, value = tonumber(id) or 0, tonumber(value) or 0
   local vars = (vtype == "bool" and self.bool_vars or self.vars)
-  local var_listeners = (vtype == "bool" and self.bool_var_listeners or self.var_listeners)
   local changed_vars = (vtype == "bool" and self.changed_bool_vars or self.changed_vars)
   vars[id] = value
   changed_vars[id] = true
-  -- call listeners
-  local listeners = var_listeners[id]
-  if listeners then
-    for callback in pairs(listeners) do
-      callback()
-    end
-  end
 end
 
 function Client:getVariable(vtype, id)
   id = tonumber(id) or 0
   local vars = (vtype == "bool" and self.bool_vars or self.vars)
   return vars[id] or 0
-end
-
-function Client:listenVariable(vtype, id, callback)
-  local var_listeners = (vtype == "bool" and self.bool_var_listeners or self.var_listeners)
-
-  local listeners = var_listeners[id]
-  if not listeners then
-    listeners = {}
-    var_listeners[id] = listeners
-  end
-
-  listeners[callback] = true
-end
-
-function Client:unlistenVariable(vtype, id, callback)
-  local var_listeners = (vtype == "bool" and self.bool_var_listeners or self.var_listeners)
-
-  local listeners = var_listeners[id]
-  if listeners then
-    listeners[callback] = nil
-
-    if not next(listeners) then
-      var_listeners[id] = nil
-    end
-  end
-end
-
--- special variables
-
--- trigger change event
-function Client:triggerSpecialVariable(id)
-  -- call listeners
-  local listeners = self.special_var_listeners[id]
-  if listeners then
-    for callback in pairs(listeners) do
-      callback()
-    end
-  end
-end
-
-function Client:listenSpecialVariable(id, callback)
-  local listeners = self.special_var_listeners[id]
-  if not listeners then
-    listeners = {}
-    self.special_var_listeners[id] = listeners
-  end
-
-  listeners[callback] = true
-end
-
-function Client:unlistenSpecialVariable(id, callback)
-  local listeners = self.special_var_listeners[id]
-  if listeners then
-    listeners[callback] = nil
-
-    if not next(listeners) then
-      self.special_var_listeners[id] = nil
-    end
-  end
 end
 
 return Client
