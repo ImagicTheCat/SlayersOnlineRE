@@ -927,7 +927,6 @@ function Server:__construct(cfg)
   self.maps = {} -- map of id => map instances
   self.vars = {} -- server variables, map of id (str) => value (string or number)
   self.changed_vars = {} -- map of server var id
-  self.var_listeners = {} -- map of id => map of callback
   self.commands = {} -- map of id => callback
   self.motd = self.cfg.motd
   self.groups = {} -- player groups, map of id => map of client
@@ -1089,9 +1088,7 @@ function Server:tick(dt)
     event = self.host:service()
   end
   -- maps tick
-  for id, map in pairs(self.maps) do
-    map:tick(dt)
-  end
+  for id, map in pairs(self.maps) do map:tick(dt) end
 end
 
 -- case insensitive
@@ -1288,38 +1285,10 @@ function Server:setVariable(id, value)
   id, value = tostring(id), tostring(value)
   self.changed_vars[id] = true
   self.vars[id] = value
-  -- call listeners
-  local listeners = self.var_listeners[id]
-  if listeners then
-    for callback in pairs(listeners) do
-      callback()
-    end
-  end
 end
 
 function Server:getVariable(id)
   return self.vars[tostring(id)] or 0
-end
-
-function Server:listenVariable(id, callback)
-  local listeners = self.var_listeners[id]
-  if not listeners then
-    listeners = {}
-    self.var_listeners[id] = listeners
-  end
-
-  listeners[callback] = true
-end
-
-function Server:unlistenVariable(id, callback)
-  local listeners = self.var_listeners[id]
-  if listeners then
-    listeners[callback] = nil
-
-    if not next(listeners) then
-      self.var_listeners[id] = nil
-    end
-  end
 end
 
 return Server
