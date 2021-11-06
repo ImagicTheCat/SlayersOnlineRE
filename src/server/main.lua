@@ -11,7 +11,7 @@ local config = require("config")
 
 -- global utils
 
--- return current loop time in seconds
+-- Return current loop time in seconds.
 function clock()
   return ev.Loop.default:now()
 end
@@ -19,13 +19,8 @@ end
 -- Execute callback after delay (seconds).
 -- return timer (timer:remove() to prevent callback)
 function timer(delay, cb)
-  local timer = ev.Timer.new(function(loop, timer, revents)
-    cb()
-    timer:stop(loop)
-  end, delay)
-  function timer:remove()
-    self:stop(ev.Loop.default)
-  end
+  local timer = ev.Timer.new(function() cb() end, delay)
+  function timer:remove() self:stop(ev.Loop.default) end
   timer:start(ev.Loop.default)
   return timer
 end
@@ -33,12 +28,8 @@ end
 -- Execute callback with period (seconds).
 -- return timer (timer:remove() to stop interval)
 function itimer(delay, cb)
-  local timer = ev.Timer.new(function(loop, timer, revents)
-    cb()
-  end, delay, delay)
-  function timer:remove()
-    self:stop(ev.Loop.default)
-  end
+  local timer = ev.Timer.new(function() cb() end, delay, delay)
+  function timer:remove() self:stop(ev.Loop.default) end
   timer:start(ev.Loop.default)
   return timer
 end

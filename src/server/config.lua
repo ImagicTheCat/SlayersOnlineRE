@@ -2,7 +2,6 @@ return {
   host = "localhost:27505",
   max_clients = 100,
   tickrate = 60,
-  db_tickrate = 100,
   -- Used to decrease event computations (prefer 1/x fractions, where x is an integer).
   event_frequency_factor = 1,
   save_period = 120, -- seconds

@@ -1,20 +1,27 @@
 local effil = require("effil")
 local msgpack = require("MessagePack")
 local mutex = require("Luaseq").mutex
+local ev = require("ev")
+local ev_async = require("app.ev-async")
 
 -- Define async database interface.
 local DBManager = class("DBManager")
 
 -- thread
-local function thread(ch_in, ch_out, db, user, password, host, port)
+local function thread(async_sz, ch_in, ch_out, db, user, password, host, port)
+  -- thread requires
   local mysql = require("mysql")
   local msgpack = require("MessagePack")
   local ffi = require("ffi")
+  local ev = require("ev")
+  local ev_async = require("app.ev-async")
+
   ffi.cdef("unsigned int sleep(unsigned int nb_sec);")
   local C = ffi.C
   local function error_handler(err)
     io.stderr:write(debug.traceback("database: "..err, 2).."\n")
   end
+  local async_send = ev_async.import(async_sz)
   local con
   local CONNECT_DELAY = 5 -- seconds
   local statements = {}
@@ -120,14 +127,17 @@ local function thread(ch_in, ch_out, db, user, password, host, port)
       local ok = xpcall(prepare, error_handler, unpack(args))
       if not ok then io.stderr:write("<= prepare "..args[1].."\n") end
       ch_out:push(msgpack.pack({ok}))
+      async_send()
     elseif cmd == "query" then
       local ok, r = xpcall(query, error_handler, unpack(args))
       if not ok then io.stderr:write("<= query "..args[1].."\n") end
       ch_out:push(msgpack.pack({ok, r}))
+      async_send()
     elseif cmd == "query-raw" then
       local ok, r = xpcall(raw_query, error_handler, unpack(args))
       if not ok then io.stderr:write("<= query-raw \""..args[1].."\"\n") end
       ch_out:push(msgpack.pack({ok}))
+      async_send()
     end
     -- next
     cmd, args = ch_in:pop()
@@ -139,7 +149,10 @@ function DBManager:__construct(db, user, password, host, port)
   -- create thread and channels
   self.ch_out = effil.channel()
   self.ch_in = effil.channel()
-  self.thread = effil.thread(thread)(self.ch_in, self.ch_out, db, user, password, host, port)
+  self.async_watcher = ev.Async.new(function() self:tick() end)
+  self.async_watcher:start(ev.Loop.default)
+  local async_sz = ev_async.export(ev.Loop.default, self.async_watcher)
+  self.thread = effil.thread(thread)(async_sz, self.ch_in, self.ch_out, db, user, password, host, port)
   self.tasks = {} -- queue (list) of tasks
   self.running = true
   self.txn = mutex()
@@ -216,6 +229,7 @@ function DBManager:close()
   if self.running then
     self.running = false
     self.ch_in:push(nil) -- end thread loop
+    self.async_watcher:stop(ev.Loop.default)
     local status, err = self.thread:wait()
     if err then error("DB thread: "..err) end
   end
