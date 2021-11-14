@@ -735,7 +735,7 @@ commands.profiler = {0, "server", function(self, client, args)
   if args[2] == "start" then
     if not profiling then
       local out = args[3] or "profile.out"
-      local opts = args[4] or "F"
+      local opts = args[4] or "lv"
       print("profiler started; output: "..out.."; options: "..opts)
       profiler.start(opts, out)
       profiling = true
