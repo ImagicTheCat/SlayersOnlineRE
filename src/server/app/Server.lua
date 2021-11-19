@@ -975,8 +975,6 @@ function Server:__construct(cfg)
     end)
   end
   self.save_timer = itimer(self.cfg.save_period, function() self:save() end)
-  -- DB tick
-  self.db_timer = itimer(1/self.cfg.db_tickrate, function() self.db:tick() end)
   -- event/timer tick
   local event_period = 0.03*1/self.cfg.event_frequency_factor
   local event_timer_ticks = math.floor(1/self.cfg.event_frequency_factor)
@@ -1039,7 +1037,6 @@ function Server:close()
   self.host:flush()
   self.db:close()
   self.tick_timer:remove()
-  self.db_timer:remove()
 
   print("shutdown.")
 
