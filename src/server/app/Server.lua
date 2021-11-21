@@ -881,7 +881,7 @@ local function compileSpells(self)
       return
     end
     --print("-- "..chunkname.." --\n"..str.."\n=>\n"..code.."\n--")
-    local f, err = loadstring(header..code, chunkname)
+    local f, err = loadstring(header..code, "=["..chunkname.."]")
     if not f then
       print("ERROR compiling "..chunkname.."\n"..err.."\n-- Lua --\n"..code.."\n--------a\n-")
       return
@@ -1197,7 +1197,7 @@ function Server:loadMapData(id)
           local page_cache = event_cache[page_index]
           if not page_cache then page_cache = {}; event_cache[page_index] = page_cache end
           do -- conditions
-            local chunkname = map.name.."("..event.x..","..event.y..") P"..page_index.." CD"
+            local chunkname = "=["..map.name.."("..event.x..","..event.y..") P"..page_index.." CD]"
             if page_cache.conditions_func then -- from cache
               local f, err = loadstring(page_cache.conditions_func, chunkname)
               if f then
@@ -1221,7 +1221,7 @@ function Server:loadMapData(id)
             end
           end
           do -- commands
-            local chunkname = map.name.."("..event.x..","..event.y..") P"..page_index.." EV"
+            local chunkname = "=["..map.name.."("..event.x..","..event.y..") P"..page_index.." EV]"
             if page_cache.commands_func then -- from cache
               local f, err = loadstring(page_cache.commands_func, chunkname)
               if f then
