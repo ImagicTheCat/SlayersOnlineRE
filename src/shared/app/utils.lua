@@ -39,12 +39,6 @@ function utils.sign(x)
   return x == 0 and 0 or (x > 0 and 1 or -1)
 end
 
--- f_bytecode: if passed/true, will allow bytecode
-function utils.loadstring(code, f_bytecode)
-  if not f_bytecode and code:byte(1) == 27 then return nil end
-  return loadstring(code)
-end
-
 function utils.pointInRect(x, y, rx, ry, rw, rh)
   return (x >= rx and y >= ry and x <= rx+rw and y <= ry+rh)
 end
@@ -84,15 +78,6 @@ function utils.clone(t, depth)
     for k,v in pairs(t) do new[k] = utils.clone(v, depth and depth-1) end
     return new
   else return t end
-end
-
-local function hex_conv(c)
-  return string.format('%02X', string.byte(c))
-end
-
--- convert string to hexadecimal
-function utils.hex(str)
-  return string.gsub(str, '.', hex_conv)
 end
 
 -- pure Lua gsub (work with coroutines)
@@ -138,22 +123,6 @@ function utils.dump(v, level)
     return table.concat(lines, "\n")
   else
     return tostring(v)
-  end
-end
-
--- process/compute string expression using basic Lua features
--- return computed number (integer) or nil on failure
-function utils.computeExpression(str)
-  if string.find(str, "[^%.%*/%-%+%(%)%d%s]") then return end -- reject on unallowed characters
-
-  local expr = "return "..str
-  local f = utils.loadstring(expr)
-  local ok, r = pcall(f)
-  if ok then
-    local n = tonumber(r)
-    if n and n == n and math.abs(n) ~= 1/0 then -- reject NaN/inf values
-      return utils.round(n)
-    end
   end
 end
 
