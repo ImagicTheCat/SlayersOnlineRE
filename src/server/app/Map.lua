@@ -122,8 +122,8 @@ function Map:addEntity(entity)
       end
     end
     -- reference
-    if class.is(entity, Client) then self.clients[entity] = true
-    elseif class.is(entity, Mob) then self.mobs[entity] = true end
+    if xtype.is(entity, Client) then self.clients[entity] = true
+    elseif xtype.is(entity, Mob) then self.mobs[entity] = true end
     entity:onMapChange() -- add event
   end
 end
@@ -144,7 +144,7 @@ function Map:removeEntity(entity)
     if entity.client then
       entity.client.entities[entity] = nil
     end
-    if class.is(entity, Client) then -- handle client removal
+    if xtype.is(entity, Client) then -- handle client removal
       self.clients[entity] = nil
       -- remove client bound entities
       for c_entity in pairs(entity.entities) do

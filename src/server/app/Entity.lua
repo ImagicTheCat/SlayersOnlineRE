@@ -47,10 +47,10 @@ end
 -- The check is asymmetric. E.g. an Event can dodge a mob, but a mob can't
 -- perceive the Event.
 function Entity:perceivesRealm(entity)
-  if class.is(self, Client) then return not entity.client or entity.client == self
+  if xtype.is(self, Client) then return not entity.client or entity.client == self
   else -- not a client
     if self.client then -- bound
-      if class.is(entity, Client) then return self.client == entity
+      if xtype.is(entity, Client) then return self.client == entity
       else return not entity.client or self.client == entity.client end
     else return not entity.client end -- unbound
   end

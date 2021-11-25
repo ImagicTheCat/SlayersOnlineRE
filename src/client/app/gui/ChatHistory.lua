@@ -10,11 +10,11 @@ local function content_update(self)
     ih = math.max(ih, child.y+child.h)
   end
   self.inner_h = ih
-  self.content:setInnerShift(0, self.content.h-ih+self.scroll_h) -- scroll to bottom
+  self.content:setInnerOffset(0, self.content.h-ih+self.scroll_h) -- scroll to bottom
 end
 
-local function pointer_wheel(self, id, x, y, amount)
-  self:scroll(amount*50)
+local function pointer_wheel(self, event, id, x, y, wx, wy)
+  self:scroll(wy*50)
 end
 
 -- METHODS
@@ -32,7 +32,7 @@ end
 -- amount: widget units, positive/negative
 function ChatHistory:scroll(amount)
   self.scroll_h = utils.clamp(self.scroll_h+amount, 0, self.inner_h-self.content.h)
-  self.content:setInnerShift(0, self.content.h-self.inner_h+self.scroll_h) -- scroll to bottom
+  self.content:setInnerOffset(0, self.content.h-self.inner_h+self.scroll_h) -- scroll to bottom
   self:show(10)
 end
 

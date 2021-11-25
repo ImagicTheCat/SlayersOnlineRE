@@ -68,7 +68,7 @@ local caster_vars = {}
 function caster_vars:Force(value)
   if not value then return self.strength_pts or 0
   else
-    if class.is(self, Client) then
+    if xtype.is(self, Client) then
       self.strength_pts = value
       self:updateCharacteristics()
     end
@@ -77,7 +77,7 @@ end
 function caster_vars:Dext(value)
   if not value then return self.dexterity_pts or 0
   else
-    if class.is(self, Client) then
+    if xtype.is(self, Client) then
       self.dexterity_pts = value
       self:updateCharacteristics()
     end
@@ -86,7 +86,7 @@ end
 function caster_vars:Constit(value)
   if not value then return self.constitution_pts or 0
   else
-    if class.is(self, Client) then
+    if xtype.is(self, Client) then
       self.constitution_pts = value
       self:updateCharacteristics()
     end
@@ -95,7 +95,7 @@ end
 function caster_vars:Magie(value)
   if not value then return self.magic_pts or 0
   else
-    if class.is(self, Client) then
+    if xtype.is(self, Client) then
       self.magic_pts = value
       self:updateCharacteristics()
     end
@@ -105,7 +105,7 @@ function caster_vars:Attaque(value)
   if not value then return self.ch_attack
   else
     self.ch_attack = value
-    if class.is(self, Client) then
+    if xtype.is(self, Client) then
       self:sendPacket(net.STATS_UPDATE, {attack = self.ch_attack})
     end
   end
@@ -114,7 +114,7 @@ function caster_vars:Defense(value)
   if not value then return self.ch_defense
   else
     self.ch_defense = value
-    if class.is(self, Client) then
+    if xtype.is(self, Client) then
       self:sendPacket(net.STATS_UPDATE, {defense = self.ch_defense})
     end
   end
@@ -130,9 +130,9 @@ function caster_vars:Vie(value, state)
     elseif delta < 0 then
       self:broadcastPacket("damage", -delta)
       -- handle Bingo Book and last player hit
-      if class.is(state.caster, Client) then
-        if class.is(self, Mob) then self:addToBingoBook(state.caster, -delta)
-        elseif class.is(self, Client) then self.last_attacker = state.caster end
+      if xtype.is(state.caster, Client) then
+        if xtype.is(self, Mob) then self:addToBingoBook(state.caster, -delta)
+        elseif xtype.is(self, Client) then self.last_attacker = state.caster end
       end
     end
     self:setHealth(value)
@@ -155,7 +155,7 @@ end
 function caster_vars:Alignement(value)
   if not value then return self.alignment or 0
   else
-    if class.is(self, Client) then
+    if xtype.is(self, Client) then
       local delta = value-self.alignment
       self:emitHint(utils.fn(delta, true).." alignement")
       self:setAlignment(value)
@@ -165,7 +165,7 @@ end
 function caster_vars:Reputation(value)
   if not value then return self.reputation or 0
   else
-    if class.is(self, Client) then
+    if xtype.is(self, Client) then
       local delta = value-self.alignment
       self:emitHint(utils.fn(delta, true).." réputation")
       self:setReputation(value)
@@ -175,7 +175,7 @@ end
 function caster_vars:Gold(value)
   if not value then return self.gold or 0
   else
-    if class.is(self, Client) then
+    if xtype.is(self, Client) then
       local delta = value-self.gold
       self:emitHint({{1,0.78,0}, utils.fn(delta, true)})
       self:setGold(value)
@@ -185,7 +185,7 @@ end
 function caster_vars:Lvl(value)
   if not value then return self.level or 0
   else
-    if class.is(self, Client) then
+    if xtype.is(self, Client) then
       local xp = XPtable[value]
       if xp then
         local delta = xp-self.xp
@@ -198,7 +198,7 @@ end
 function caster_vars:CurrentXP(value)
   if not value then return self.xp or 0
   else
-    if class.is(self, Client) then
+    if xtype.is(self, Client) then
       local delta = value-self.xp
       self:emitHint({{0,0.9,1}, utils.fn(delta, true)})
       self:setXP(value)
@@ -210,31 +210,31 @@ function caster_vars:HandDom(value)
 end
 function caster_vars:IndOff(value)
   if not value then
-    local class_data = class.is(self, Client) and server.project.classes[self.class]
+    local class_data = xtype.is(self, Client) and server.project.classes[self.class]
     return class_data and class_data.off_index or 0
   end
 end
 function caster_vars:IndDef(value)
   if not value then
-    local class_data = class.is(self, Client) and server.project.classes[self.class]
+    local class_data = xtype.is(self, Client) and server.project.classes[self.class]
     return class_data and class_data.def_index or 0
   end
 end
 function caster_vars:IndPui(value)
   if not value then
-    local class_data = class.is(self, Client) and server.project.classes[self.class]
+    local class_data = xtype.is(self, Client) and server.project.classes[self.class]
     return class_data and class_data.pow_index or 0
   end
 end
 function caster_vars:IndVit(value)
   if not value then
-    local class_data = class.is(self, Client) and server.project.classes[self.class]
+    local class_data = xtype.is(self, Client) and server.project.classes[self.class]
     return class_data and class_data.health_index or 0
   end
 end
 function caster_vars:IndMag(value)
   if not value then
-    local class_data = class.is(self, Client) and server.project.classes[self.class]
+    local class_data = xtype.is(self, Client) and server.project.classes[self.class]
     return class_data and class_data.mag_index or 0
   end
 end
@@ -252,7 +252,7 @@ target_vars.Dommage = caster_vars.Dommage
 function target_vars:Bloque(value, state)
   if not value then return self.spell_blocked and 1 or 0
   else
-    if class.is(self, Client) or class.is(self, Mob) then
+    if xtype.is(self, Client) or xtype.is(self, Mob) then
       self.spell_blocked = value > 0
       state.spell_block = true
     end
@@ -263,9 +263,9 @@ do -- Build spell execution environment.
   local function var(state, id, value)
     local caster = state.caster
     if value then
-      if class.is(caster, Client) then caster:setVariable(id, value) end
+      if xtype.is(caster, Client) then caster:setVariable(id, value) end
     else
-      if class.is(caster, Client) then return caster:getVariable(id) end
+      if xtype.is(caster, Client) then return caster:getVariable(id) end
       return 0
     end
   end
@@ -503,7 +503,7 @@ function LivingEntity:attack()
   if self:act("attack", 1) then
     local entities = self:raycastEntities(1)
     for _, entity in ipairs(entities) do
-      if class.is(entity, LivingEntity) and self:perceivesRealm(entity) then
+      if xtype.is(entity, LivingEntity) and self:perceivesRealm(entity) then
         if entity:onAttack(self) then break end
       end
     end
@@ -616,7 +616,7 @@ local function applySpellStep(state)
   end
   -- apply
   --- trigger aggressivity
-  if class.is(state.caster, Client) and class.is(state.target, Mob) then
+  if xtype.is(state.caster, Client) and xtype.is(state.target, Mob) then
     state.target:addToBingoBook(state.caster, 0)
   end
   --- hit
@@ -681,16 +681,16 @@ function LivingEntity:applySpell(caster, spell)
                 -- check touch
                 local touched = false
                 if spell.target_type == "mob-player" or spell.target_type == "around" then
-                  if class.is(caster, Client) then
-                    touched = class.is(entity, Mob) or class.is(entity, Client) and caster:canFight(entity)
-                  elseif class.is(caster, Mob) then
-                    touched = class.is(entity, Client)
+                  if xtype.is(caster, Client) then
+                    touched = xtype.is(entity, Mob) or xtype.is(entity, Client) and caster:canFight(entity)
+                  elseif xtype.is(caster, Mob) then
+                    touched = xtype.is(entity, Client)
                   end
                 elseif spell.target_type == "player" then
-                  if class.is(caster, Client) then
-                    touched = class.is(entity, Client)
-                  elseif class.is(caster, Mob) then
-                    touched = class.is(entity, Mob)
+                  if xtype.is(caster, Client) then
+                    touched = xtype.is(entity, Client)
+                  elseif xtype.is(caster, Mob) then
+                    touched = xtype.is(entity, Mob)
                   end
                 end
                 -- apply

@@ -76,7 +76,7 @@ end
 function packet:MAP_CHAT(data)
   if self.map then
     local entity = self.map.entities[data.id]
-    if class.is(entity, Player) then
+    if xtype.is(entity, Player) then
       entity:onMapChat(data.msg)
       self.chat_history:addMessage({{0.83,0.80,0.68}, tostring(entity.pseudo)..": ", {1,1,1}, data.msg})
     end
@@ -485,7 +485,7 @@ function Client:__construct(cfg)
 
   self.input_chat = TextInput()
   -- input chat/string valid event
-  self.input_chat:listen("control-press", function(widget, id)
+  self.input_chat:listen("control-press", function(widget, event, id)
     if id == "return" then
       if self.prompt_task then -- input string
         local r = self.prompt_task
@@ -528,7 +528,7 @@ function Client:__construct(cfg)
   self.gui:add(self.chat_history)
 
   -- global GUI controls
-  self.gui:listen("control-press", function(gui, id)
+  self.gui:listen("control-press", function(gui, event, id)
     if id == "return" then
       if not gui.focus and not self.pick_entity then
         self.w_input_chat:setVisible(true)
@@ -550,7 +550,7 @@ function Client:__construct(cfg)
   self.message_window.content:add(self.message_window_text)
   self.message_window:setVisible(false)
   -- message skip event
-  self.message_window:listen("control-press", function(widget, id)
+  self.message_window:listen("control-press", function(widget, event, id)
     if id == "interact" then
       self:sendPacket(net.EVENT_MESSAGE_SKIP)
       widget:setVisible(false)
@@ -563,7 +563,7 @@ function Client:__construct(cfg)
   self.input_query:setVisible(false)
   self.input_query_title = Text()
   self.input_query_grid = GridInterface(0,0)
-  self.input_query_grid:listen("cell-select", function(widget, cx, cy)
+  self.input_query_grid:listen("cell-select", function(widget, event, cx, cy)
     self:sendPacket(net.EVENT_INPUT_QUERY_ANSWER, cy+1)
     self.input_query:setVisible(false)
     self.gui:setFocus()
@@ -583,7 +583,7 @@ function Client:__construct(cfg)
   self.menu_grid:set(0,2, Text("Statistiques"), true)
   self.menu_grid:set(0,3, Text("Échange"), true)
   self.menu_grid:set(0,4, Text("Quitter"), true)
-  self.menu_grid:listen("cell-select", function(grid, cx, cy)
+  self.menu_grid:listen("cell-select", function(grid, event, cx, cy)
     if cy == 0 then
       self.inventory.content:updateContent()
       self.inventory:setVisible(true)
@@ -609,7 +609,7 @@ function Client:__construct(cfg)
 
   self.inventory = Inventory("item")
   self.inventory:setVisible(false)
-  self.inventory.content.grid:listen("control-press", function(grid, id)
+  self.inventory.content.grid:listen("control-press", function(grid, event, id)
     if id == "menu" then
       self.inventory:setVisible(false)
       self.gui:setFocus(self.menu_grid)
@@ -619,7 +619,7 @@ function Client:__construct(cfg)
 
   self.spell_inventory = Inventory("spell")
   self.spell_inventory:setVisible(false)
-  self.spell_inventory.content.grid:listen("control-press", function(grid, id)
+  self.spell_inventory.content.grid:listen("control-press", function(grid, event, id)
     if id == "menu" then
       self.spell_inventory:setVisible(false)
       self.gui:setFocus(self.menu_grid)
@@ -645,13 +645,13 @@ function Client:__construct(cfg)
   self.w_stats:setVisible(false)
   self.g_stats = GridInterface(2,15)
   self.w_stats.content:add(self.g_stats)
-  self.g_stats:listen("control-press", function(grid, id)
+  self.g_stats:listen("control-press", function(grid, event, id)
     if id == "menu" then
       self.w_stats:setVisible(false)
       self.gui:setFocus(self.menu_grid)
     end
   end)
-  self.g_stats:listen("cell-select", function(grid, cx, cy)
+  self.g_stats:listen("cell-select", function(grid, event, cx, cy)
     -- interactions
     --- spend characteristic points
     if cy == 5 then self:spendCharacteristicPoint("strength")
@@ -718,6 +718,7 @@ function Client:tick(dt)
   if not self.prompt_task and self.gui.focus == self.input_chat then
     self.chat_history:show()
   end
+  self.gui:tick()
 
   if self.map then
     -- compute camera position
@@ -980,13 +981,13 @@ function Client:onResize(w, h)
 end
 
 function Client:onSetFont()
-  self.gui:trigger("font-update")
+  self.gui:emit("font-update")
 
   if self.map then
     for id, entity in pairs(self.map.entities) do
-      if class.is(entity, Player) then
+      if xtype.is(entity, Player) then
         entity.name_tag:setFont(self.font)
-        entity.chat_gui:trigger("font-update")
+        entity.chat_gui:emit("font-update")
       end
     end
   end
@@ -995,11 +996,11 @@ function Client:onSetFont()
 end
 
 function Client:onTextInput(data)
-  self.gui:triggerTextInput(data)
+  self.gui:emitTextInput(data)
 end
 
 function Client:onKeyPressed(keycode, scancode, isrepeat)
-  self.gui:triggerKeyPress(keycode, scancode, isrepeat)
+  self.gui:emitKeyPress(keycode, scancode, isrepeat)
   -- control handling
   local control = self.player_config.scancode_controls[scancode]
   if control then self:pressControl(control) end
@@ -1016,7 +1017,7 @@ function Client:onKeyPressed(keycode, scancode, isrepeat)
 end
 
 function Client:onKeyReleased(keycode, scancode)
-  self.gui:triggerKeyRelease(keycode, scancode)
+  self.gui:emitKeyRelease(keycode, scancode)
 
   local control = self.player_config.scancode_controls[scancode]
   if control then
@@ -1167,7 +1168,7 @@ end
 
 function Client:onWheelMoved(x,y)
   local mx, my = love.mouse.getPosition()
-  self.gui:triggerPointerWheel(0, mx, my, y)
+  self.gui:emitPointerWheel(0, mx, my, x, y)
 end
 
 -- abstraction layer for controls
@@ -1237,7 +1238,7 @@ function Client:pressControl(id)
   -- GUI handling (repeatable)
   -- Need to be after gameplay handling to prevent changes to the UI state
   -- before the checks.
-  self.gui:triggerControlPress(id)
+  self.gui:emitControlPress(id)
 end
 
 function Client:releaseControl(id)
@@ -1248,7 +1249,7 @@ function Client:releaseControl(id)
     self.controls[id] = nil
 
     -- handling
-    self.gui:triggerControlRelease(id)
+    self.gui:emitControlRelease(id)
 
     if id == "up" then self:releaseOrientation(0)
     elseif id == "right" then self:releaseOrientation(1)
@@ -1341,7 +1342,7 @@ function Client:draw()
     -- draw entity picking selection
     if self.pick_entity then
       local entity = self.pick_entity.entities[self.pick_entity.selected]
-      if class.is(entity, LivingEntity) and scheduler.time%1 < 0.5 then -- blinking
+      if xtype.is(entity, LivingEntity) and scheduler.time%1 < 0.5 then -- blinking
         self.gui_renderer:drawBorders(self.gui_renderer.system.window_borders,
           entity.x-math.floor((entity.atlas.cell_w-16)/2),
           entity.y+16-entity.atlas.cell_h,

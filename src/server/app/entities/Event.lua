@@ -1172,7 +1172,7 @@ end
 
 -- override
 function Event:onAttack(attacker)
-  if class.is(attacker, Client) and self.trigger_attack then -- event
+  if xtype.is(attacker, Client) and self.trigger_attack then -- event
     self:trigger("attack")
     return true
   end

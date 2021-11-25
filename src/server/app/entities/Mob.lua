@@ -178,7 +178,7 @@ function Mob:isCellPassable(cx,cy)
     local cell = self.map:getCell(cx,cy)
     -- prevent mob stacking
     for entity in pairs(cell or {}) do
-      if class.is(entity, Mob) then return false end
+      if xtype.is(entity, Mob) then return false end
     end
     -- prevent mob from leaving bound area
     if self.area then
@@ -195,7 +195,7 @@ end
 
 -- override
 function Mob:onAttack(attacker)
-  if class.is(attacker, Client) then
+  if xtype.is(attacker, Client) then
     local amount = attacker:computeAttack(self)
     self:addToBingoBook(attacker, amount or 0)
     self:damage(amount)

@@ -16,34 +16,26 @@ function GUI:updateLayout(w,h)
       iw = math.max(iw, child.x+child.w)
       ih = math.max(ih, child.y+child.h)
     end
-
     self:setSize(iw,ih)
   end
 end
 
-function GUI:isTyping()
-  return class.is(self.focus, TextInput)
-end
+function GUI:isTyping() return xtype.is(self.focus, TextInput) end
 
--- play unspatialized GUI sound
+-- Play unspatialized GUI sound.
 -- return source
-function GUI:playSound(path)
-  local source = client:playSound(path)
-  return source
+function GUI:playSound(path) return client:playSound(path) end
+
+-- Emit "control-press" on GUI and focused widget.
+function GUI:emitControlPress(id)
+  self:emit("control-press", id)
+  if self.focus then self.focus:emit("control-press", id) end
 end
 
--- trigger "control-press" on GUI and focused widget
-function GUI:triggerControlPress(id)
-  local focus = self.focus
-  self:trigger("control-press", id)
-  if focus then focus:trigger("control-press", id) end
-end
-
--- trigger "control-release" on GUI and focused widget
-function GUI:triggerControlRelease(id)
-  local focus = self.focus
-  self:trigger("control-release", id)
-  if focus then focus:trigger("control-release", id) end
+-- Emit "control-release" on GUI and focused widget.
+function GUI:emitControlRelease(id)
+  self:emit("control-release", id)
+  if self.focus then self.focus:emit("control-release", id) end
 end
 
 return GUI

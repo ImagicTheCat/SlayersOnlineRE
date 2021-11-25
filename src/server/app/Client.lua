@@ -803,7 +803,7 @@ end
 function Client:swipeEvents()
   local events = {}
   for entity in pairs(self.entities) do
-    if class.is(entity, Event) then table.insert(events, entity) end
+    if xtype.is(entity, Event) then table.insert(events, entity) end
   end
   -- swipe events for page changes
   for _, event in ipairs(events) do
@@ -1206,7 +1206,7 @@ function Client:onCellChange()
       -- event contact check
       if not self.ghost and not self.prevent_next_contact then
         for entity in pairs(cell) do
-          if class.is(entity, Event) and entity.trigger_contact and self:perceivesRealm(entity) then
+          if xtype.is(entity, Event) and entity.trigger_contact and self:perceivesRealm(entity) then
             entity:trigger("contact")
           end
         end
@@ -1219,10 +1219,10 @@ end
 -- override
 function Client:onAttack(attacker)
   if self.ghost or attacker == self then return end
-  if class.is(attacker, Mob) then -- mob
+  if xtype.is(attacker, Mob) then -- mob
     self:damage(attacker:computeAttack(self))
     return true
-  elseif class.is(attacker, Client) then -- player
+  elseif xtype.is(attacker, Client) then -- player
     if not attacker:canFight(self) then return false end
     -- alignment loss
     local amount = attacker:computeAttack(self)
@@ -1267,7 +1267,7 @@ function Client:interact()
     -- event interact check
     local entities = self:raycastEntities(2)
     for _, entity in ipairs(entities) do
-      if class.is(entity, Event) and entity.trigger_interact and self:perceivesRealm(entity) then
+      if xtype.is(entity, Event) and entity.trigger_interact and self:perceivesRealm(entity) then
         entity:trigger("interact")
         break
       end
@@ -1328,7 +1328,7 @@ function Client:tryCastSpell(spell)
     local pre_entities = self:getSurroundingEntities("mob-player", 7)
     local entities = {}
     for _, entity in ipairs(pre_entities) do
-      if not class.is(entity, Client) or self:canFight(entity) then
+      if not xtype.is(entity, Client) or self:canFight(entity) then
         table.insert(entities, entity)
       end
     end

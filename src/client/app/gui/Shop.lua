@@ -21,7 +21,6 @@ function Shop.formatBuyItem(data)
     or data.req_magic and client.stats.magic < data.req_magic then
     color = {1,0,0} -- wrong requirements
   end
-
   return {"+/- "..(data.amount or 0).." ", color, data.name}
 end
 
@@ -51,7 +50,6 @@ end
 
 function Shop:__construct()
   Widget.__construct(self)
-
   -- menu
   self.w_menu = Window("vertical")
   self.menu = GridInterface(1,3,"vertical")
@@ -62,31 +60,24 @@ function Shop:__construct()
   self.w_menu.content:add(self.menu)
   self.w_menu:setZ(1)
   self:add(self.w_menu)
-
   -- content
   self.w_content = Window()
   self.content = GridInterface(0,0)
   self.w_content.content:add(self.content)
   self:add(self.w_content)
-
   -- info
   self.w_info = Window("vertical")
   self.info = Text("info")
   self.w_info.content:add(self.info)
   self:add(self.w_info)
-
   -- escape shop GUI
-  local function control_press(widget, id)
-    if id == "menu" then
-      self:close()
-    end
+  local function control_press(widget, event, id)
+    if id == "menu" then self:close() end
   end
-
   self.menu:listen("control-press", control_press)
   self.content:listen("control-press", control_press)
-
   -- mode menu select
-  self.menu:listen("cell-select", function(grid, cx, cy)
+  self.menu:listen("cell-select", function(grid, event, cx, cy)
     if cy == 1 then -- init buy
       self.mode = "buy"
       self.content:init(1, #self.buy_items)
@@ -102,13 +93,11 @@ function Shop:__construct()
       end
       self.content:moveSelect(0,0) -- actualize
     end
-
     self.w_menu:setVisible(false)
     self.gui:setFocus(self.content)
   end)
-
   -- info updates
-  self.content:listen("cell-focus", function(grid, cx, cy)
+  self.content:listen("cell-focus", function(grid, event, cx, cy)
     if self.mode == "buy" then
       local item = self.buy_items[cy+1]
       self.info:set(Shop.formatBuyItemInfo(item).."\nOr: "..utils.fn(client.stats.gold))
@@ -117,8 +106,7 @@ function Shop:__construct()
       self.info:set(Shop.formatSellItemInfo(item).."\nOr: "..utils.fn(client.stats.gold))
     end
   end)
-
-  self.content:listen("cell-select", function(grid, cx, cy)
+  self.content:listen("cell-select", function(grid, event, cx, cy)
     if self.mode == "buy" then
       local item = self.buy_items[cy+1]
       client:buyItem(item.id, item.amount)
@@ -130,11 +118,10 @@ function Shop:__construct()
         self.content:set(0, cy, Text(Shop.formatSellItem(item)), true)
       end
     end
-
-    -- note: info field will be actualized by gold update
+    -- Note: info field will be actualized by gold update.
   end)
   -- buy amount modulation
-  self.content:listen("control-press", function(grid, id)
+  self.content:listen("control-press", function(grid, event, id)
     if self.mode == "buy" then
       local item = self.buy_items[grid.cy+1]
       -- change amount
@@ -154,7 +141,7 @@ function Shop:__construct()
   end)
 end
 
--- open shop (init)
+-- Open shop (init).
 -- buy_items, sell_items: list of {.id, .name, .description, .price}
 function Shop:open(title, buy_items, sell_items)
   self.buy_items = buy_items
@@ -176,13 +163,13 @@ end
 -- override
 function Shop:updateLayout(w,h)
   self:setSize(w,h)
-
+  -- menu
   self.w_menu:updateLayout(math.floor(w*0.5),0)
   self.w_menu:setPosition(math.floor(w/2-self.w_menu.w/2), math.floor(h/2-self.w_menu.h/2))
-
+  -- info
   self.w_info:updateLayout(w,h)
   self.w_info:setPosition(0, h-self.w_info.h)
-
+  -- content
   self.w_content:setPosition(0,0)
   self.w_content:updateLayout(w, h-self.w_info.h)
 end

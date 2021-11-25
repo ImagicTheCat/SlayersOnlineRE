@@ -4,6 +4,7 @@
 local ev = require("ev")
 local Luaoop = require("Luaoop")
 class = Luaoop.class
+xtype = require("xtype")
 local Luaseq = require("Luaseq")
 async = Luaseq.async
 

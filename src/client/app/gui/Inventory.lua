@@ -7,8 +7,6 @@ local Inventory = class("Inventory", Widget)
 
 Inventory.Content = class("Inventory.Content", Window)
 
--- STATICS
-
 function Inventory.formatItem(itype, data, prefix)
   local color = {1,1,1}
   if itype == "item" then
@@ -27,7 +25,6 @@ end
 
 function Inventory.formatItemDescription(itype, data)
   local desc = data.description
-
   if itype == "item" then
     -- requirements
     local reqs = {"\nRequis:"}
@@ -39,26 +36,22 @@ function Inventory.formatItemDescription(itype, data)
     if #reqs > 1 then desc = desc..table.concat(reqs, " ") end
     if data.req_class then desc = desc.."\n"..data.req_class.." uniquement." end
   end
-
   return desc
 end
 
--- SUBCLASS
+-- Inventory.Content
 
 function Inventory.Content:__construct(itype, columns)
   Window.__construct(self)
-
   self.columns = columns
   self.grid = GridInterface(0,0)
   self.content:add(self.grid)
   self.itype = itype
-
   self.items = {} -- map of id => item data, synced inventory items
   self.amount = 0
   self.dirty = false
-
-  self.grid:listen("cell-focus", function(grid, cx, cy)
-    self:trigger("selection-update")
+  self.grid:listen("cell-focus", function(grid, event, cx, cy)
+    self:emit("selection-update")
   end)
 end
 
@@ -81,33 +74,28 @@ end
 function Inventory.Content:updateContent()
   if self.dirty then
     self.dirty = false
-
     self.display_items = {}
     for id, data in pairs(self.items) do
       table.insert(self.display_items, {id,data})
     end
-
     -- sort by name
     table.sort(self.display_items, function(a,b) return a[2].name < b[2].name end)
-
+    -- update
     local rows = math.ceil(#self.display_items/self.columns)
     self.grid:init(self.columns, rows)
-
     for i, item in ipairs(self.display_items) do
       local id = item[1]
       local data = item[2]
-
       -- quick action prefixes
       local prefix = ""
       if client:isQuickAction(1, self.itype, id) then prefix = prefix.."[Q1]" end
       if client:isQuickAction(2, self.itype, id) then prefix = prefix.."[Q2]" end
       if client:isQuickAction(3, self.itype, id) then prefix = prefix.."[Q3]" end
-
+      -- set
       local cx, cy = (i-1)%self.columns, math.floor((i-1)/self.columns)
       self.grid:set(cx, cy, Text(Inventory.formatItem(self.itype, data, prefix)), true)
     end
-
-    self:trigger("selection-update")
+    self:emit("selection-update")
   end
 end
 
@@ -116,19 +104,17 @@ function Inventory.Content:getSelection()
   return self.display_items[self.columns*self.grid.cy+self.grid.cx+1]
 end
 
--- METHODS
+-- Inventory
 
 -- itype: inventory item type (string)
 --- "item"
 --- "spell"
 function Inventory:__construct(itype)
   Widget.__construct(self)
-
   -- inventory content
   self.content = Inventory.Content(itype, 3)
   self:add(self.content)
   self.itype = itype
-
   -- info/menu
   self.w_menu = Window("vertical")
   self.description = Text()
@@ -140,8 +126,8 @@ function Inventory:__construct(itype)
   end
   self.w_menu.content:add(self.description)
   self:add(self.w_menu)
-
-  self.content.grid:listen("cell-select", function(grid, cx, cy)
+  -- events
+  self.content.grid:listen("cell-select", function(grid, event, cx, cy)
     local item = self.content:getSelection()
     if item then
       -- open item action menu
@@ -149,8 +135,7 @@ function Inventory:__construct(itype)
       self.gui:setFocus(self.menu)
     end
   end)
-
-  self.content.grid:listen("control-press", function(grid, id)
+  self.content.grid:listen("control-press", function(grid, event, id)
     -- quick action binding
     local item = self.content:getSelection()
     local q_id = tonumber(string.match(id, "quick(%d+)"))
@@ -162,7 +147,6 @@ function Inventory:__construct(itype)
       end
     end
   end)
-
   self.content:listen("selection-update", function(content)
     local item = content:getSelection()
     self.description:set(item and Inventory.formatItemDescription(self.itype, item[2]) or "")
@@ -171,17 +155,15 @@ function Inventory:__construct(itype)
       self.menu:set(1,0, Text({item[2].equipable and {1,1,1} or {0,0,0}, "Équiper"}), true)
     end
   end)
-
-  self.menu:listen("control-press", function(grid, id)
+  self.menu:listen("control-press", function(grid, event, id)
     if id == "menu" then
       -- close item action menu
       self.gui:setFocus(self.content.grid)
       self.w_menu.content:remove(self.menu)
     end
   end)
-
   -- actions
-  self.menu:listen("cell-select", function(grid, cx, cy)
+  self.menu:listen("cell-select", function(grid, event, cx, cy)
     local item = self.content:getSelection()
     if item then
       if self.itype == "item" then
@@ -200,7 +182,6 @@ end
 -- override
 function Inventory:updateLayout(w,h)
   self:setSize(w,h)
-
   self.w_menu:updateLayout(w,h)
   self.w_menu:setPosition(0, h-self.w_menu.h)
   self.content:updateLayout(w,h-self.w_menu.h)

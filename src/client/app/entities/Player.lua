@@ -7,8 +7,6 @@ local Text = require("app.gui.Text")
 
 local Player = class("Player", LivingEntity)
 
--- STATICS
-
 local ALIGN_COLORS = {
   {0,0,0}, -- 0-20
   {1,0,0}, -- 21-40
@@ -16,8 +14,6 @@ local ALIGN_COLORS = {
   {0.83,0.80,0.68}, -- 61-80
   {1,1,1} -- 81-100
 }
-
--- METHODS
 
 function Player:__construct(data)
   LivingEntity.__construct(self, data)
@@ -103,7 +99,7 @@ function Player:drawOver()
     LivingEntity.drawOver(self)
     -- draw chat GUI
     if self.chat_timer then
-      self.chat_gui:update()
+      self.chat_gui:tick()
       local inv_scale = 1/client.world_scale
       love.graphics.push()
       love.graphics.translate(self.x+8-self.chat_gui.w/2*inv_scale, self.y-self.chat_gui.h*inv_scale-12)
