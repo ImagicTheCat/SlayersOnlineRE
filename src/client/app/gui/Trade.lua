@@ -11,9 +11,9 @@ local Trade = class("Trade", Widget)
 function Trade:__construct()
   Widget.__construct(self)
   -- content
-  self.content_inv = Inventory.Content("item", 1) -- inventory
+  self.content_inv = Inventory.Content("item", 1, "move-out") -- inventory
   self:add(self.content_inv)
-  self.content_l = Inventory.Content("item", 1) -- left trade
+  self.content_l = Inventory.Content("item", 1, "move-out") -- left trade
   self:add(self.content_l)
   self.content_r = Inventory.Content("item", 1) -- right trade
   self:add(self.content_r)
@@ -29,7 +29,7 @@ function Trade:__construct()
   self:add(self.w_title_r)
   -- left golds
   self.w_gold_l = Window("vertical")
-  self.gold_l = GridInterface(2,1,"vertical")
+  self.gold_l = GridInterface(2,1, "vertical", "move-out")
   self.gold_l:set(0,0, Text("Or:"))
   self.gold_l_input = TextInput()
   self.gold_l_input:set("0")
@@ -45,23 +45,23 @@ function Trade:__construct()
   self:add(self.w_gold_r)
   -- menu
   self.w_menu = Window("vertical")
-  self.menu = GridInterface(2,1,"vertical")
+  self.menu = GridInterface(2,1, "vertical", "move-out")
   self.w_menu.content:add(self.menu)
   self:add(self.w_menu)
   -- navigation between panels
-  self.content_inv.grid:listen("move-select", function(grid, event, dx, dy)
+  self.content_inv.grid:listen("move-out", function(grid, event, dx, dy)
     if dx == 1 then self.gui:setFocus(self.content_l.grid) end
   end)
-  self.content_l.grid:listen("move-select", function(grid, event, dx, dy)
+  self.content_l.grid:listen("move-out", function(grid, event, dx, dy)
     if dx == -1 then self.gui:setFocus(self.content_inv.grid)
     elseif dy == 1 and not grid:isSelectable(grid.cx, grid.cy+1) then self.gui:setFocus(self.gold_l) end
   end)
-  self.gold_l:listen("move-select", function(grid, event, dx, dy)
+  self.gold_l:listen("move-out", function(grid, event, dx, dy)
     if dx == -1 then self.gui:setFocus(self.content_inv.grid)
     elseif dy == -1 then self.gui:setFocus(self.content_l.grid)
     elseif dy == 1 then self.gui:setFocus(self.menu) end
   end)
-  self.menu:listen("move-select", function(grid, event, dx, dy)
+  self.menu:listen("move-out", function(grid, event, dx, dy)
     if dx == -1 then self.gui:setFocus(self.content_inv.grid)
     elseif dy == -1 then self.gui:setFocus(self.gold_l) end
   end)

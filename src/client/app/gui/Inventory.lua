@@ -41,10 +41,11 @@ end
 
 -- Inventory.Content
 
-function Inventory.Content:__construct(itype, columns)
+-- move_mode: see GridInterface
+function Inventory.Content:__construct(itype, columns, move_mode)
   Window.__construct(self)
   self.columns = columns
-  self.grid = GridInterface(0,0)
+  self.grid = GridInterface(0, 0, nil, move_mode)
   self.content:add(self.grid)
   self.itype = itype
   self.items = {} -- map of id => item data, synced inventory items
@@ -82,6 +83,7 @@ function Inventory.Content:updateContent()
     table.sort(self.display_items, function(a,b) return a[2].name < b[2].name end)
     -- update
     local rows = math.ceil(#self.display_items/self.columns)
+    local old_cx, old_cy = self.grid.cx, self.grid.cy
     self.grid:init(self.columns, rows)
     for i, item in ipairs(self.display_items) do
       local id = item[1]
@@ -95,7 +97,7 @@ function Inventory.Content:updateContent()
       local cx, cy = (i-1)%self.columns, math.floor((i-1)/self.columns)
       self.grid:set(cx, cy, Text(Inventory.formatItem(self.itype, data, prefix)), true)
     end
-    self:emit("selection-update")
+    self.grid:setSelect(old_cx, old_cy)
   end
 end
 

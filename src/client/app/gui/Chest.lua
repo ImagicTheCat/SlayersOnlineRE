@@ -44,10 +44,10 @@ function Chest:__construct()
   self.w_gold_r.content:add(self.gold_r)
   self:add(self.w_gold_r)
   -- inventory content
-  self.content_l = Inventory.Content("item", 2)
+  self.content_l = Inventory.Content("item", 2, "move-out")
   self:add(self.content_l)
   -- chest content
-  self.content_r = Inventory.Content("item", 2)
+  self.content_r = Inventory.Content("item", 2, "move-out")
   self:add(self.content_r)
   -- info
   self.w_info = Window("vertical")
@@ -88,17 +88,19 @@ function Chest:__construct()
       self.gui:setFocus(self.content_r.grid)
     end
   end)
-  self.content_l.grid:listen("move-select", function(grid, event, dx, dy)
-    if dx == 1 and not grid:isSelectable(grid.cx+1, grid.cy) then
+  self.content_l.grid:listen("move-out", function(grid, event, dx, dy)
+    if dx == 1 then
       self.gui:setFocus(self.content_r.grid)
-    elseif dy == -1 and not grid:isSelectable(grid.cx, grid.cy-1) then
+      self.content_r.grid:moveSelect(0,0)
+    elseif dy == -1 then
       self.gui:setFocus(self.gold_l)
     end
   end)
-  self.content_r.grid:listen("move-select", function(grid, event, dx, dy)
-    if dx == -1 and not grid:isSelectable(grid.cx-1, grid.cy) then
+  self.content_r.grid:listen("move-out", function(grid, event, dx, dy)
+    if dx == -1 then
       self.gui:setFocus(self.content_l.grid)
-    elseif dy == -1 and not grid:isSelectable(grid.cx, grid.cy-1) then
+      self.content_l.grid:moveSelect(0,0)
+    elseif dy == -1 then
       self.gui:setFocus(self.gold_r)
     end
   end)

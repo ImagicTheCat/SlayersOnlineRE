@@ -15,7 +15,7 @@ local function control_press(self, event, id)
   end
 end
 
-local function focus_change(self, event, state)
+local function focus_update(self, event, state)
   if state then
     love.keyboard.setTextInput(true, self.tx, self.ty,
       math.floor(self.w*self.tscale), math.floor(self.h*self.tscale))
@@ -44,7 +44,7 @@ function TextInput:__construct()
   self:listen("text-input", text_input)
   self:listen("key-press", key_press)
   self:listen("control-press", control_press)
-  self:listen("focus-update", focus_change)
+  self:listen("focus-update", focus_update)
   -- GUI events
   function self.font_update(gui)
     self.display_text:setFont(love.graphics.getFont())
