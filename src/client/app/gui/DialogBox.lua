@@ -6,13 +6,12 @@ local DialogBox = class("Inventory", Window)
 
 function DialogBox:__construct()
   Window.__construct(self, "vertical")
-
   self.text = Text()
   self.grid = GridInterface(0,0,"vertical")
-  self.grid:listen("cell-select", function(grid, cx, cy)
+  self.grid:listen("cell-select", function(grid, event, cx, cy)
     if client.dialog_task then client.dialog_task(cx+1) end
   end)
-  self.grid:listen("control-press", function(grid, id)
+  self.grid:listen("control-press", function(grid, event, id)
     if id == "menu" and client.dialog_task then client.dialog_task() end -- cancel
   end)
   self.content:add(self.text)

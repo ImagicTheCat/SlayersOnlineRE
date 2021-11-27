@@ -1,8 +1,7 @@
 local Widget = require("ALGUI.Widget")
 
--- textual grid widget
+-- Textual grid widget.
 local GridInterface = class("GridInterface", Widget)
-
 GridInterface.MARGIN = 5
 
 -- Overlay
@@ -20,7 +19,7 @@ end
 
 -- GridInterface
 
-local function control_press(self, id)
+local function control_press(self, event, id)
   if id == "up" then
     self:moveSelect(0,-1)
   elseif id == "down" then
@@ -34,14 +33,11 @@ local function control_press(self, id)
   end
 end
 
--- METHODS
-
 -- wc, hc: number of columns/rows
 -- wrap: (optional)
 --- "vertical": wrap/extend vertically
 function GridInterface:__construct(wc, hc, wrap)
   Widget.__construct(self)
-
   self.wrap = wrap
   self.overlay = GridInterface.Overlay()
   self:add(self.overlay)
@@ -54,7 +50,6 @@ function GridInterface:init(wc, hc)
   for idx, cell in pairs(self.cells or {}) do
     self:remove(cell[1])
   end
-
   self.wc, self.hc = wc, hc
   self.cells = {} -- map of index => {.text, .callback, .disp_text}
   self.cx, self.cy = 0, 0 -- cursor
@@ -75,7 +70,6 @@ function GridInterface:set(x, y, widget, selectable)
     local cell = self.cells[idx]
     -- remove old widget
     if cell then self:remove(cell[1]) end
-
     if widget then
       self.cells[idx] = {widget, selectable}
       self:add(widget)
@@ -99,41 +93,34 @@ function GridInterface:isSelectable(x, y)
 end
 
 function GridInterface:moveSelect(dx, dy)
-  self:trigger("move-select", dx, dy)
-
+  self:emit("move-select", dx, dy)
   -- sound effect
   if dx ~= 0 or dy ~= 0 then
     self.gui:playSound("resources/audio/Cursor1.wav")
   end
-
   -- X
   local sdx = dx/math.abs(dx) -- sign
   local its, limit = 0, self.wc*math.abs(dx)
   while dx ~= 0 and its < limit do -- move cursor on selectables
     self.cx = self.cx+sdx
     self.cx = (self.cx < 0 and (self.wc-(-self.cx)%self.wc)%self.wc or self.cx%self.wc)
-
     -- step on selectable
     if self:isSelectable(self.cx, self.cy) then dx = dx-sdx end
     its = its+1
   end
-
   -- Y
   local sdy = dy/math.abs(dy) -- sign
   its, limit = 0, self.hc*math.abs(dy)
   while dy ~= 0 and its < limit do -- move cursor on selectables
     self.cy = self.cy+sdy
     self.cy = (self.cy < 0 and (self.hc-(-self.cy)%self.hc)%self.hc or self.cy%self.hc)
-
     -- step on selectable
     if self:isSelectable(self.cx, self.cy) then dy = dy-sdy end
     its = its+1
   end
-
   if self:isSelectable(self.cx, self.cy) then -- valid selectable cell
-    self:trigger("cell-focus", self.cx, self.cy)
+    self:emit("cell-focus", self.cx, self.cy)
   end
-
   self:updateScroll()
 end
 
@@ -148,23 +135,22 @@ function GridInterface:updateScroll()
   local idx = self:getIndex(self.cx, self.cy)
   local cell = self.cells[idx]
   if cell and cell[2] then -- valid selectable cell
-    -- shift inner to current selected entry if not visible
+    -- offset inner to current selected entry if not visible
     local overflow_y = cell[1].y+cell[1].h+GridInterface.MARGIN-self.h
-    self:setInnerShift(0, overflow_y > 0 and -overflow_y or 0)
+    self:setInnerOffset(0, overflow_y > 0 and -overflow_y or 0)
   else
-    -- invalid selection, reset inner shift
-    self:setInnerShift(0,0)
+    -- invalid selection, reset inner offset
+    self:setInnerOffset(0,0)
   end
 end
 
 function GridInterface:select()
   local cx, cy = self.cx, self.cy
-
   if cx >= 0 and cy >= 0 and cx < self.wc and cy < self.hc then
     if self:isSelectable(self.cx, self.cy) then -- valid selectable cell
       -- sound effect
       self.gui:playSound("resources/audio/Item1.wav")
-      self:trigger("cell-select", cx, cy)
+      self:emit("cell-select", cx, cy)
     end
   end
 end
@@ -172,9 +158,8 @@ end
 -- override
 function GridInterface:updateLayout(w,h)
   local MARGIN = GridInterface.MARGIN
-
-  -- place widgets line by line with fixed width and height based on max cell height
-  -- (vertical flow)
+  -- Place widgets line by line with fixed width and height based on max cell
+  -- height (vertical flow).
   local y, cell_w = MARGIN, w/self.wc
   for cy=0,self.hc do
     local max_h = 0
@@ -188,17 +173,11 @@ function GridInterface:updateLayout(w,h)
         x = x+cell[1].w+MARGIN
       end
     end
-
     y = y+max_h+MARGIN
   end
-
-  if self.wrap == "vertical" then
-    self:setSize(w,y)
-  else
-    self:setSize(w,h)
-  end
-
-  self.overlay:updateLayout(self.w,y) -- update inner overlay
+  if self.wrap == "vertical" then self:setSize(w,y) else self:setSize(w,h) end
+  -- update inner overlay
+  self.overlay:updateLayout(self.w,y)
   self:updateScroll()
 end
 

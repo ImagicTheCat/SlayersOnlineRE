@@ -98,7 +98,7 @@ function Map:onMovementsPacket(data)
     for _, entry in ipairs(data.entities) do
       local id, x, y = unpack(entry)
       local entity = self.entities[id]
-      if entity and class.is(entity, LivingEntity) then
+      if entity and xtype.is(entity, LivingEntity) then
         entity:onUpdatePosition(x,y)
       end
     end

@@ -1,30 +1,24 @@
 local Widget = require("ALGUI.Widget")
 
-
 local Window = class("Window", Widget)
-
 local MARGIN = 6
 
-local function sort_layout(a,b)
-  return a.iz < b.iz
-end
-
--- SUBCLASS: Content
 Window.Content = class("Window.Content", Widget)
 
---- METHODS
+-- Window.Content
 
 function Window.Content:__construct(wrap)
   Widget.__construct(self)
-
   self.wrap = wrap
 end
+
+local function sort_layout(a,b) return a.iz < b.iz end
 
 function Window.Content:updateLayout(w,h)
   local widgets = {}
   for widget in pairs(self.widgets) do table.insert(widgets, widget) end
   table.sort(widgets, sort_layout) -- sort by implicit z (added order)
-
+  -- flow
   if self.wrap == "both" then -- vertical flow and wrap
     local y, max_w = 0, 0
     for _, child in ipairs(widgets) do
@@ -51,12 +45,11 @@ function Window.Content:updateLayout(w,h)
     end
     self:setSize(w,h)
   end
-
-  -- trigger window event
-  self.parent:trigger("content-update")
+  -- emit window event
+  self.parent:emit("content-update")
 end
 
--- METHODS
+-- Window
 
 -- wrap: (optional)
 --- nil: no wrapping (fixed size)
@@ -64,7 +57,6 @@ end
 --- "vertical": wrap/extend on content (only vertically)
 function Window:__construct(wrap)
   Widget.__construct(self)
-
   self.content = Window.Content(wrap)
   self:add(self.content)
 end
@@ -72,7 +64,6 @@ end
 function Window:updateLayout(w,h)
   self.content:setPosition(MARGIN, MARGIN)
   self.content:updateLayout(w-MARGIN*2, h-MARGIN*2)
-
   self:setSize(self.content.w+MARGIN*2, self.content.h+MARGIN*2)
 end
 
