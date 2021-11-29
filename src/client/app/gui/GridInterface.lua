@@ -1,3 +1,4 @@
+local utils = require("app.utils")
 local Widget = require("ALGUI.Widget")
 
 -- Textual grid widget.
@@ -36,9 +37,13 @@ end
 -- wc, hc: number of columns/rows
 -- wrap: (optional)
 --- "vertical": wrap/extend vertically
-function GridInterface:__construct(wc, hc, wrap)
+-- move_mode: (optional)
+--- default: loop mode
+--- "move-out": emit move-out(dx, dy) event instead of looping
+function GridInterface:__construct(wc, hc, wrap, move_mode)
   Widget.__construct(self)
   self.wrap = wrap
+  self.move_mode = move_mode
   self.overlay = GridInterface.Overlay()
   self:add(self.overlay)
   self:init(wc,hc)
@@ -47,18 +52,14 @@ end
 
 function GridInterface:init(wc, hc)
   -- remove all widgets
-  for idx, cell in pairs(self.cells or {}) do
-    self:remove(cell[1])
-  end
+  for idx, cell in pairs(self.cells or {}) do self:remove(cell[1]) end
   self.wc, self.hc = wc, hc
   self.cells = {} -- map of index => {.text, .callback, .disp_text}
   self.cx, self.cy = 0, 0 -- cursor
 end
 
 -- return cell index
-function GridInterface:getIndex(x, y)
-  return y*self.wc+x
-end
+function GridInterface:getIndex(x, y) return y*self.wc+x end
 
 -- set cell
 -- x, y: cell coordinates (>= 0)
@@ -92,36 +93,57 @@ function GridInterface:isSelectable(x, y)
   return cell and cell[2]
 end
 
+-- dx, dy: -1, 0, 1 (one axis only)
 function GridInterface:moveSelect(dx, dy)
   self:emit("move-select", dx, dy)
-  -- sound effect
-  if dx ~= 0 or dy ~= 0 then
-    self.gui:playSound("resources/audio/Cursor1.wav")
+  -- generic move
+  local moved_out = false
+  local cT = dx ~= 0 and "cx" or dy ~= 0 and "cy"
+  local Tc = dx ~= 0 and "wc" or dy ~= 0 and "hc"
+  local dV = dx ~= 0 and dx or dy ~= 0 and dy
+  local old_cV = self[cT]
+  if cT then
+    local its = 0
+    repeat
+      self[cT], its = self[cT]+dV, its+1
+      -- wrap
+      if self[cT] < 0 then
+        if self.move_mode == "move-out" then
+          self[cT] = old_cV
+          self:emit("move-out", dx, dy); moved_out = true; break
+        else
+          self[cT] = self[Tc]-1
+        end
+      elseif self[cT] == self[Tc] then
+        if self.move_mode == "move-out" then
+          self[cT] = old_cV
+          self:emit("move-out", dx, dy); moved_out = true; break
+        else
+          self[cT] = 0
+        end
+      end
+    until self:isSelectable(self.cx, self.cy) or its >= self[Tc]
   end
-  -- X
-  local sdx = dx/math.abs(dx) -- sign
-  local its, limit = 0, self.wc*math.abs(dx)
-  while dx ~= 0 and its < limit do -- move cursor on selectables
-    self.cx = self.cx+sdx
-    self.cx = (self.cx < 0 and (self.wc-(-self.cx)%self.wc)%self.wc or self.cx%self.wc)
-    -- step on selectable
-    if self:isSelectable(self.cx, self.cy) then dx = dx-sdx end
-    its = its+1
-  end
-  -- Y
-  local sdy = dy/math.abs(dy) -- sign
-  its, limit = 0, self.hc*math.abs(dy)
-  while dy ~= 0 and its < limit do -- move cursor on selectables
-    self.cy = self.cy+sdy
-    self.cy = (self.cy < 0 and (self.hc-(-self.cy)%self.hc)%self.hc or self.cy%self.hc)
-    -- step on selectable
-    if self:isSelectable(self.cx, self.cy) then dy = dy-sdy end
-    its = its+1
-  end
-  if self:isSelectable(self.cx, self.cy) then -- valid selectable cell
+  if not moved_out then
+    -- sound effect
+    if cT then self.gui:playSound("resources/audio/Cursor1.wav") end
+    -- update
     self:emit("cell-focus", self.cx, self.cy)
+    self:updateScroll()
   end
-  self:updateScroll()
+end
+
+function GridInterface:setSelect(cx, cy)
+  if self:isSelectable(cx, cy) then
+    self.cx, self.cy = cx, cy
+  else -- find first valid cell
+    for i=0, self.wc-1 do
+      for j=0, self.hc-1 do
+        if self:isSelectable(i,j) then self.cx, self.cy = i,j; goto exit end
+      end
+    end
+  end
+  ::exit:: self:moveSelect(0,0)
 end
 
 -- return selected widget or nil
@@ -138,8 +160,7 @@ function GridInterface:updateScroll()
     -- offset inner to current selected entry if not visible
     local overflow_y = cell[1].y+cell[1].h+GridInterface.MARGIN-self.h
     self:setInnerOffset(0, overflow_y > 0 and -overflow_y or 0)
-  else
-    -- invalid selection, reset inner offset
+  else -- invalid selection, reset inner offset
     self:setInnerOffset(0,0)
   end
 end

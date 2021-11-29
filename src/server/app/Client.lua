@@ -970,16 +970,11 @@ function Client:openChest(title)
   for id, amount in pairs(self.chest_inventory.items) do
     local object = objects[id]
     if object then
-      table.insert(items, {id, {
-        amount = amount,
-        name = object.name,
-        description = object.description
-      }})
+      table.insert(items, {id, Client.serializeItem(server, object, amount)})
     end
   end
   self:sendPacket(net.CHEST_OPEN, {title, items})
   self:sendPacket(net.STATS_UPDATE, {chest_gold = self.chest_gold})
-
   self.chest_task:wait()
 end
 

@@ -98,6 +98,7 @@ function Shop:__construct()
   end)
   -- info updates
   self.content:listen("cell-focus", function(grid, event, cx, cy)
+    if not self.buy_items then return end -- not ready yet
     if self.mode == "buy" then
       local item = self.buy_items[cy+1]
       self.info:set(Shop.formatBuyItemInfo(item).."\nOr: "..utils.fn(client.stats.gold))
