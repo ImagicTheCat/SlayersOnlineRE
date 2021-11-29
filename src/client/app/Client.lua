@@ -885,7 +885,7 @@ function Client:updateInfoOverlay()
 end
 
 function Client:onResize(w, h)
-  -- Contrain windowed dimensions to prevent abnormal ratio.
+  -- Constrain windowed dimensions to prevent abnormal ratio.
   -- Prevent problematic resize loop with delay.
   if not love.window.getFullscreen() then
     if self.resize_timer then self.resize_timer:remove() end
