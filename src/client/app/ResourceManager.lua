@@ -104,8 +104,8 @@ function ResourceManager:close()
 end
 
 function ResourceManager:loadLocalManifest()
-  local data = love.filesystem.read("local.manifest")
-  if data then self.local_manifest = msgpack.unpack(data) end
+  local ok, data = pcall(msgpack.unpack, love.filesystem.read("local.manifest"))
+  if ok then self.local_manifest = data end
 end
 
 -- (async)
