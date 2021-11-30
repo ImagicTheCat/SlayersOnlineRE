@@ -368,7 +368,6 @@ function LivingEntity:setMoveForward(move_forward)
       self.move_timer = itimer(1/cfg.tickrate, function()
         local dt = clock()-self.move_time
         local speed = LivingEntity.pixelSpeed(self.speed)
-        if self.acting then speed = speed/2 end -- slow movement when acting
         -- move following the orientation
         local dx, dy = LivingEntity.orientationVector(self.orientation)
         local dist = math.floor(speed*dt) -- pixels traveled
