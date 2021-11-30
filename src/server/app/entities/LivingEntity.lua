@@ -34,7 +34,7 @@ end
 
 -- convert game speed to px/s
 function LivingEntity.pixelSpeed(speed)
-  return speed*4*16
+  return math.abs(speed)*4*16
 end
 
 -- PRIVATE METHODS
