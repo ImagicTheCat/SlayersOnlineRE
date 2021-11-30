@@ -45,12 +45,13 @@ base game files:: base/default files
 
 To update the repository from the SO project, use `tools/update_repository.sh`.
 
-[NOTE]
-====
-.Slayers Online -> Slayers Online RE
-- `Chipset\` images go to `textures/sets/`; indexed PNGs are converted with proper alpha with `tools/convert_png.lua`.
+The script will convert project files to repository files if they do not already exist.
+
+- `Chipset\` images go to `textures/sets/`. Indexed PNGs are converted with proper alpha with `tools/convert_png.lua`.
++
+WARNING: Not all indexed PNGs should be converted with an alpha channel; those need to be manually moved to the repository.
+
 - `Sound\` files go to `audio/`; midi files are converted to Ogg/Vorbis using `tools/convert_midi.sh`.
-====
 
 .Client's updating process:
 - Check for the file in `repository.manifest` and `local.manifest`.
