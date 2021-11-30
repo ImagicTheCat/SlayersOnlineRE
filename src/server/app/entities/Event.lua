@@ -16,6 +16,7 @@ local Event = class("Event", LivingEntity)
 -- STATICS
 
 Event.TRIGGER_RADIUS = 15 -- visibility/trigger radius in cells
+Event.FLEE_RADIUS = 6 -- cells
 
 local ORIENTED_ANIMATION_TYPES = utils.bimap({
   "static",
@@ -1117,6 +1118,21 @@ function Event:serializeNet()
   return data
 end
 
+-- Find a random cell for idle movements.
+-- return (cx, cy) or nothing
+local function findRandomCell(self)
+  local ncx, ncy
+  local dirs = {0,1,2,3}
+  while #dirs > 0 do
+    local i = math.random(1, #dirs)
+    local orientation = dirs[i]
+    table.remove(dirs, i)
+    local dx, dy = LivingEntity.orientationVector(orientation)
+    ncx, ncy = self.cx+dx, self.cy+dy
+    if self.map:isCellPassable(self, ncx, ncy) then return ncx, ncy end
+  end
+end
+
 -- async
 local function AI_thread(self)
   self.ai_running = true
@@ -1142,23 +1158,28 @@ local function AI_thread(self)
           end
         end
       else -- idle mode
-        -- random movements
-        -- search for a passable cell
-        local done, ncx, ncy
-        local dirs = {0,1,2,3}
-        while not done and #dirs > 0 do
-          local i = math.random(1, #dirs)
-          local orientation = dirs[i]
-          table.remove(dirs, i)
-          local dx, dy = LivingEntity.orientationVector(orientation)
-          ncx, ncy = self.cx+dx, self.cy+dy
-          if self.map:isCellPassable(self, ncx, ncy) then done = true end
+        local ncx, ncy
+        if self.speed < 0 then -- flee mode
+          -- compute flee probability based on distance to player
+          local dx, dy = self.client.x-self.x, self.client.y-self.y
+          local dist = math.sqrt(dx*dx+dy*dy)
+          local flee_probability = 1-dist/(Event.FLEE_RADIUS*16)
+          if math.random() < flee_probability then
+            local dcx, dcy = utils.dvec(-dx, -dy)
+            if self.map:isCellPassable(self, self.cx+dcx, self.cy+dcy) then
+              ncx, ncy = self.cx+dcx, self.cy+dcy
+            end
+          end
         end
-        if done then self:moveToCell(ncx, ncy) end
+        -- fallback to random movements
+        if not ncx then ncx, ncy = findRandomCell(self) end
+        -- move
+        if ncx then self:moveToCell(ncx, ncy) end
       end
     end
-    wait(utils.randf(1,5)/self.speed *
-      (self.animation_type == "character-follow" and 0.25 or 1.5))
+    wait(utils.randf(1,5)/math.abs(self.speed) *
+      (self.animation_type == "character-follow" and 0.25 or 1.5) *
+      self.speed < 0 and 0.5 or 1)
   end
   self.ai_running = nil
 end
