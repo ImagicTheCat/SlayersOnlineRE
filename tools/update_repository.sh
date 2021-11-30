@@ -18,13 +18,13 @@ echo "Update sounds: wav files..."
 rsync -av "$1/Sound/" --include '*/' --include '*.wav' --exclude '*' "$2/audio/"
 echo
 echo "Update sounds: midi files..."
-find "$1/Sound/" -type f -iname '*.mid' -printf '%P\n' | parallel "[[ \"$1\"/Sound/{} -nt \"$2\"/audio/{.}.ogg ]] && \
+find "$1/Sound/" -type f -iname '*.mid' -printf '%P\n' | parallel "[[ ! -f \"$2\"/audio/{.}.ogg ]] && \
   echo Convert {}... && \
   mkdir -p \"$2\"/audio/{//} && \
   ./convert_midi.sh \"$1\"/Sound/{} \"$2\"/audio/{.}.ogg"
 echo
 echo "Update chipsets..."
-find "$1/Chipset/" -type f -iname '*.png' -printf '%P\n' | parallel "[[ \"$1\"/Chipset/{} -nt \"$2\"/textures/sets/{} ]] && \
+find "$1/Chipset/" -type f -iname '*.png' -printf '%P\n' | parallel "[[ ! -f \"$2\"/textures/sets/{} ]] && \
   echo Convert {}... && \
   mkdir -p \"$2\"/textures/sets/{//} && \
   luajit convert_png.lua \"$1\"/Chipset/{} \"$2\"/textures/sets/{}"
