@@ -1158,13 +1158,16 @@ function Server:loadMapData(id)
       -- load cache
       local cache = {}
       local cache_modified = false
-      local cache_file = io.open("cache/maps/"..id)
-      if cache_file then
-        local data = cache_file:read("*a")
-        cache_file:close()
-        if data then
-          local ok, cache_data = pcall(msgpack.unpack, data)
-          if ok then cache = cache_data end
+      -- Don't load cache if source .ev0 is newer.
+      if os.execute("test \"resources/project/Maps/"..id..".ev0\" -nt \"cache/maps/"..id.."\"") ~= 0 then
+        local cache_file = io.open("cache/maps/"..id)
+        if cache_file then
+          local data = cache_file:read("*a")
+          cache_file:close()
+          if data then
+            local ok, cache_data = pcall(msgpack.unpack, data)
+            if ok then cache = cache_data end
+          end
         end
       end
       --- compile
