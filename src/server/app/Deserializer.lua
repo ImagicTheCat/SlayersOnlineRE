@@ -430,7 +430,7 @@ function Deserializer.loadMapEvents(id)
     -- ev0
     local line = f_ev0:read("*l")
     while line do
-      local ltype,x,y,page,index,instruction = string.match(line, "^(..)(%d+),(%d+),(%d+),(%d+)=(.*)\r$")
+      local ltype,x,y,page,index,instruction = string.match(line, "^(..)(%d+),(%d+),(%d+),(%d+)=(.*)\r?$")
       instruction = Deserializer.string_conv:iconv(instruction)
 
       -- process allowed escapes
