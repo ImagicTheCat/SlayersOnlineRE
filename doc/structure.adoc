@@ -45,8 +45,6 @@ base game files:: base/default files
 
 To update the repository from the SO project, use `tools/update_repository.sh`.
 
-The script will convert project files to repository files if they do not already exist.
-
 - `Chipset\` images go to `textures/sets/`. Indexed PNGs are converted with proper alpha with `tools/convert_png.lua`.
 +
 WARNING: Not all indexed PNGs should be converted with an alpha channel; those need to be manually moved to the repository.
