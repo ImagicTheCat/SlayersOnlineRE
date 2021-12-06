@@ -9,6 +9,7 @@ local Luaseq = require("Luaseq")
 async = Luaseq.async
 
 local config = require("config")
+math.randomseed(os.time())
 
 -- global utils
 
@@ -44,7 +45,7 @@ function wait(delay)
   task:wait()
 end
 
--- create server
+-- Create server.
 local Server = require("app.Server")
 
 server = Server(config) -- global
