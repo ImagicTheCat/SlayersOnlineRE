@@ -39,13 +39,14 @@ INSERT INTO users(
   guild_rank_title,
   stat_played,
   stat_traveled,
-  stat_mob_kills
+  stat_mob_kills,
+  stat_deaths
 ) VALUES(
   {pseudo}, {salt}, {password},
   {rank}, {timestamp}, 0, 1, 1, 100, 0, 0,
   0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0,
-  "", 0, "", 0, 0, 0
+  "", 0, "", 0, 0, 0, 0
 );
 ]], {
   pseudo = pseudo_t,
@@ -92,7 +93,8 @@ INSERT INTO users(
     armor_slot = {armor_slot},
     stat_played = {stat_played},
     stat_traveled = {stat_traveled},
-    stat_mob_kills = {stat_mob_kills}
+    stat_mob_kills = {stat_mob_kills},
+    stat_deaths = {stat_deaths}
     WHERE id = {user_id}
   ]], {
     level = utint,
@@ -113,6 +115,7 @@ INSERT INTO users(
     stat_played = "BIGINT",
     stat_traveled = "DOUBLE",
     stat_mob_kills = "BIGINT",
+    stat_deaths = "BIGINT",
     user_id = uint
   })
   db:prepare("user/pruneSkins", [[
