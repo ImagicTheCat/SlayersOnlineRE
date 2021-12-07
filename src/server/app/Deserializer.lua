@@ -396,20 +396,18 @@ end
 function Deserializer.loadMapEvents(id)
   local f_evn = io.open("resources/project/Maps/"..id..".evn", "rb")
   local f_ev0 = io.open("resources/project/Maps/"..id..".ev0", "r")
-
   if f_evn and f_ev0 then
+    -- load
     local events = {}
     local events_by_coords = {}
-
     -- evn
     local count = f_evn:seek("end")/344 -- 344 bytes per event entry
     f_evn:seek("set")
-    
+    -- read pages
     for i=1,count do
       local page = Deserializer.readMapEventEntry(f_evn)
       page.conditions = {}
       page.commands = {}
-
       -- reference per coords
       local key = page.x..","..page.y
       local event = events_by_coords[key]
@@ -419,23 +417,17 @@ function Deserializer.loadMapEvents(id)
           y = page.y,
           pages = {}
         }
-
         events_by_coords[key] = event
         table.insert(events, event)
       end
-
       table.insert(event.pages, page)
     end
-
     -- ev0
     local line = f_ev0:read("*l")
     while line do
-      local ltype,x,y,page,index,instruction = string.match(line, "^(..)(%d+),(%d+),(%d+),(%d+)=(.*)\r?$")
+      local ltype, x, y, page, index, instruction =
+        string.match(line, "^(..)(%d+),(%d+),(%d+),(%d+)=(.*)\r?$")
       instruction = Deserializer.string_conv:iconv(instruction)
-
-      -- process allowed escapes
---      instruction = string.gsub(instruction, "\\n", "\n")
-
       if ltype then -- match
         local event = events_by_coords[x..","..y] -- get events by coords
         if event then
@@ -449,16 +441,10 @@ function Deserializer.loadMapEvents(id)
           end
         end
       end
-
       line = f_ev0:read("*l")
     end
-
-    f_evn:close()
-    f_ev0:close()
-
+    f_evn:close(); f_ev0:close()
     return events
-  else
-    print("error loading events for map \""..id.."\"")
   end
 end
 
