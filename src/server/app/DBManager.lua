@@ -134,7 +134,7 @@ local function thread(async_sz, ch_in, ch_out, db, user, password, host, port)
       ch_out:push(msgpack.pack({ok, r}))
       async_send()
     elseif cmd == "query-raw" then
-      local ok, r = xpcall(raw_query, error_handler, unpack(args))
+      local ok = xpcall(raw_query, error_handler, unpack(args))
       if not ok then io.stderr:write("<= query-raw \""..args[1].."\"\n") end
       ch_out:push(msgpack.pack({ok}))
       async_send()
