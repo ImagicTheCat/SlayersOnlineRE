@@ -28,6 +28,7 @@ function Client.makePacket(protocol, data)
   return msgpack.pack({protocol, data})
 end
 
+local CHAT_ACTION_RADIUS = 15 -- cells
 local EQUIPABLE_ITEM_TYPES = utils.bimap({
   "one-handed-weapon",
   "two-handed-weapon",
@@ -316,7 +317,7 @@ function packet:INPUT_INTERACT(data)
 end
 function packet:INPUT_CHAT(data)
   if self.status ~= "logged" then return end
-  if type(data) == "string" and string.len(data) > 0 and string.len(data) < 1000 then
+  if type(data) == "string" and #data > 0 and #data < 1000 then
     if string.sub(data, 1, 1) == "/" then -- parse command
       local args = server.parseCommand(string.sub(data, 2))
       if #args > 0 then
@@ -790,6 +791,20 @@ function Client:sendChatMessage(ftext)
 end
 
 function Client:print(msg) self:sendChatMessage({{0,1,0.5}, msg}) end
+
+function Client:emitChatAction(ftext)
+  if not self.map then return end
+  local s_ftext = {self.pseudo.." "}
+  for _, v in ipairs(ftext) do table.insert(s_ftext, v) end
+  -- send message to all clients in chat radius
+  for client in pairs(self.map.clients) do
+    local dx = math.abs(self.x-client.x)
+    local dy = math.abs(self.y-client.y)
+    if dx <= CHAT_ACTION_RADIUS*16 and dy <= CHAT_ACTION_RADIUS*16 then
+      client:sendChatMessage(s_ftext)
+    end
+  end
+end
 
 function Client:minuteTick()
   if self.status == "logged" then self:setAlignment(self.alignment+1) end

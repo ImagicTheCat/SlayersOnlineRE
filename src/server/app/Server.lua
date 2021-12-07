@@ -457,6 +457,16 @@ commands.all = {10, "client", function(self, client, args)
   end
 end, "", "chat global"}
 
+commands.roll = {10, "client", function(self, client, args)
+  if client.status == "logged" and client:canChat() then
+    local sides = math.max(2, math.floor(tonumber(args[2]) or 6))
+    local n = math.random(1, sides)
+    local hl_color = {0, 1, 0.5} -- highlight
+    client:emitChatAction({"lance un ", hl_color, "d"..sides, {1,1,1},
+      " et fait ", hl_color, n, {1,1,1}, "."})
+  end
+end, "[sides]", "lancer un dé"}
+
 -- server chat
 commands.say = {0, "server", function(self, client, args)
   -- broadcast to all logged clients
