@@ -1172,7 +1172,7 @@ function Server:loadMapData(id)
   if map then
     if not map.loaded then
       map.tiledata = Deserializer.loadMapTiles(id)
-      map.events = Deserializer.loadMapEvents(id)
+      map.events = Deserializer.loadMapEvents(id) or {}
       map.mob_areas = Deserializer.loadMapMobAreas(id) or {}
       map.tileset_id = string.sub(map.tileset, 9, string.len(map.tileset)-4)
       map.tileset_data = self:loadTilesetData(map.tileset_id)
