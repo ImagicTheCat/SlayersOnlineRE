@@ -475,7 +475,8 @@ commands.stats = {10, "client", function(self, client, args)
     "- Vous avez joué "..utils.fn(h_played).." heure(s) depuis le "..
     os.date("!%d/%m/%Y", client.play_stats.creation_timestamp)..".\n"..
     "- Vous avez parcouru "..utils.fn(math.floor(client.play_stats.traveled)).." mètre(s).\n"..
-    "- Vous avez sciemment tué "..utils.fn(client.play_stats.mob_kills).." créature(s).")
+    "- Vous avez sciemment tué "..utils.fn(client.play_stats.mob_kills).." créature(s).\n"..
+    "- Vous êtes mort "..utils.fn(client.play_stats.deaths).." fois.")
 end, "", "voir ses statistiques de jeu"}
 
 -- server chat

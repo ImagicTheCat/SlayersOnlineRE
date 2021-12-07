@@ -31,6 +31,7 @@ CREATE TABLE users(
   stat_played BIGINT, -- seconds
   stat_traveled DOUBLE, -- meters (cells)
   stat_mob_kills BIGINT,
+  stat_deaths BIGINT,
   CONSTRAINT pk_users PRIMARY KEY(id),
   CONSTRAINT ux_pseudo UNIQUE INDEX(pseudo)
 );

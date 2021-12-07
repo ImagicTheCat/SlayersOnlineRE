@@ -164,7 +164,8 @@ function packet:LOGIN(data)
           creation_timestamp = user_row.creation_timestamp,
           played = user_row.stat_played,
           traveled = user_row.stat_traveled,
-          mob_kills = user_row.stat_mob_kills
+          mob_kills = user_row.stat_mob_kills,
+          deaths = user_row.stat_deaths
         }
         --- vars
         local rows = server.db:query("user/getVars", {user_id}).rows
@@ -1490,7 +1491,8 @@ function Client:save()
     armor_slot = self.armor_slot,
     stat_played = self.play_stats.played + os.time()-self.login_timestamp,
     stat_traveled = self.play_stats.traveled,
-    stat_mob_kills = self.play_stats.mob_kills
+    stat_mob_kills = self.play_stats.mob_kills,
+    stat_deaths = self.play_stats.deaths
   })
   -- vars
   local changed_vars = self.changed_vars
@@ -1722,6 +1724,8 @@ end
 
 -- override
 function Client:onDeath()
+  -- stat
+  self.play_stats.deaths = self.play_stats.deaths+1
   -- XP loss (1%)
   if self.map and self.map.data.type == "PvE" or self.map.data.type == "PvE-PvP" then
     local new_xp = math.floor(self.xp*0.99)
