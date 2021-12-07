@@ -232,6 +232,8 @@ function Mob:onDeath()
         if var_id >= 0 then
           client:setVariable("var", var_id, client:getVariable("var", var_id)+self.data.var_increment)
         end
+        -- stat kill count
+        client.play_stats.mob_kills = client.play_stats.mob_kills+1
         -- XP
         local xp_share = math.floor(xp*fraction)
         client:setXP(client.xp+xp_share)

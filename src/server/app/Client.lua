@@ -120,6 +120,7 @@ function packet:LOGIN(data)
       local ok = xpcall(function()
         -- accepted
         server.clients_by_id[user_id] = self
+        self.login_timestamp = os.time()
         self.pseudo = user_row.pseudo
         -- load skin infos
         self.allowed_skins = {}
@@ -158,6 +159,13 @@ function packet:LOGIN(data)
           local ok, config = pcall(msgpack.unpack, user_row.config)
           self:applyConfig(ok and config or {}, true)
         end
+        --- play stats
+        self.play_stats = {
+          creation_timestamp = user_row.creation_timestamp,
+          played = user_row.stat_played,
+          traveled = user_row.stat_traveled,
+          mob_kills = user_row.stat_mob_kills
+        }
         --- vars
         local rows = server.db:query("user/getVars", {user_id}).rows
         for _, row in ipairs(rows) do self.vars[row.id] = row.value end
@@ -1227,6 +1235,11 @@ function Client:onCellChange()
 end
 
 -- override
+function Client:onDistTraveled(dist)
+  self.play_stats.traveled = self.play_stats.traveled + utils.sanitizeInt(dist)/16
+end
+
+-- override
 function Client:onAttack(attacker)
   if self.ghost or attacker == self then return end
   if xtype.is(attacker, Mob) then -- mob
@@ -1474,7 +1487,10 @@ function Client:save()
     weapon_slot = self.weapon_slot,
     shield_slot = self.shield_slot,
     helmet_slot = self.helmet_slot,
-    armor_slot = self.armor_slot
+    armor_slot = self.armor_slot,
+    stat_played = self.play_stats.played + os.time()-self.login_timestamp,
+    stat_traveled = self.play_stats.traveled,
+    stat_mob_kills = self.play_stats.mob_kills
   })
   -- vars
   local changed_vars = self.changed_vars

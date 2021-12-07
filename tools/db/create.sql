@@ -4,7 +4,8 @@ CREATE TABLE users(
   salt BINARY(64),
   password BINARY(64),
   rank TINYINT UNSIGNED, -- user rank (permissions); 0: server, 10: normal player
-  ban_timestamp INTEGER, -- ban timestamp (end)
+  creation_timestamp BIGINT,
+  ban_timestamp BIGINT, -- ban timestamp (end)
   config BLOB, -- player config (msgpack)
   state BLOB, -- player state (msgpack)
   class TINYINT UNSIGNED, -- class index (1-based)
@@ -26,6 +27,10 @@ CREATE TABLE users(
   guild VARCHAR(100),
   guild_rank TINYINT UNSIGNED,
   guild_rank_title VARCHAR(100),
+  -- play stats
+  stat_played BIGINT, -- seconds
+  stat_traveled DOUBLE, -- meters (cells)
+  stat_mob_kills BIGINT,
   CONSTRAINT pk_users PRIMARY KEY(id),
   CONSTRAINT ux_pseudo UNIQUE INDEX(pseudo)
 );

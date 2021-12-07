@@ -372,6 +372,7 @@ function LivingEntity:setMoveForward(move_forward)
         local dx, dy = LivingEntity.orientationVector(self.orientation)
         local dist = math.floor(speed*dt) -- pixels traveled
         if dist > 0 and self.map then
+          self:onDistTraveled(dist)
           local nx, ny = self.x+dx*dist, self.y+dy*dist
           local dcx, dcy = nx-self.cx*16, ny-self.cy*16
           if dcx ~= 0 then dcx = dcx/math.abs(dcx) end
@@ -463,6 +464,9 @@ function LivingEntity:stopMovements(status)
 end
 
 function LivingEntity:isMoving() return self.move_timer ~= nil end
+
+-- dist: pixels
+function LivingEntity:onDistTraveled(dist) end
 
 -- (async)
 -- Move to entity. The targeted entity will be followed if moving.

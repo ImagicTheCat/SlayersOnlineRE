@@ -130,7 +130,7 @@ end
 -- sign: if passed/truthy, keep positive sign symbol
 -- return string
 function utils.fn(n, sign)
-  local formatted = n, k
+  local formatted, k = n
   repeat
     formatted, k = string.gsub(formatted, "^(-?%d+)(%d%d%d)", '%1 %2')
   until k == 0
