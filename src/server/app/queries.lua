@@ -1,9 +1,9 @@
 -- Prepared statements.
 -- (async)
 return function(db)
+  local utint = "TINYINT UNSIGNED"
   local uint = "INTEGER UNSIGNED"
   local ubint = "BIGINT UNSIGNED"
-  local utint = "TINYINT UNSIGNED"
   local pseudo_t, password_t = "VARCHAR(50)", "BINARY(64)"
   -- server
   db:prepare("server/getCommands", "SELECT command FROM server_commands ORDER BY id")
@@ -16,6 +16,7 @@ INSERT INTO users(
   salt,
   password,
   rank,
+  creation_timestamp,
   ban_timestamp,
   class,
   level,
@@ -35,19 +36,23 @@ INSERT INTO users(
   armor_slot,
   guild,
   guild_rank,
-  guild_rank_title
+  guild_rank_title,
+  stat_played,
+  stat_traveled,
+  stat_mob_kills
 ) VALUES(
   {pseudo}, {salt}, {password},
-  {rank}, 0, 1, 1, 100, 0, 0,
+  {rank}, {timestamp}, 0, 1, 1, 100, 0, 0,
   0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0,
-  "", 0, ""
+  "", 0, "", 0, 0, 0
 );
 ]], {
   pseudo = pseudo_t,
   salt = password_t,
   password = password_t,
-  rank = utint
+  rank = utint,
+  timestamp = "BIGINT"
 })
   db:prepare("user/deleteAccount", "DELETE FROM users WHERE pseudo = {1}", {pseudo_t})
   db:prepare("user/setRank", "UPDATE users SET rank = {rank} WHERE pseudo = {pseudo}", {rank = utint, pseudo = pseudo_t})
@@ -84,7 +89,10 @@ INSERT INTO users(
     weapon_slot = {weapon_slot},
     shield_slot = {shield_slot},
     helmet_slot = {helmet_slot},
-    armor_slot = {armor_slot}
+    armor_slot = {armor_slot},
+    stat_played = {stat_played},
+    stat_traveled = {stat_traveled},
+    stat_mob_kills = {stat_mob_kills}
     WHERE id = {user_id}
   ]], {
     level = utint,
@@ -102,6 +110,9 @@ INSERT INTO users(
     shield_slot = uint,
     helmet_slot = uint,
     armor_slot = uint,
+    stat_played = "BIGINT",
+    stat_traveled = "DOUBLE",
+    stat_mob_kills = "BIGINT",
     user_id = uint
   })
   db:prepare("user/pruneSkins", [[

@@ -467,6 +467,17 @@ commands.roll = {10, "client", function(self, client, args)
   end
 end, "[sides]", "lancer un dé"}
 
+commands.stats = {10, "client", function(self, client, args)
+  if client.status ~= "logged" then return end
+  local h_played = client.play_stats.played + os.time()-client.login_timestamp
+  h_played = math.floor(h_played/3600)
+  client:print("Statistiques:\n"..
+    "- Vous avez joué "..utils.fn(h_played).." heure(s) depuis le "..
+    os.date("!%d/%m/%Y", client.play_stats.creation_timestamp)..".\n"..
+    "- Vous avez parcouru "..utils.fn(math.floor(client.play_stats.traveled)).." mètre(s).\n"..
+    "- Vous avez sciemment tué "..utils.fn(client.play_stats.mob_kills).." créature(s).")
+end, "", "voir ses statistiques de jeu"}
+
 -- server chat
 commands.say = {0, "server", function(self, client, args)
   -- broadcast to all logged clients
@@ -494,7 +505,8 @@ commands.create_account = {0, "server", function(self, client, args)
         pseudo = args[2],
         salt = salt,
         password = password,
-        rank = tonumber(args[4]) or 10
+        rank = tonumber(args[4]) or 10,
+        timestamp = os.time()
       })
     end)
   end)
