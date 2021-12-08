@@ -493,7 +493,7 @@ function Client:__construct(cfg)
 
         local text = self.input_chat.text
         self.input_chat:set("")
-        self.input_chat:setHidden(false)
+        self.input_chat:setMode("plain")
         self.gui:setFocus()
         self.w_input_chat:setVisible(false)
         self.message_window:setVisible(false)
@@ -503,7 +503,7 @@ function Client:__construct(cfg)
       else -- chat
         self:inputChat(self.input_chat.text)
         self.input_chat:set("")
-        self.input_chat:setHidden(false)
+        self.input_chat:setMode("plain")
         self.gui:setFocus()
         self.w_input_chat:setVisible(false)
         self.chat_history:hide()
@@ -1277,7 +1277,7 @@ function Client:prompt(title, value, hidden)
 
   self:onResize(love.graphics.getDimensions())
   self.w_input_chat:setVisible(true)
-  if hidden then self.input_chat:setHidden(true) end
+  if hidden then self.input_chat:setMode("hidden") end
   self.input_chat:set(value or "")
   self.gui:setFocus(self.input_chat)
 

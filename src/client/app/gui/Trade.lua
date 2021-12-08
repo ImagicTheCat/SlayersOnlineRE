@@ -32,6 +32,7 @@ function Trade:__construct()
   self.gold_l = GridInterface(2,1, "vertical", "move-out")
   self.gold_l:set(0,0, Text("Or:"))
   self.gold_l_input = TextInput()
+  self.gold_l_input:setMode("integer")
   self.gold_l_input:set("0")
   self.gold_l:set(1,0, self.gold_l_input, true)
   self.gold_l.cx = 1
@@ -54,7 +55,7 @@ function Trade:__construct()
   end)
   self.content_l.grid:listen("move-out", function(grid, event, dx, dy)
     if dx == -1 then self.gui:setFocus(self.content_inv.grid)
-    elseif dy == 1 and not grid:isSelectable(grid.cx, grid.cy+1) then self.gui:setFocus(self.gold_l) end
+    elseif dy == 1 then self.gui:setFocus(self.gold_l) end
   end)
   self.gold_l:listen("move-out", function(grid, event, dx, dy)
     if dx == -1 then self.gui:setFocus(self.content_inv.grid)
@@ -87,7 +88,7 @@ function Trade:__construct()
   -- gold input handling (sanitize)
   self.gold_l_input:listen("change", function(input)
     local n = utils.clamp(tonumber(input.text) or 0, 0, client.stats.gold)
-    input:set(n)
+    input:set(tostring(n))
     client:setTradeGold(n) -- update trade gold
   end)
   -- item transactions

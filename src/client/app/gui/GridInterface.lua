@@ -114,7 +114,7 @@ function GridInterface:moveSelect(dx, dy)
         else
           self[cT] = self[Tc]-1
         end
-      elseif self[cT] == self[Tc] then
+      elseif self[cT] >= self[Tc] then
         if self.move_mode == "move-out" then
           self[cT] = old_cV
           self:emit("move-out", dx, dy); moved_out = true; break

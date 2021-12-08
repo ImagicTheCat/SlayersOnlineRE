@@ -3,7 +3,6 @@ local utils = require("app.utils")
 local Window = require("app.gui.Window")
 local GridInterface = require("app.gui.GridInterface")
 local Text = require("app.gui.Text")
-local TextInput = require("app.gui.TextInput")
 local Inventory = require("app.gui.Inventory")
 
 local Shop = class("Shop", Widget)

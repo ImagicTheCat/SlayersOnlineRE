@@ -1040,8 +1040,9 @@ end
 -- return true on success
 function Client:openTrade(player)
   if self.trade or player.trade then return end -- already trading check
-
-  -- init trading data
+  -- Init trade data.
+  -- The locked feature is important to prevent timing attacks (change of proposal
+  -- just before the other party accepts the trade).
   self.trade = {
     peer = player,
     inventory = Inventory(-1, -1, server.cfg.inventory_size),
@@ -1054,7 +1055,6 @@ function Client:openTrade(player)
     gold = 0,
     locked = false
   }
-
   -- bind callbacks: update trade items for each peer
   local function update_item(inv, id, pleft, pright)
     local data
@@ -1064,17 +1064,14 @@ function Client:openTrade(player)
     pleft:sendPacket(net.TRADE_LEFT_UPDATE_ITEMS, {{id,data}})
     pright:sendPacket(net.TRADE_RIGHT_UPDATE_ITEMS, {{id,data}})
   end
-
   function self.trade.inventory.onItemUpdate(inv, id)
     update_item(inv, id, self, player)
   end
   function player.trade.inventory.onItemUpdate(inv, id)
     update_item(inv, id, player, self)
   end
-
   self:sendPacket(net.TRADE_OPEN, {title_l = self.pseudo, title_r = player.pseudo})
   player:sendPacket(net.TRADE_OPEN, {title_l = player.pseudo, title_r = self.pseudo})
-
   return true
 end
 
