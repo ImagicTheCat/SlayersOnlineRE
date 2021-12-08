@@ -85,6 +85,7 @@ local function thread(async_sz, ch_in, ch_out, db, user, password, host, port)
       stmt = statements[id] -- update statement reference
       ok = xpcall(stmt.handle.exec, error_handler, stmt.handle)
     end
+    if not ok then error("statement execute failed") end
     -- fetch result
     local r = {
       affected_rows = stmt.handle:affected_rows(),
@@ -116,6 +117,7 @@ local function thread(async_sz, ch_in, ch_out, db, user, password, host, port)
       connect()
       ok = xpcall(con.query, error_handler, con, query)
     end
+    if not ok then error("query failed") end
   end
   -- Connect to DB.
   connect()
