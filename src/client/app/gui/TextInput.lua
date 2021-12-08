@@ -1,4 +1,5 @@
 local utf8 = require("utf8")
+local utils = require("app.utils")
 local Widget = require("ALGUI.Widget")
 
 local TextInput = class("TextInput", Widget)
@@ -27,8 +28,10 @@ end
 local function text_input(self, event, data) self:input(data) end
 
 local function update_display(self)
-  if self.hidden then
+  if self.mode == "hidden" then
     self.display_text:set(string.rep("•", utf8.len(self.text)))
+  elseif self.mode == "integer" then
+    self.display_text:set(utils.fn(tonumber((self.text:gsub("%s", ""))) or 0))
   else
     self.display_text:set(self.text)
   end
@@ -39,7 +42,7 @@ end
 function TextInput:__construct()
   Widget.__construct(self)
   self.text = ""
-  self.hidden = false
+  self.mode = "plain"
   self.display_text = love.graphics.newText(love.graphics.getFont())
   self:listen("text-input", text_input)
   self:listen("key-press", key_press)
@@ -63,25 +66,31 @@ function TextInput:preUnbind()
   self.gui:unlisten("font-update", self.font_update)
 end
 
-function TextInput:setHidden(hidden)
-  if self.hidden ~= hidden then
-    self.hidden = hidden
+-- mode: "plain", "hidden", "integer"
+function TextInput:setMode(mode)
+  if self.mode ~= mode then
+    self.mode = mode
     update_display(self)
   end
 end
 
 -- data: text
 function TextInput:input(data)
+  if self.mode == "integer" and not data:match("^%d*$") then return end
+  -- update
   self.text = self.text..data
   update_display(self)
   self:emit("change")
 end
 
 function TextInput:set(text)
-  local changed = (self.text ~= text)
-  self.text = text
-  update_display(self)
-  if changed then self:emit("change") end
+  if self.mode == "integer" and not text:match("^%d*$") then text = "0" end
+  -- update
+  if self.text ~= text then
+    self.text = text
+    update_display(self)
+    self:emit("change")
+  end
 end
 
 -- override
