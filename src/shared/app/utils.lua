@@ -80,35 +80,6 @@ function utils.clone(t, depth)
   else return t end
 end
 
--- pure Lua gsub (work with coroutines)
--- callback(...): pass captures, should return replacement value
-function utils.gsub(str, pattern, callback)
-  local parts = {}
-
-  local cursor = 1
-  local pb, pe
-  repeat
-    local rfind = {string.find(str, pattern, cursor)}
-    pb, pe = rfind[1], rfind[2]
-    if not pb then -- not found
-      pb = string.len(str)+1
-      pe = pb
-    end
-
-    -- between part: cursor to found
-    table.insert(parts, string.sub(str, cursor, pb-1))
-
-    -- found part
-    if pb <= string.len(str) then
-      table.insert(parts, callback(unpack(rfind, 3)) or found_part)
-    end
-
-    cursor = pe+1
-  until cursor > string.len(str)
-
-  return table.concat(parts)
-end
-
 -- dump value (deep)
 -- v: value
 -- level: (optional) current level (default: 0)
