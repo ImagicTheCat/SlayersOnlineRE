@@ -68,20 +68,17 @@ function Trade:__construct()
   end)
   -- gold input handling
   self.gold_l:listen("focus-update", function(grid, event, state)
-    if not self.locked then self.gold_l_input:emit("focus-update", state) end
+    self.gold_l_input:emit("focus-update", state)
   end)
   self.gold_l:listen("text-input", function(grid, event, text)
-    if self.locked then return end -- cancel
     local widget = grid:getSelected()
     widget:emit("text-input", text)
   end)
   self.gold_l:listen("key-press", function(grid, event, keycode, scancode, isrepeat)
-    if self.locked then return end -- cancel
     local widget = grid:getSelected()
     if xtype.is(widget, TextInput) then widget:emit("key-press", keycode, scancode, isrepeat) end
   end)
   self.gold_l:listen("control-press", function(grid, event, id)
-    if self.locked then return end -- cancel
     local widget = grid:getSelected()
     if xtype.is(widget, TextInput) then widget:emit("control-press", id) end
   end)
@@ -93,18 +90,16 @@ function Trade:__construct()
   end)
   -- item transactions
   self.content_inv.grid:listen("cell-select", function()
-    if self.locked then return end -- cancel
     local item = self.content_inv:getSelection()
     if item then client:putTradeItem(item[1]) end
   end)
   self.content_l.grid:listen("cell-select", function()
-    if self.locked then return end -- cancel
     local item = self.content_l:getSelection()
     if item then client:takeTradeItem(item[1]) end
   end)
   -- accept/lock trade handling
   self.menu:listen("cell-select", function(grid, event, cx, cy)
-    client:lockTrade()
+    client:stepTrade()
   end)
   -- close handling
   local function control_press_close(widget, event, id)
@@ -115,18 +110,39 @@ function Trade:__construct()
   self.menu:listen("control-press", control_press_close)
   self.gold_l:listen("control-press", control_press_close)
   -- init
-  self:updateLock(false)
-  self:updatePeerLock(false)
+  self:updateStep("initiated")
+  self:updatePeerStep("initiated")
 end
 
-function Trade:updateLock(locked)
-  self.locked = locked
-  self.menu:set(0,0, Text(locked and {{0,1,0.5}, "Accepté"} or {{1,1,1}, "Accepter"}),
-    not locked)
+local function post_step_update(self)
+  if self.step == "submitted" and
+      (self.peer_step == "submitted" or self.peer_step == "accepted") then
+    self.menu:set(0,0, Text("Accepter"), true)
+  end
 end
 
-function Trade:updatePeerLock(locked)
-  self.menu:set(1,0, Text(locked and {{0,1,0.5}, "Accepté"} or "En attente"))
+function Trade:updateStep(step)
+  self.step = step
+  if step == "initiated" then
+    self.menu:set(0,0, Text("Proposer"), true)
+  elseif step == "submitted" then
+    self.menu:set(0,0, Text({{0,1,0.5}, "Proposé"}))
+  elseif step == "accepted" then
+    self.menu:set(0,0, Text({{0,1,0.5}, "Accepté"}))
+  end
+  post_step_update(self)
+end
+
+function Trade:updatePeerStep(step)
+  self.peer_step = step
+  if step == "initiated" then
+    self.menu:set(1,0, Text("En attente..."), false)
+  elseif step == "submitted" then
+    self.menu:set(1,0, Text({{0,1,0.5}, "Proposé"}))
+  elseif step == "accepted" then
+    self.menu:set(1,0, Text({{0,1,0.5}, "Accepté"}))
+  end
+  post_step_update(self)
 end
 
 -- override

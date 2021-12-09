@@ -683,29 +683,37 @@ function packet:TRADE_SEEK(data)
 end
 function packet:TRADE_SET_GOLD(data)
   if self.status ~= "logged" then return end
-  if self.trade and not self.trade.locked then
-    self:setTradeGold(tonumber(data) or 0)
-  end
+  if self.trade then self:setTradeGold(tonumber(data) or 0) end
 end
 function packet:TRADE_PUT_ITEM(data)
   if self.status ~= "logged" then return end
   local id = tonumber(data) or 0
-  if self.trade and not self.trade.locked and self.inventory:take(id) then
+  if self.trade and self.inventory:take(id) then
     self.trade.inventory:put(id)
-    self.trade.peer:setTradeLock(false)
+    self:setTradeStep("initiated")
+    self.trade.peer:setTradeStep("initiated")
   end
 end
 function packet:TRADE_TAKE_ITEM(data)
   if self.status ~= "logged" then return end
   local id = tonumber(data) or 0
-  if self.trade and not self.trade.locked and self.trade.inventory:take(id) then
+  if self.trade and self.trade.inventory:take(id) then
     self.inventory:put(id)
-    self.trade.peer:setTradeLock(false)
+    self:setTradeStep("initiated")
+    self.trade.peer:setTradeStep("initiated")
   end
 end
-function packet:TRADE_LOCK(data)
+function packet:TRADE_STEP()
   if self.status ~= "logged" then return end
-  self:setTradeLock(true)
+  if self.trade then
+    local peer = self.trade.peer
+    if self.trade.step == "initiated" then
+      self:setTradeStep("submitted")
+    elseif self.trade.step == "submitted" and
+        (peer.trade.step == "submitted" or peer.trade.step == "accepted") then
+      self:setTradeStep("accepted")
+    end
+  end
 end
 function packet:TRADE_CLOSE(data)
   if self.status ~= "logged" then return end
@@ -1039,7 +1047,7 @@ end
 -- open trade with another player
 -- return true on success
 function Client:openTrade(player)
-  if self.trade or player.trade then return end -- already trading check
+  if self.trade or player.trade then return end -- already in a trade
   -- Init trade data.
   -- The locked feature is important to prevent timing attacks (change of proposal
   -- just before the other party accepts the trade).
@@ -1047,13 +1055,13 @@ function Client:openTrade(player)
     peer = player,
     inventory = Inventory(-1, -1, server.cfg.inventory_size),
     gold = 0,
-    locked = false
+    step = "initiated"
   }
   player.trade = {
     peer = self,
     inventory = Inventory(-1, -1, server.cfg.inventory_size),
     gold = 0,
-    locked = false
+    step = "initiated"
   }
   -- bind callbacks: update trade items for each peer
   local function update_item(inv, id, pleft, pright)
@@ -1075,33 +1083,36 @@ function Client:openTrade(player)
   return true
 end
 
-function Client:setTradeLock(locked)
-  if self.trade.locked ~= locked then
+-- step: "initiated", "submitted", "accepted"
+function Client:setTradeStep(step)
+  if self.trade.step ~= step then
     local peer = self.trade.peer
-    self.trade.locked = locked
-    self:sendPacket(net.TRADE_LOCK, locked)
-    peer:sendPacket(net.TRADE_PEER_LOCK, locked)
-
-    -- check both locked: complete transaction
-    if locked and peer.trade.locked then
-      -- gold
-      peer:setGold(peer.gold-peer.trade.gold)
-      self:setGold(self.gold+peer.trade.gold)
-      self:setGold(self.gold-self.trade.gold)
-      peer:setGold(peer.gold+self.trade.gold)
-      -- items
-      for id, amount in pairs(peer.trade.inventory.items) do
-        for i=1,amount do self.inventory:put(id) end
+    self.trade.step = step
+    self:sendPacket(net.TRADE_STEP, step)
+    peer:sendPacket(net.TRADE_PEER_STEP, step)
+    -- both accepted: complete transaction
+    if self.trade.step == "accepted" and peer.trade.step == "accepted" then
+      if self.gold >= self.trade.gold and peer.gold >= peer.trade.gold then
+        -- gold
+        peer:setGold(peer.gold-peer.trade.gold)
+        self:setGold(self.gold+peer.trade.gold)
+        self:setGold(self.gold-self.trade.gold)
+        peer:setGold(peer.gold+self.trade.gold)
+        -- items
+        for id, amount in pairs(peer.trade.inventory.items) do
+          for i=1,amount do self.inventory:put(id) end
+        end
+        for id, amount in pairs(self.trade.inventory.items) do
+          for i=1,amount do peer.inventory:put(id) end
+        end
+        -- close
+        local p, msg = Client.makePacket(net.TRADE_CLOSE), "Échange effectué."
+        self:send(p); peer:send(p)
+        self:print(msg); peer:print(msg)
+        self.trade, peer.trade = nil, nil
+      else
+        self:cancelTrade()
       end
-      for id, amount in pairs(self.trade.inventory.items) do
-        for i=1,amount do peer.inventory:put(id) end
-      end
-      -- close
-      local p, msg = Client.makePacket(net.TRADE_CLOSE), "Échange effectué."
-      self:send(p); peer:send(p)
-      self:print(msg)
-      peer:print(msg)
-      self.trade, peer.trade = nil, nil
     end
   end
 end
@@ -1110,7 +1121,8 @@ function Client:setTradeGold(gold)
   if self.trade.gold ~= gold then
     self.trade.gold = gold
     self.trade.peer:sendPacket(net.TRADE_SET_GOLD, gold)
-    self.trade.peer:setTradeLock(false)
+    self:setTradeStep("initiated")
+    self.trade.peer:setTradeStep("initiated")
   end
 end
 
@@ -1124,11 +1136,10 @@ function Client:cancelTrade()
     for id, amount in pairs(peer.trade.inventory.items) do
       for i=1,amount do peer.inventory:put(id) end
     end
-
+    -- close
     local p, msg = Client.makePacket(net.TRADE_CLOSE), "Échange annulé."
     self:send(p); peer:send(p)
-    self:print(msg)
-    peer:print(msg)
+    self:print(msg); peer:print(msg)
     self.trade, peer.trade = nil, nil
   end
 end
@@ -1467,7 +1478,10 @@ end
 
 -- (async)
 function Client:save()
-  if not self.user_id or self.running_event then return false end
+  -- Data consistency checks.
+  -- Event execution and player trades are transactions which modify the state
+  -- and may rollback.
+  if not self.user_id or self.running_event or self.trade then return false end
   -- base data
   server.db:query("user/setData", {
     user_id = self.user_id,
