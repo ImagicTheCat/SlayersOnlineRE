@@ -263,8 +263,8 @@ end
 function packet:TRADE_SET_GOLD(data)
   self.trade.gold_r:set(1,0, Text(utils.fn(data)))
 end
-function packet:TRADE_LOCK(data) self.trade:updateLock(data) end
-function packet:TRADE_PEER_LOCK(data) self.trade:updatePeerLock(data) end
+function packet:TRADE_STEP(step) self.trade:updateStep(step) end
+function packet:TRADE_PEER_STEP(step) self.trade:updatePeerStep(step) end
 function packet:TRADE_CLOSE(data)
   self.trade:setVisible(false)
   -- clear
@@ -274,8 +274,8 @@ function packet:TRADE_CLOSE(data)
   self.trade.content_r:updateContent()
   self.trade.gold_r:set(1,0, Text("0"))
   self.trade.gold_l_input:set("0")
-  self.trade:updateLock(false)
-  self.trade:updatePeerLock(false)
+  self.trade:updateStep("initiated")
+  self.trade:updatePeerStep("initiated")
   self.gui:setFocus()
 end
 function packet:DIALOG_QUERY(data)
@@ -1639,8 +1639,8 @@ function Client:takeTradeItem(id)
 end
 
 -- lock/accept trade
-function Client:lockTrade()
-  self:sendPacket(net.TRADE_LOCK)
+function Client:stepTrade()
+  self:sendPacket(net.TRADE_STEP)
 end
 
 function Client:closeTrade()
