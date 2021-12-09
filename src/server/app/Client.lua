@@ -1186,7 +1186,7 @@ function Client:onDisconnect()
   self:cancelTrade()
   async(function()
     -- save
-    local ok = server.db:transactionWrap(function() self:save() end)
+    local ok = server.db:transactionWrap(function() assert(self:save()) end)
     print("client save "..tostring(self.peer)..": "..(ok and "commited" or "aborted"))
     -- remove player
     if self.map then
