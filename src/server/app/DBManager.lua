@@ -233,7 +233,7 @@ function DBManager:close()
     self.ch_in:push(nil) -- end thread loop
     self.async_watcher:stop(ev.Loop.default)
     local status, err = self.thread:wait()
-    if err then error("DB thread: "..err) end
+    if err then io.stderr:write(debug.traceback("DB thread: "..err)) end
   end
 end
 
