@@ -724,10 +724,10 @@ end
 function command_functions:Teleport(map_name, cx, cy)
   local cx = tonumber(cx)
   local cy = tonumber(cy)
-
   if map_name and cx and cy then
     local map = server:getMap(map_name)
     if map then
+      self.client.prevent_next_contact = true -- prevent teleport loop
       map:addEntity(self.client)
       self.client:teleport(cx*16, cy*16)
     end
