@@ -1233,7 +1233,7 @@ function Client:onCellChange()
       -- event contact check
       if not self.ghost and not self.prevent_next_contact then
         for entity in pairs(cell) do
-          if xtype.is(entity, Event) and entity.trigger_contact and self:perceivesRealm(entity) then
+          if xtype.is(entity, Event) and entity:hasConditionFlag("contact") and self:perceivesRealm(entity) then
             entity:trigger("contact")
           end
         end
@@ -1299,7 +1299,8 @@ function Client:interact()
     -- event interact check
     local entities = self:raycastEntities(2)
     for _, entity in ipairs(entities) do
-      if xtype.is(entity, Event) and entity.trigger_interact and self:perceivesRealm(entity) then
+      if xtype.is(entity, Event) and
+          entity:hasConditionFlag("interact") and self:perceivesRealm(entity) then
         entity:trigger("interact")
         break
       end
