@@ -1210,7 +1210,6 @@ end
 function Client:onMapChange()
   Player.onMapChange(self)
   if self.map then -- join map
-    self.prevent_next_contact = true -- prevent cell contact on map join
     -- send map
     self:sendPacket(net.MAP, {map = self.map:serializeNet(self), id = self.id})
     self:setMapEffect(self.map.data.effect)
