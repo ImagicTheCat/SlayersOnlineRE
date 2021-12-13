@@ -985,13 +985,6 @@ function Event:__construct(client, data, page_index)
   self.data = data -- event data
   self.page_index = page_index or self:selectPage()
   self.page = self.data.pages[self.page_index]
-  if self.page.conditions_flags then
-    self.trigger_auto = self.page.conditions_flags.auto
-    self.trigger_auto_once = self.page.conditions_flags.auto_once
-    self.trigger_attack = self.page.conditions_flags.attack
-    self.trigger_contact = self.page.conditions_flags.contact
-    self.trigger_interact = self.page.conditions_flags.interact
-  end
   self.name = self.page.name
   self:setCharaset({
     path = string.sub(self.page.set, 9), -- remove Chipset/ part
@@ -1028,6 +1021,10 @@ function Event:checkConditions(page)
   return false
 end
 
+function Event:hasConditionFlag(flag)
+  return self.page.conditions_flags and self.page.conditions_flags[flag]
+end
+
 -- search for a valid page
 -- return page index
 function Event:selectPage()
@@ -1047,7 +1044,7 @@ end
 -- (async) execute event script commands
 -- condition: type triggered
 function Event:execute(condition)
-  --print("EXECUTE", condition, self.map.id, self.cx, self.cy, self.page_index)
+--  print("EXECUTE", condition, self.map.id, self.cx, self.cy, self.page_index)
   if condition == "interact" then
     local atype = self.animation_type
     if atype == "character-random" or atype == "static-character" then
@@ -1193,7 +1190,7 @@ end
 
 -- override
 function Event:onAttack(attacker)
-  if xtype.is(attacker, Client) and self.trigger_attack then -- event
+  if xtype.is(attacker, Client) and self:hasConditionFlag("attack") then -- event
     self:trigger("attack")
     return true
   end
@@ -1206,7 +1203,7 @@ function Event:onMapChange()
     -- reference event by name
     self.client.events_by_name[self.name] = self
     -- auto trigger
-    if self.trigger_auto then
+    if self:hasConditionFlag("auto") then
       self.trigger_task = true
       -- task iteration
       local function iteration()
@@ -1219,7 +1216,7 @@ function Event:onMapChange()
       end
       self:trigger("auto")
       iteration()
-    elseif self.trigger_auto_once then
+    elseif self:hasConditionFlag("auto-once") then
       self:trigger("auto-once")
     end
   else -- removed from map
@@ -1228,7 +1225,7 @@ function Event:onMapChange()
     -- unreference trigger
     self.client.triggered_events[self] = nil
     -- auto trigger
-    if self.trigger_auto then
+    if self:hasConditionFlag("auto") then
       self.trigger_task = nil
     end
   end
