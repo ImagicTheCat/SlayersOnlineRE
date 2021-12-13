@@ -157,7 +157,7 @@ end
 function Shop:close()
   self:setVisible(false)
   self.gui:setFocus()
-  self:trigger("close")
+  self:emit("close")
 end
 
 -- override
