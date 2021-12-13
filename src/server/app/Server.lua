@@ -1033,7 +1033,7 @@ function Server:save()
       for _, client in pairs(utils.clone(self.clients, 1)) do client:save() end
     end)
     local elapsed = clock()-start_time
-    print("server save: "..(ok and "commited" or "aborted").." ("..utils.round(elapsed, 3).."s)")
+    print("server save: "..(ok and "committed" or "aborted").." ("..utils.round(elapsed, 3).."s)")
     self.saving = false
   end)
   return true

@@ -1187,7 +1187,7 @@ function Client:onDisconnect()
   async(function()
     -- save
     local ok = server.db:transactionWrap(function() assert(self:save()) end)
-    print("client save "..tostring(self.peer)..": "..(ok and "commited" or "aborted"))
+    print("client save "..tostring(self.peer)..": "..(ok and "committed" or "aborted"))
     -- remove player
     if self.map then
       self.map:removeEntity(self)
