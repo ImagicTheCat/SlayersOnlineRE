@@ -1287,7 +1287,7 @@ function Client:serializeNet()
   data.pseudo = self.pseudo
   data.guild = self.guild
   data.alignment = self.alignment
-  data.has_group = not not self.group
+  data.has_group = self.group ~= nil
   return data
 end
 
@@ -1692,7 +1692,7 @@ function Client:setGroup(id)
     end
   end
   -- global group flag update
-  self:broadcastPacket("group-flag", not not self.group)
+  self:broadcastPacket("group-flag", self.group ~= nil)
 end
 
 -- send group update packet (join/data)

@@ -17,20 +17,20 @@ local ALIGN_COLORS = {
 
 function Player:__construct(data)
   LivingEntity.__construct(self, data)
-
+  -- chat
   self.chat_gui = GUI(client, true)
   self.chat_w = Window("both")
   self.chat_text = Text("", 400)
   self.chat_w.content:add(self.chat_text)
   self.chat_gui:add(self.chat_w)
-
+  -- misc
   self.pseudo = data.pseudo
   self.guild = data.guild
   self.alignment = data.alignment
   self.name_tag = love.graphics.newText(client.font)
-  self:updateNameTag()
   self.visible = true
   self.has_group = data.has_group
+  self:updateNameTag()
 end
 
 function Player:updateNameTag()
