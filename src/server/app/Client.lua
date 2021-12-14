@@ -1160,33 +1160,37 @@ function Client:kick(reason)
   self.peer:disconnect_later()
 end
 
+-- (async)
+-- Handle disconnection.
 function Client:onDisconnect()
-  self.status = "disconnecting"
-  -- Rollback event effects on disconnection. Effectively handles interruption
-  -- by server shutdown too.
-  local event = self.running_event
-  if event then
-    -- Make sure the event coroutine will not continue its execution before the
-    -- rollback by disabling async tasks. The server guarantees that no more
-    -- packets from the client will be received and we can ignore this kind of task.
-    if self.move_timer then self.move_timer:remove() end
-    event.wait_task = nil
-    -- rollback
-    event:rollback()
-    self.running_event = nil
-  end
-  -- disconnect variable behavior
-  local map_data = (self.map and self.map.data)
-  if map_data and map_data.si_v >= 0 then
-    if self:getVariable("var", map_data.si_v) >= map_data.v_c then
-      server:setVariable(map_data.svar, map_data.sval)
+  if self.status == "logged" then
+    self.status = "disconnecting"
+    -- Rollback event effects on disconnection. Effectively handles interruption
+    -- by server shutdown too.
+    local event = self.running_event
+    if event then
+      -- Make sure the event coroutine will not continue its execution before the
+      -- rollback by disabling async tasks. The server guarantees that no more
+      -- packets from the client will be received and we can ignore this kind of task.
+      if self.move_timer then self.move_timer:remove() end
+      event.wait_task = nil
+      -- rollback
+      event:rollback()
+      self.running_event = nil
     end
-  end
-  self:setGroup(nil)
-  self:cancelTrade()
-  async(function()
+    -- disconnect variable behavior
+    local map_data = (self.map and self.map.data)
+    if map_data and map_data.si_v >= 0 then
+      if self:getVariable("var", map_data.si_v) >= map_data.v_c then
+        server:setVariable(map_data.svar, map_data.sval)
+      end
+    end
+    self:setGroup(nil)
+    self:cancelTrade()
     -- save
-    local ok = server.db:transactionWrap(function() assert(self:save()) end)
+    local save_ok
+    local ok = server.db:transactionWrap(function() save_ok = self:save() end)
+    ok = ok and save_ok
     print("client save "..tostring(self.peer)..": "..(ok and "committed" or "aborted"))
     -- remove player
     if self.map then
@@ -1198,12 +1202,10 @@ function Client:onDisconnect()
     self.chat_quota:stop()
     -- unreference
     if self.pseudo then server.clients_by_pseudo[self.pseudo:lower()] = nil end
-    if self.user_id then
-      server.clients_by_id[self.user_id] = nil
-      self.user_id = nil
-    end
+    server.clients_by_id[self.user_id] = nil
+    self.user_id = nil
     self.status = "disconnected"
-  end)
+  end
 end
 
 -- override
@@ -1477,11 +1479,12 @@ function Client:checkItemRequirements(item)
 end
 
 -- (async)
+-- The client's status must be "logged" or "disconnecting".
 function Client:save()
   -- Data consistency checks.
   -- Event execution and player trades are transactions which modify the state
   -- and may rollback.
-  if not self.user_id or self.running_event or self.trade then return false end
+  if self.running_event or self.trade then return false end
   -- base data
   server.db:query("user/setData", {
     user_id = self.user_id,
