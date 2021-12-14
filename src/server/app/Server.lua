@@ -936,7 +936,7 @@ function Server:__construct(cfg)
   self.project.tilesets = {} -- map of id => tileset data
   print("compile spells...")
   compileSpells(self)
-  print("spell compiled")
+  print("spells compiled")
   -- make directories
   os.execute("mkdir -p cache/maps/")
   -- load maps data
