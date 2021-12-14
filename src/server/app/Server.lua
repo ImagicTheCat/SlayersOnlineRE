@@ -997,7 +997,7 @@ function Server:__construct(cfg)
       self:tick(dt)
     end)
   end
-  self.save_timer = itimer(self.cfg.save_period, function() self:save() end)
+  self.save_timer = itimer(self.cfg.save_period, function() async(self.save, self) end)
   -- event/timer tick
   local event_period = 0.03*1/self.cfg.event_frequency_factor
   local event_timer_ticks = math.floor(1/self.cfg.event_frequency_factor)
@@ -1015,57 +1015,57 @@ function Server:__construct(cfg)
   end)
 end
 
--- (reentrant)
+-- (async, reentrant)
 -- return boolean status (success/failure)
 function Server:save()
+  -- guard
   if self.saving then return false end
   self.saving = true
-  async(function()
-    local start_time = clock()
-    local ok = self.db:transactionWrap(function()
-      -- save vars (clone for concurrent access)
-      local changed_vars = self.changed_vars
-      self.changed_vars = {}
-      for var in pairs(changed_vars) do
-        self.db:query("server/setVar", {var, self.vars[var]})
-      end
-      -- save clients
-      for _, client in pairs(utils.clone(self.clients, 1)) do client:save() end
-    end)
-    local elapsed = clock()-start_time
-    print("server save: "..(ok and "committed" or "aborted").." ("..utils.round(elapsed, 3).."s)")
-    self.saving = false
+
+  local start_time = clock()
+  local ok = self.db:transactionWrap(function()
+    -- save vars (clone for concurrent access)
+    local changed_vars = self.changed_vars
+    self.changed_vars = {}
+    for var in pairs(changed_vars) do
+      self.db:query("server/setVar", {var, self.vars[var]})
+    end
+    -- save clients
+    for _, client in pairs(utils.clone(self.clients, 1)) do
+      if client.status == "logged" then client:save() end
+    end
   end)
+  local elapsed = clock()-start_time
+  print("server save: "..(ok and "committed" or "aborted").." ("..utils.round(elapsed, 3).."s)")
+
+  -- end guard
+  self.saving = false
   return true
 end
 
--- async
+-- (async)
 function Server:close()
   -- guard
-  if self.task_close then return self.task_close:wait() end
-  self.task_close = async()
+  if self.closing then return end
+  self.closing = true
 
   self.event_timer:remove()
   self.minute_timer:remove()
   self.console_flags.running = false
   self.save_timer:remove()
-
   -- disconnect clients
   for peer, client in pairs(self.clients) do
     peer:disconnect()
     client:onDisconnect()
   end
-
   self:save()
   self.host:flush()
   self.db:close()
   self.tick_timer:remove()
-
   print("shutdown.")
 
   -- end guard
-  self.task_close()
-  self.task_close = nil
+  self.closing = nil
 end
 
 function Server:tick(dt)
@@ -1094,15 +1094,12 @@ function Server:tick(dt)
       event.peer:throttle_configure(5000, 1, 0)
       local client = Client(event.peer)
       self.clients[event.peer] = client
-
       print("client connection "..tostring(event.peer))
     elseif event.type == "disconnect" then
       local client = self.clients[event.peer]
-
-      client:onDisconnect()
       self.clients[event.peer] = nil
-
       print("client disconnection "..tostring(event.peer))
+      async(function() client:onDisconnect() end)
     end
 
     event = self.host:service()
