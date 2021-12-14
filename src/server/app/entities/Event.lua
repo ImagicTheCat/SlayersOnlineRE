@@ -1176,7 +1176,7 @@ local function AI_thread(self)
     end
     wait(utils.randf(1,5)/math.abs(self.speed) *
       (self.animation_type == "character-follow" and 0.25 or 1.5) *
-      self.speed < 0 and 0.5 or 1)
+      (self.speed < 0 and 0.5 or 1))
   end
   self.ai_running = nil
 end
