@@ -132,7 +132,11 @@ function caster_vars:Vie(value, state)
       -- handle Bingo Book and last player hit
       if xtype.is(state.caster, Client) then
         if xtype.is(self, Mob) then self:addToBingoBook(state.caster, -delta)
-        elseif xtype.is(self, Client) then self.last_attacker = state.caster end
+        elseif xtype.is(self, Client) then
+          self.last_attacker = state.caster
+          state.caster:setAlignment(state.caster.alignment-5)
+          state.caster:emitHint("-5 alignement")
+        end
       end
     end
     self:setHealth(value)
