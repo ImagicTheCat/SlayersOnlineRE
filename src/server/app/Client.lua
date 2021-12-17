@@ -551,30 +551,33 @@ function packet:ITEM_EQUIP(data)
       append(new_ch, deltas, "max_damage", "Dégâts max")
 
       local dialog_r = self:requestDialog({"Équiper ", {0,1,0.5} , item.name, {1,1,1}, " ?\n"..table.concat(fdeltas, "\n")}, {"Équiper"}, true)
-      -- equip item
-      if dialog_r == 1 and self:checkItemRequirements(item) and self.inventory:take(id,true) then
+      -- Equip item.
+      -- This lets the inventory increase beyond limits to avoid complexity/bugs.
+      if dialog_r == 1 and self:checkItemRequirements(item) and
+          self.inventory:take(id, true) then
+        --
         local done = true
         if item.type == "one-handed-weapon" then
-          if self.weapon_slot > 0 then self.inventory:put(self.weapon_slot) end
+          if self.weapon_slot > 0 then self.inventory:rawput(self.weapon_slot) end
           self.weapon_slot = id
         elseif item.type == "two-handed-weapon" then
-          if self.weapon_slot > 0 then self.inventory:put(self.weapon_slot) end
-          if self.shield_slot > 0 then self.inventory:put(self.shield_slot) end
+          if self.weapon_slot > 0 then self.inventory:rawput(self.weapon_slot) end
+          if self.shield_slot > 0 then self.inventory:rawput(self.shield_slot) end
           self.weapon_slot = id
           self.shield_slot = 0
         elseif item.type == "helmet" then
-          if self.helmet_slot > 0 then self.inventory:put(self.helmet_slot) end
+          if self.helmet_slot > 0 then self.inventory:rawput(self.helmet_slot) end
           self.helmet_slot = id
         elseif item.type == "armor" then
-          if self.armor_slot > 0 then self.inventory:put(self.armor_slot) end
+          if self.armor_slot > 0 then self.inventory:rawput(self.armor_slot) end
           self.armor_slot = id
         elseif item.type == "shield" then
-          if self.shield_slot > 0 then self.inventory:put(self.shield_slot) end
+          if self.shield_slot > 0 then self.inventory:rawput(self.shield_slot) end
           self.shield_slot = id
           -- check for two-handed weapon
           local weapon = server.project.objects[self.weapon_slot]
           if weapon and weapon.type == "two-handed-weapon" then
-            self.inventory:put(self.weapon_slot)
+            self.inventory:rawput(self.weapon_slot)
             self.weapon_slot = 0
           end
         else done = false end
@@ -689,7 +692,7 @@ function packet:TRADE_PUT_ITEM(data)
   if self.status ~= "logged" then return end
   local id = tonumber(data) or 0
   if self.trade and self.inventory:take(id) then
-    self.trade.inventory:put(id)
+    self.trade.inventory:rawput(id)
     self:setTradeStep("initiated")
     self.trade.peer:setTradeStep("initiated")
   end
@@ -698,7 +701,7 @@ function packet:TRADE_TAKE_ITEM(data)
   if self.status ~= "logged" then return end
   local id = tonumber(data) or 0
   if self.trade and self.trade.inventory:take(id) then
-    self.inventory:put(id)
+    self.inventory:rawput(id)
     self:setTradeStep("initiated")
     self.trade.peer:setTradeStep("initiated")
   end
@@ -1092,7 +1095,10 @@ function Client:setTradeStep(step)
     peer:sendPacket(net.TRADE_PEER_STEP, step)
     -- both accepted: complete transaction
     if self.trade.step == "accepted" and peer.trade.step == "accepted" then
-      if self.gold >= self.trade.gold and peer.gold >= peer.trade.gold then
+      -- check transaction
+      if self.gold >= self.trade.gold and peer.gold >= peer.trade.gold and
+          self.inventory:getSpace() >= peer.trade.inventory:getAmount() and
+          peer.inventory:getSpace() >= self.trade.inventory:getAmount() then
         -- gold
         peer:setGold(peer.gold-peer.trade.gold)
         self:setGold(self.gold+peer.trade.gold)
@@ -1100,10 +1106,10 @@ function Client:setTradeStep(step)
         peer:setGold(peer.gold+self.trade.gold)
         -- items
         for id, amount in pairs(peer.trade.inventory.items) do
-          for i=1,amount do self.inventory:put(id) end
+          for i=1,amount do self.inventory:rawput(id) end
         end
         for id, amount in pairs(self.trade.inventory.items) do
-          for i=1,amount do peer.inventory:put(id) end
+          for i=1,amount do peer.inventory:rawput(id) end
         end
         -- close
         local p, msg = Client.makePacket(net.TRADE_CLOSE), "Échange effectué."
@@ -1131,10 +1137,10 @@ function Client:cancelTrade()
     local peer = self.trade.peer
     -- replace items
     for id, amount in pairs(self.trade.inventory.items) do
-      for i=1,amount do self.inventory:put(id) end
+      for i=1,amount do self.inventory:rawput(id) end
     end
     for id, amount in pairs(peer.trade.inventory.items) do
-      for i=1,amount do peer.inventory:put(id) end
+      for i=1,amount do peer.inventory:rawput(id) end
     end
     -- close
     local p, msg = Client.makePacket(net.TRADE_CLOSE), "Échange annulé."

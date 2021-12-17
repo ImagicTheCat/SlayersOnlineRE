@@ -253,8 +253,9 @@ function Mob:onDeath()
         item_sum = item_sum+priority
         if item_rand < item_sum then -- selected
           if client then
-            client.inventory:put(self.data.loot_object)
-            client:emitHint("+ "..item.name)
+            if client.inventory:put(self.data.loot_object) then
+              client:emitHint("+ "..item.name)
+            end
           end
           item_done = true
         end
