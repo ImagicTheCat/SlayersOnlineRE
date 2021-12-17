@@ -182,10 +182,10 @@ function GridInterface:updateLayout(w,h)
   -- Place widgets line by line with fixed width and height based on max cell
   -- height (vertical flow).
   local y, cell_w = MARGIN, w/self.wc
-  for cy=0,self.hc do
+  for cy=0, self.hc-1 do
     local max_h = 0
     local x = MARGIN
-    for cx=0,self.wc do
+    for cx=0, self.wc-1 do
       local cell = self.cells[self:getIndex(cx,cy)]
       if cell then
         cell[1]:setPosition(x,y)
