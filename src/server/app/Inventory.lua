@@ -9,7 +9,6 @@ function Inventory:__construct(user_id, inventory, max)
   self.id = inventory
   self.user_id = user_id
   self.max = max
-
   self.items = {} -- map of id => amount
   self.changed_items = {} -- map of id
 end
@@ -45,7 +44,6 @@ function Inventory:set(id, amount)
   else
     self.items[id] = nil
   end
-
   self.changed_items[id] = true
   self:onItemUpdate(id)
 end
@@ -65,14 +63,14 @@ function Inventory:take(id, dry)
   end
 end
 
--- put one item
+-- Put one item (no check).
+function Inventory:rawput(id) self:set(id, (self.items[id] or 0)+1) end
+
+-- Put one item.
 -- dry: (optional) if truthy, no effects
 -- return true on success
 function Inventory:put(id, dry)
-  if self:getAmount() < self.max then
-    if not dry then self:set(id, (self.items[id] or 0)+1) end
-    return true
-  end
+  if self:getAmount() < self.max then self:rawput(id); return true end
 end
 
 -- return items amount
@@ -81,9 +79,11 @@ function Inventory:getAmount()
   for id, amount in pairs(self.items) do
     total = total+amount
   end
-
   return total
 end
+
+-- Return remaining inventory space.
+function Inventory:getSpace() return self.max-self:getAmount() end
 
 -- called when an item slot is updated (amount/nil)
 function Inventory:onItemUpdate(id)
