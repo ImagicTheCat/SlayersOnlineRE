@@ -768,11 +768,6 @@ commands.profiler = {0, "server", function(self, client, args)
   elseif args[2] == "stop" then
     if profiling then
       profiler.stop()
-      -- Force close output file; fixed in recent LuaJIT 2.1 branch.
-      profiler.start("", "/dev/null")
-      profiler.stop()
-      collectgarbage("collect")
-      collectgarbage("collect")
       print("profiler stopped")
       profiling = false
     else
