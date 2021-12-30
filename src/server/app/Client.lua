@@ -102,7 +102,7 @@ function packet:LOGIN(data)
     end
     -- authenticate
     local password_hash = sha2.hex2bin(sha2.sha512((salt or "")..data.password_hash))
-    local rows = server.db:query("user/login", {data.pseudo, password_hash}).rows
+    local rows = server.db:query("user/login", {data.pseudo, {password_hash}}).rows
     if rows[1] then
       local user_row = rows[1]
       local user_id = user_row.id
@@ -1532,7 +1532,7 @@ function Client:save()
   self.spell_inventory:save(server.db)
   -- config
   if self.player_config_changed then
-    server.db:query("user/setConfig", {self.user_id, msgpack.pack(self.player_config)})
+    server.db:query("user/setConfig", {self.user_id, {msgpack.pack(self.player_config)}})
     self.player_config_changed = false
   end
   -- state
@@ -1565,7 +1565,7 @@ function Client:save()
   state.blocked_defend = self.blocked_defend
   state.blocked_cast = self.blocked_cast
   state.blocked_chat = self.blocked_chat
-  server.db:query("user/setState", {self.user_id, msgpack.pack(state)})
+  server.db:query("user/setState", {self.user_id, {msgpack.pack(state)}})
   return true
 end
 
