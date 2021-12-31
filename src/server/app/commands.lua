@@ -1,5 +1,6 @@
 -- Commands
 
+local utils = require("app.utils")
 local Server
 timer(0.01, function() Server = require("app.Server") end)
 
