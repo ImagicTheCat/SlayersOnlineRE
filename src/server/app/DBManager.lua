@@ -28,7 +28,9 @@ local function thread(async_sz, ch_in, ch_out, db_path)
   end
   -- Check SQLite3 error.
   local function sql_assert(code)
-    if code ~= sqlite.OK then error("sqlite: "..db:errmsg(), 2) end
+    if code ~= sqlite.OK and code ~= sqlite.DONE then
+      error("sqlite("..code.."): "..db:errmsg(), 2)
+    end
   end
   -- init
   sql_assert(db:execute("PRAGMA foreign_keys=true"))

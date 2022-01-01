@@ -1,6 +1,8 @@
 -- Commands
 
 local utils = require("app.utils")
+local msgpack = require("MessagePack")
+local sqlite = require("lsqlite3")
 local Server
 timer(0.01, function() Server = require("app.Server") end)
 
@@ -163,44 +165,257 @@ commands.memory = {0, "server", function(self, client, args)
 end, "", "afficher la mémoire utilisée par la VM Lua"}
 
 commands.dump = {0, "server", function(self, client, args)
-  if args[2] == "chipsets" then
-    -- dump chipsets paths
-    local f_maps = "dump_chipsets_maps.txt"
-    local f_mobs = "dump_chipsets_mobs.txt"
-    local f_spells = "dump_chipsets_spells.txt"
-    --- map chipsets
-    print("write "..f_maps.."...")
-    local f = io.open(f_maps, "w")
+  io.open("data/project.db", "w"):close() -- truncate file
+  local db = sqlite.open("data/project.db")
+  -- Check SQLite3 error.
+  local function sql_assert(code)
+    if code ~= sqlite.OK and code ~= sqlite.DONE then
+      error("sqlite("..code.."): "..db:errmsg(), 2)
+    end
+  end
+  -- create tables
+  sql_assert(db:execute([[
+CREATE TABLE classes(
+  id INTEGER PRIMARY KEY,
+  name TEXT,
+  attack_sound TEXT,
+  hurt_sound TEXT,
+  focus_sound TEXT,
+  max_strength INTEGER,
+  max_dexterity INTEGER,
+  max_constitution INTEGER,
+  max_magic INTEGER,
+  max_level INTEGER,
+  level_up_points INTEGER,
+  strength INTEGER,
+  dexterity INTEGER,
+  constitution INTEGER,
+  magic INTEGER,
+  off_index INTEGER,
+  def_index INTEGER,
+  pow_index INTEGER,
+  health_index INTEGER,
+  mag_index INTEGER
+);
+
+CREATE TABLE objects(
+  id INTEGER PRIMARY KEY,
+  name TEXT,
+  description TEXT,
+  type TEXT,
+  price INTEGER,
+  usable_class INTEGER REFERENCES classes(id),
+  spell INTEGER REFERENCES spells(id),
+  mod_strength INTEGER,
+  mod_dexterity INTEGER,
+  mod_constitution INTEGER,
+  mod_magic INTEGER,
+  mod_attack_a INTEGER,
+  mod_attack_b INTEGER,
+  mod_defense INTEGER,
+  mod_hp INTEGER,
+  mod_mp INTEGER,
+  req_strength INTEGER,
+  req_dexterity INTEGER,
+  req_constitution INTEGER,
+  req_magic INTEGER,
+  req_level INTEGER
+);
+
+CREATE TABLE mobs(
+  id INTEGER PRIMARY KEY,
+  name TEXT,
+  type TEXT,
+  obstacle INTEGER,
+  level INTEGER,
+  charaset TEXT,
+  w INTEGER,
+  h INTEGER,
+  attack_sound TEXT,
+  hurt_sound TEXT,
+  focus_sound TEXT,
+  speed INTEGER,
+  attack INTEGER,
+  defense INTEGER,
+  damage INTEGER,
+  health INTEGER,
+  xp_min INTEGER,
+  xp_max INTEGER,
+  gold_min INTEGER,
+  gold_max INTEGER,
+  loot_object INTEGER REFERENCES objects(id),
+  loot_chance INTEGER,
+  var_id INTEGER,
+  var_increment INTEGER
+);
+
+CREATE TABLE mobs_spells(
+  mob INTEGER REFERENCES mobs(id),
+  "index" INTEGER,
+  spell INTEGER REFERENCES spells(id),
+  probability INTEGER,
+  PRIMARY KEY(mob, "index")
+);
+
+CREATE TABLE spells(
+  id INTEGER PRIMARY KEY,
+  name TEXT,
+  description TEXT,
+  "set" TEXT,
+  sound TEXT,
+  area_expr TEXT,
+  aggro_expr TEXT,
+  duration_expr TEXT,
+  hit_expr TEXT,
+  effect_expr TEXT,
+  x INTEGER,
+  y INTEGER,
+  w INTEGER,
+  h INTEGER,
+  opacity INTEGER,
+  anim_duration INTEGER,
+  usable_class INTEGER REFERENCES classes(id),
+  mp INTEGER,
+  req_level INTEGER,
+  cast_duration INTEGER,
+  type TEXT,
+  position_type TEXT,
+  target_type TEXT
+);
+
+CREATE TABLE maps(
+  name TEXT PRIMARY KEY,
+  type TEXT,
+  effect TEXT,
+  background TEXT,
+  music TEXT,
+  tileset TEXT,
+  width INTEGER,
+  height INTEGER,
+  disconnect_respawn INTEGER,
+  si_v INTEGER,
+  v_c INTEGER,
+  svar INTEGER,
+  sval INTEGER,
+  tiledata BLOB -- msgpack
+);
+
+CREATE TABLE maps_mob_areas(
+  map INTEGER REFERENCES maps(rowid),
+  x1 INTEGER,
+  x2 INTEGER,
+  y1 INTEGER,
+  y2 INTEGER,
+  max_mobs INTEGER,
+  type INTEGER, -- 0: no spawn, >= 1 mob id
+  spawn_speed INTEGER,
+  server_var TEXT,
+  server_var_expr TEXT
+);
+
+CREATE TABLE maps_events(
+  map INTEGER REFERENCES maps(rowid),
+  x INTEGER,
+  y INTEGER
+);
+
+CREATE TABLE events_pages(
+  event INTEGER REFERENCES maps_events(rowid),
+  name TEXT,
+  "set" TEXT,
+  position_type TEXT,
+  x INTEGER,
+  y INTEGER,
+  w INTEGER,
+  h INTEGER,
+  animation_number INTEGER,
+  active INTEGER,
+  obstacle INTEGER,
+  transparent INTEGER,
+  follow INTEGER,
+  animation_type INTEGER,
+  animation_mod INTEGER,
+  speed INTEGER,
+  conditions TEXT,
+  commands TEXT
+);
+  ]]))
+  -- insert data
+  sql_assert(db:execute("BEGIN"))
+  do -- classes
+    local stmt = db:prepare("INSERT INTO classes VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+    for i, t in ipairs(self.project.classes) do
+      stmt:reset()
+      sql_assert(stmt:bind_values(i, t.name, t.attack_sound, t.hurt_sound, t.focus_sound, t.max_strength, t.max_dexterity, t.max_constitution, t.max_magic, t.max_level, t.level_up_points, t.strength, t.dexterity, t.constitution, t.magic, t.off_index, t.def_index, t.pow_index, t.health_index, t.mag_index))
+      sql_assert(stmt:step())
+    end
+  end
+  do -- objects
+    local stmt = db:prepare("INSERT INTO objects VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+    for i, t in ipairs(self.project.objects) do
+      stmt:reset()
+      sql_assert(stmt:bind_values(i, t.name, t.description, t.type, t.price, t.usable_class, t.spell, t.mod_strength, t.mod_dexterity, t.mod_constitution, t.mod_magic, t.mod_attack_a, t.mod_attack_b, t.mod_defense, t.mod_hp, t.mod_mp, t.req_strength, t.req_dexterity, t.req_constitution, t.req_magic, t.req_level))
+      sql_assert(stmt:step())
+    end
+  end
+  do -- mobs
+    local stmt = db:prepare("INSERT INTO mobs VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+    local stmt2 = db:prepare("INSERT INTO mobs_spells VALUES(?,?,?,?)")
+    for i, t in ipairs(self.project.mobs) do
+      stmt:reset()
+      sql_assert(stmt:bind_values(i, t.name, t.type, t.obstacle, t.level, t.charaset, t.w, t.h, t.attack_sound, t.hurt_sound, t.focus_sound, t.speed, t.attack, t.defense, t.damage, t.health, t.xp_min, t.xp_max, t.gold_min, t.gold_max, t.loot_object, t.loot_chance, t.var_id, t.var_increment))
+      sql_assert(stmt:step())
+      -- spells
+      for spell_i, spell in ipairs(t.spells) do
+        stmt2:reset()
+        sql_assert(stmt2:bind_values(i, spell_i, spell[1], spell[2]))
+        sql_assert(stmt2:step())
+      end
+    end
+  end
+  do -- spells
+    local stmt = db:prepare("INSERT INTO spells VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+    for i, t in ipairs(self.project.spells) do
+      stmt:reset()
+      sql_assert(stmt:bind_values(i, t.name, t.description, t.set, t.sound, t.area_expr, t.aggro_expr, t.duration_expr, t.hit_expr, t.effect_expr, t.x, t.y, t.w, t.h, t.opacity, t.anim_duration, t.usable_class, t.mp, t.req_level, t.cast_duration, t.type, t.position_type, t.target_type))
+      sql_assert(stmt:step())
+    end
+  end
+  do -- maps
+    local stmt = db:prepare("INSERT INTO maps VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+    local stmt_area = db:prepare("INSERT INTO maps_mob_areas VALUES(?,?,?,?,?,?,?,?,?,?)")
+    local stmt_event = db:prepare("INSERT INTO maps_events VALUES(?,?,?)")
+    local stmt_event_page = db:prepare("INSERT INTO events_pages VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
     for _, map in pairs(self.project.maps) do
-      f:write(map.name.."\n")
-      f:write("  - tileset: "..map.tileset.."\n")
-      f:write("  - background: "..map.background.."\n")
-      for _, event in ipairs(map.events or {}) do
-        for page_index, page in ipairs(event.pages) do
-          if #page.set > 0 then
-            f:write("  - ("..event.x..","..event.y..") P"..page_index..": "..page.set.."\n")
-          end
+      stmt:reset()
+      sql_assert(stmt:bind_names{map.name, map.type, map.effect, map.background, map.music, map.tileset, map.width, map.height, map.disconnect_respawn, map.si_v, map.v_c, map.svar, map.sval})
+      sql_assert(stmt:bind_blob(14, msgpack.pack(map.tiledata)))
+      sql_assert(stmt:step())
+      local map_rowid = stmt:last_insert_rowid()
+      -- mob areas
+      for _, area in ipairs(map.mob_areas) do
+        stmt_area:reset()
+        sql_assert(stmt_area:bind_values(map_rowid, area.x1, area.x2, area.y1, area.y2, area.max_mobs, area.type+1, area.spawn_speed, area.server_var, area.server_var_expr))
+        sql_assert(stmt_area:step())
+      end
+      -- events
+      for _, event in ipairs(map.events) do
+        stmt_event:reset()
+        sql_assert(stmt_event:bind_values(map_rowid, event.x, event.y))
+        sql_assert(stmt_event:step())
+        local event_rowid = stmt_event:last_insert_rowid()
+        -- pages
+        for page_i, page in ipairs(event.pages) do
+          stmt_event_page:reset()
+          sql_assert(stmt_event_page:bind_values(event_rowid, page.name, page.set, page.position_type, page.x, page.y, page.w, page.h, page.animation_number, page.active, page.obstacle, page.transparent, page.follow, page.animation_type, page.animation_mod, page.speed, table.concat(page.conditions, "\n"), table.concat(page.commands, "\n")))
+          sql_assert(stmt_event_page:step())
         end
       end
     end
-    f:close()
-    --- mob chipsets
-    print("write "..f_mobs.."...")
-    f = io.open(f_mobs, "w")
-    for _, mob in ipairs(self.project.mobs) do
-      f:write(mob.name..": "..mob.charaset.."\n")
-    end
-    f:close()
-    --- spell chipsets
-    print("write "..f_spells.."...")
-    f = io.open(f_spells, "w")
-    for _, spell in ipairs(self.project.spells) do
-      f:write(spell.name..": "..spell.set.."\n")
-    end
-    f:close()
-    print("done")
-  else return true end
-end, "chipsets", "dump project data"}
+  end
+  sql_assert(db:execute("COMMIT"))
+  print("done")
+end, "", "dump project data as SQLite database to data/project.db"}
 
 commands.check_resources = {0, "server", function(self, client, args)
   print("check chipsets...")
