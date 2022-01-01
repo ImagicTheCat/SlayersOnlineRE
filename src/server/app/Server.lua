@@ -86,7 +86,7 @@ function Server:__construct(cfg)
   compileSpells(self)
   print("spells compiled")
   -- make directories
-  os.execute("mkdir -p cache/maps/")
+  os.execute("mkdir -p data/cache/maps/")
   -- load maps data
   print("load maps data...")
   for id in pairs(self.project.maps) do self:loadMapData(id) end
@@ -104,7 +104,7 @@ function Server:__construct(cfg)
   self.free_skins = {} -- set of skin names
   -- DB
   local cfg_db = self.cfg.db
-  self.db = DBManager(cfg_db.name, cfg_db.user, cfg_db.password, cfg_db.host, cfg_db.port)
+  self.db = DBManager("data/server.db")
   -- Loading.
   async(function()
     -- prepare queries
@@ -156,7 +156,6 @@ function Server:__construct(cfg)
   end)
   -- minute tick
   self.minute_timer = itimer(60, function()
-    self:fetchCommands()
     for peer, client in pairs(self.clients) do
       client:minuteTick()
     end
@@ -274,20 +273,6 @@ function Server:getMap(id)
   return map
 end
 
--- Fetch database commands and execute them.
-function Server:fetchCommands()
-  async(function()
-    -- execute commands
-    for _, row in ipairs(self.db:query("server/getCommands").rows) do
-      -- parse command
-      print("DB> "..row.command)
-      local args = Server.parseCommand(row.command)
-      if #args > 0 then self:processCommand(nil, args) end
-    end
-    self.db:transactionWrap(function() self.db:query("server/clearCommands") end)
-  end)
-end
-
 -- client: client or nil from server console
 function Server:processCommand(client, args)
   -- dispatch command
@@ -327,8 +312,8 @@ function Server:loadMapData(id)
       local cache = {}
       local cache_modified = false
       -- Don't load cache if source .ev0 is newer.
-      if os.execute("test \"resources/project/Maps/"..id..".ev0\" -nt \"cache/maps/"..id.."\"") ~= 0 then
-        local cache_file = io.open("cache/maps/"..id)
+      if os.execute("test \"resources/project/Maps/"..id..".ev0\" -nt \"data/cache/maps/"..id.."\"") ~= 0 then
+        local cache_file = io.open("data/cache/maps/"..id)
         if cache_file then
           local data = cache_file:read("*a")
           cache_file:close()
@@ -416,7 +401,7 @@ function Server:loadMapData(id)
         end
       end
       if cache_modified then -- save cache
-        local f = io.open("cache/maps/"..id, "w")
+        local f = io.open("data/cache/maps/"..id, "w")
         if not f then error("couldn't create cache file for map \""..id.."\"") end
         f:write(msgpack.pack(cache))
         f:close()

@@ -6,13 +6,6 @@ return {
   event_frequency_factor = 1,
   save_period = 120, -- seconds
   project_name = "game",
-  db = {
-    host = "localhost",
-    port = 3306,
-    user = "root",
-    password = "",
-    name = "slayers_online_re"
-  },
   motd = "Bienvenue sur Slayers Online RE.",
   quotas = { -- {amount, period in seconds}
     packets = {250, 5}, -- input packets

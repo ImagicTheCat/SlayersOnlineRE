@@ -362,7 +362,7 @@ commands.tp = {1, "client", function(self, client, args)
             map = map_name,
             x = cx*16, y = cy*16
           }
-          self.db:query("user/setState", {user_id, msgpack.pack(state)})
+          self.db:query("user/setState", {user_id, {msgpack.pack(state)}})
           client:print("Téléporté (hors-ligne).")
         end
       end)
@@ -394,7 +394,7 @@ commands.respawn = {1, "client", function(self, client, args)
             x = spawn.cx*16,
             y = spawn.cy*16
           }
-          self.db:query("user/setState", {user_id, msgpack.pack(state)})
+          self.db:query("user/setState", {user_id, {msgpack.pack(state)}})
           client:print("Respawned (hors-ligne).")
         end
       end)
@@ -538,7 +538,7 @@ commands.uset = {0, "server", function(self, client, args)
     async(function()
       self.db:transactionWrap(function()
         local result = self.db:query("user/setRank", {pseudo = pseudo, rank = tonumber(args[4]) or 10})
-        print(result.affected_rows.." affected row(s)")
+        print(result.changes.." affected row(s)")
       end)
     end)
   elseif prop == "guild" then
@@ -550,7 +550,7 @@ commands.uset = {0, "server", function(self, client, args)
           rank = tonumber(args[5]) or 0,
           title = args[6] or ""
         })
-        print(result.affected_rows.." affected row(s)")
+        print(result.changes.." affected row(s)")
       end)
     end)
   else return true end
@@ -759,10 +759,10 @@ commands.ban = {2, "shared", function(self, client, args)
   async(function()
     self.db:transactionWrap(function()
       -- set ban
-      local affected = self.db:query("user/setBan", {pseudo = pseudo, timestamp = os.time()+math.floor(hours*3600)}).affected_rows
+      local changes = self.db:query("user/setBan", {pseudo = pseudo, timestamp = os.time()+math.floor(hours*3600)}).changes
       -- output
-      if not client then print(affected == 0 and "player not found" or "player banned")
-      else client:print(affected == 0 and "Joueur introuvable." or "Joueur banni.") end
+      if not client then print(changes == 0 and "player not found" or "player banned")
+      else client:print(changes == 0 and "Joueur introuvable." or "Joueur banni.") end
     end)
     -- kick
     local target = self:getClientByPseudo(pseudo)
@@ -776,10 +776,10 @@ commands.unban = {2, "shared", function(self, client, args)
   async(function()
     self.db:transactionWrap(function()
       -- set ban
-      local affected = self.db:query("user/setBan", {pseudo = pseudo, timestamp = 0}).affected_rows
+      local changes = self.db:query("user/setBan", {pseudo = pseudo, timestamp = 0}).changes
       -- output
-      if not client then print(affected == 0 and "player not found or not banned" or "player unbanned")
-      else client:print(affected == 0 and "Joueur introuvable ou non banni." or "Joueur débanni.") end
+      if not client then print(changes == 0 and "player not found or not banned" or "player unbanned")
+      else client:print(changes == 0 and "Joueur introuvable ou non banni." or "Joueur débanni.") end
     end)
   end)
 end, "<pseudo>", "débannir un joueur"}
@@ -801,8 +801,8 @@ commands.delete_account = {0, "server", function(self, client, args)
   if self:getClientByPseudo(pseudo) then print("user is online"); return end
   async(function()
     self.db:transactionWrap(function()
-      local affected = self.db:query("user/deleteAccount", {pseudo}).affected_rows
-      print(affected == 0 and "account not found" or "account deleted")
+      local changes = self.db:query("user/deleteAccount", {pseudo}).changes
+      print(changes == 0 and "account not found" or "account deleted")
     end)
   end)
 end, "<pseudo>", "supprimer un compte"}
@@ -834,7 +834,7 @@ commands.reset = {0, "server", function(self, client, args)
         armor_slot = 0,
         user_id = user_id
       })
-      self.db:query("user/setState", {user_id, msgpack.pack({})})
+      self.db:query("user/setState", {user_id, {msgpack.pack({})}})
       self.db:query("user/deleteVars", {user_id})
       self.db:query("user/deleteBoolVars", {user_id})
       self.db:query("user/deleteItems", {user_id})

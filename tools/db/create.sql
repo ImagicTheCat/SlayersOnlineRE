@@ -1,92 +1,83 @@
 CREATE TABLE users(
-  id INTEGER UNSIGNED AUTO_INCREMENT,
-  pseudo VARCHAR(50),
-  salt BINARY(64),
-  password BINARY(64),
-  rank TINYINT UNSIGNED, -- user rank (permissions); 0: server, 10: normal player
-  creation_timestamp BIGINT,
-  ban_timestamp BIGINT, -- ban timestamp (end)
+  id INTEGER PRIMARY KEY,
+  pseudo TEXT UNIQUE COLLATE NOCASE,
+  salt BLOB,
+  password BLOB,
+  rank INTEGER, -- user rank (permissions); 0: server, 10: normal player
+  creation_timestamp INTEGER,
+  ban_timestamp INTEGER, -- ban timestamp (end)
   config BLOB, -- player config (msgpack)
   state BLOB, -- player state (msgpack)
-  class TINYINT UNSIGNED, -- class index (1-based)
-  level TINYINT UNSIGNED,
-  alignment TINYINT UNSIGNED,
-  reputation INTEGER UNSIGNED,
-  gold BIGINT UNSIGNED,
-  chest_gold BIGINT UNSIGNED,
-  xp BIGINT UNSIGNED,
-  strength_pts INTEGER UNSIGNED,
-  dexterity_pts INTEGER UNSIGNED,
-  constitution_pts INTEGER UNSIGNED,
-  magic_pts INTEGER UNSIGNED,
-  remaining_pts INTEGER UNSIGNED,
-  weapon_slot INTEGER UNSIGNED, -- object index (1-based, 0 is empty)
-  shield_slot INTEGER UNSIGNED,
-  helmet_slot INTEGER UNSIGNED,
-  armor_slot INTEGER UNSIGNED,
-  guild VARCHAR(100),
-  guild_rank TINYINT UNSIGNED,
-  guild_rank_title VARCHAR(100),
+  class INTEGER, -- class index (1-based)
+  level INTEGER DEFAULT 1,
+  alignment INTEGER DEFAULT 100,
+  reputation INTEGER DEFAULT 0,
+  gold INTEGER DEFAULT 0,
+  chest_gold INTEGER DEFAULT 0,
+  xp INTEGER DEFAULT 0,
+  strength_pts INTEGER DEFAULT 0,
+  dexterity_pts INTEGER DEFAULT 0,
+  constitution_pts INTEGER DEFAULT 0,
+  magic_pts INTEGER DEFAULT 0,
+  remaining_pts INTEGER DEFAULT 0,
+  weapon_slot INTEGER DEFAULT 0, -- object index (1-based, 0 is empty)
+  shield_slot INTEGER DEFAULT 0,
+  helmet_slot INTEGER DEFAULT 0,
+  armor_slot INTEGER DEFAULT 0,
+  guild TEXT DEFAULT '',
+  guild_rank INTEGER DEFAULT 0,
+  guild_rank_title INTEGER DEFAULT '',
   -- play stats
-  stat_played BIGINT, -- seconds
-  stat_traveled DOUBLE, -- meters (cells)
-  stat_mob_kills BIGINT,
-  stat_deaths BIGINT,
-  CONSTRAINT pk_users PRIMARY KEY(id),
-  CONSTRAINT ux_pseudo UNIQUE INDEX(pseudo)
+  stat_played INTEGER DEFAULT 0, -- seconds
+  stat_traveled REAL DEFAULT 0, -- meters (cells)
+  stat_mob_kills INTEGER DEFAULT 0,
+  stat_deaths INTEGER DEFAULT 0
 );
 
 CREATE TABLE users_vars(
-  id INTEGER UNSIGNED,
-  user_id INTEGER UNSIGNED,
+  id INTEGER,
+  user_id INTEGER,
   value INTEGER,
-  CONSTRAINT pk_users_int_vars PRIMARY KEY(id, user_id),
-  CONSTRAINT fk_users_int_vars_users FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+  PRIMARY KEY(id, user_id),
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE users_bool_vars(
-  id INTEGER UNSIGNED,
-  user_id INTEGER UNSIGNED,
-  value TINYINT,
-  CONSTRAINT pk_users_bool_vars PRIMARY KEY(id, user_id),
-  CONSTRAINT fk_users_bool_vars_users FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+  id INTEGER,
+  user_id INTEGER,
+  value INTEGER,
+  PRIMARY KEY(id, user_id),
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE server_vars(
-  id VARCHAR(200),
-  value TEXT,
-  CONSTRAINT pk_server_vars PRIMARY KEY(id)
+  id TEXT PRIMARY KEY,
+  value TEXT
 );
 
 CREATE TABLE users_items(
-  id INTEGER UNSIGNED,
-  user_id INTEGER UNSIGNED,
-  inventory INTEGER UNSIGNED,
+  id INTEGER,
+  user_id INTEGER,
+  inventory INTEGER,
   amount INTEGER UNSIGNED,
-  CONSTRAINT pk_users_items PRIMARY KEY(id, user_id, inventory),
-  CONSTRAINT fk_users_items_users FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+  PRIMARY KEY(id, user_id, inventory),
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE skins(
-  name VARCHAR(100),
-  free BOOLEAN,
-  CONSTRAINT pk_skins PRIMARY KEY(name)
+  name TEXT PRIMARY KEY,
+  free INTEGER
 );
 
 CREATE TABLE users_skins(
-  user_id INTEGER UNSIGNED,
-  name VARCHAR(100),
-  type CHAR(1), -- #: access, M: module, @: guild sharing
+  user_id INTEGER,
+  name TEXT,
+  type TEXT, -- #: access, M: module, @: guild sharing
   quantity INTEGER,
   start_quantity INTEGER,
-  shared_by INTEGER UNSIGNED,
-  INDEX(user_id),
-  CONSTRAINT fk_users_skins_users FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-  CONSTRAINT fk_users_skins_sharedby FOREIGN KEY(shared_by) REFERENCES users(id) ON DELETE CASCADE
+  shared_by INTEGER,
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY(shared_by) REFERENCES users(id) ON DELETE CASCADE
 );
 
-CREATE TABLE server_commands(
-  id INTEGER UNSIGNED AUTO_INCREMENT,
-  command TEXT,
-  CONSTRAINT pk_server_commands PRIMARY KEY(id)
-);
+CREATE INDEX users_skins_index ON users_skins(user_id);
