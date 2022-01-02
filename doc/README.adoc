@@ -6,7 +6,7 @@ This project is a rewrite from scratch of the client and server of Slayers Onlin
 .Infos
 code name:: Slayers Online RE
 language:: Lua 5.1
-server:: LuaJIT (2.1) / GNU/Linux
+server:: LuaJIT (2.1 HEAD) / GNU/Linux
 client:: LÖVE 11.x
 
 .Server dependencies
