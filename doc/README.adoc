@@ -19,7 +19,7 @@ client:: LÖVE 11.x
 - https://luarocks.org/modules/luarocks/lua-iconv
 - https://github.com/libvips/lua-vips
 - https://github.com/effil/effil
-- https://github.com/luapower/mysql
+- http://lua.sqlite.org
 - https://github.com/Egor-Skriptunoff/pure_lua_SHA2
 
 .Client dependencies
