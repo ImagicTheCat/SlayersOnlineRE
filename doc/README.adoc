@@ -13,12 +13,11 @@ client:: LÖVE 11.x
 - https://github.com/ImagicTheCat/Luaoop
 - https://fperrad.frama.io/lua-MessagePack/
 - https://github.com/ImagicTheCat/Luaseq
-- https://github.com/brimworks/lua-ev
+- https://github.com/ImagicTheCat/ljuv
 - https://github.com/leafo/lua-enet
 - https://luarocks.org/modules/luarocks/struct
 - https://luarocks.org/modules/luarocks/lua-iconv
 - https://github.com/libvips/lua-vips
-- https://github.com/effil/effil
 - http://lua.sqlite.org
 - https://github.com/Egor-Skriptunoff/pure_lua_SHA2
 

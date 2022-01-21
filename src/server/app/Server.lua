@@ -1,4 +1,4 @@
-local effil = require("effil")
+local ljuv = require("ljuv")
 local enet = require("enet")
 local vips = require("vips")
 local sha2 = require("sha2")
@@ -18,11 +18,8 @@ local commands = require("app.commands")
 local Server = class("Server")
 
 -- Console thread.
-local function console_main(flags, channel)
-  while flags.running do
-    local line = io.stdin:read("*l")
-    channel:push(line)
-  end
+local function console_thread(channel)
+  while true do channel:push(io.stdin:read("*l")) end
 end
 
 -- parse [cmd arg1 arg2 arg\ 3 ...]
@@ -131,15 +128,14 @@ function Server:__construct(cfg)
   self.host = enet.host_create(self.cfg.host, self.cfg.max_clients)
   print("listening to \""..self.cfg.host.."\"...")
   -- console thread
-  self.console_flags = effil.table({ running = true })
-  self.console_channel = effil.channel()
-  self.console = effil.thread(console_main)(self.console_flags, self.console_channel)
+  self.console_channel = ljuv.new_channel()
+  self.console = ljuv.new_thread(console_thread, self.console_channel)
   -- Timers.
   do
-    local last_time = clock()
+    local last_time = loop:now()
     -- server tick
     self.tick_timer = itimer(1/self.cfg.tickrate, function()
-      local time = clock()
+      local time = loop:now()
       local dt = time-last_time
       last_time = time
       self:tick(dt)
@@ -169,7 +165,7 @@ function Server:save()
   if self.saving then return false end
   self.saving = true
 
-  local start_time = clock()
+  local start_time = loop:now()
   local ok = self.db:transactionWrap(function()
     -- save vars (clone for concurrent access)
     local changed_vars = self.changed_vars
@@ -182,7 +178,7 @@ function Server:save()
       if client.status == "logged" then client:save() end
     end
   end)
-  local elapsed = clock()-start_time
+  local elapsed = loop:now()-start_time
   print("server save: "..(ok and "committed" or "aborted").." ("..utils.round(elapsed, 3).."s)")
 
   -- end guard
@@ -196,10 +192,9 @@ function Server:close()
   if self.closing then return end
   self.closing = true
 
-  self.event_timer:remove()
-  self.minute_timer:remove()
-  self.console_flags.running = false
-  self.save_timer:remove()
+  self.event_timer:close()
+  self.minute_timer:close()
+  self.save_timer:close()
   -- disconnect clients
   for peer, client in pairs(self.clients) do
     peer:disconnect()
@@ -208,7 +203,7 @@ function Server:close()
   self:save()
   self.host:flush()
   self.db:close()
-  self.tick_timer:remove()
+  self.tick_timer:close()
   print("shutdown.")
 
   -- end guard
@@ -217,14 +212,16 @@ end
 
 function Server:tick(dt)
   -- console
-  while self.console_channel:size() > 0 do
-    local line = self.console_channel:pop()
+  repeat
+    local ok, line = self.console_channel:try_pull()
     -- parse command
-    local args = Server.parseCommand(line)
-    if #args > 0 then
-      self:processCommand(nil, args)
+    if ok then
+      local args = Server.parseCommand(line)
+      if #args > 0 then
+        self:processCommand(nil, args)
+      end
     end
-  end
+  until not ok
   -- net
   local event = self.host:service()
   while event do

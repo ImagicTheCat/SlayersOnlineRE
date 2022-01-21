@@ -30,7 +30,7 @@ end
 
 function Quota:stop()
   if self.timer then
-    self.timer:remove()
+    self.timer:close()
     self.timer = nil
   end
 end
