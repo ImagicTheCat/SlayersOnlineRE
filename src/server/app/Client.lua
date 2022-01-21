@@ -761,7 +761,7 @@ function Client:__construct(peer)
   self.bool_vars = {} -- map of id (number) => value (number)
   self.changed_bool_vars = {} -- map of bool vars id
   self.timers = {0,0,0} -- %TimerX% vars (3), incremented every 30ms
-  self.last_idle_swipe = clock()
+  self.last_idle_swipe = loop:now()
   self.kill_player = 0
   self.visible = true
   self.draw_order = 0
@@ -894,7 +894,7 @@ function Client:eventTick(timer_ticks)
         local ok = xpcall(event.execute, event_error_handler, event, condition)
         if ok then -- events state invalidated, swipe
           self:swipeEvents()
-          self.last_idle_swipe = clock() -- reset next idle swipe
+          self.last_idle_swipe = loop:now() -- reset next idle swipe
         else -- rollback on error
           event:rollback()
         end
@@ -904,7 +904,7 @@ function Client:eventTick(timer_ticks)
     else -- swipe events when idle for timer conditions
       -- This may not be enough to handle all editor timing patterns, but
       -- should be good enough while preventing swipe overhead.
-      local time = clock()
+      local time = loop:now()
       if time-self.last_idle_swipe >= 0.25 then
         self.last_idle_swipe = time
         self:swipeEvents()
@@ -1178,7 +1178,7 @@ function Client:onDisconnect()
       -- Make sure the event coroutine will not continue its execution before the
       -- rollback by disabling async tasks. The server guarantees that no more
       -- packets from the client will be received and we can ignore this kind of task.
-      if self.move_timer then self.move_timer:remove() end
+      if self.move_timer then self.move_timer:close() end
       event.wait_task = nil
       -- rollback
       event:rollback()
@@ -1782,7 +1782,7 @@ end
 function Client:resurrect()
   if self.map then
     if self.respawn_timer then
-      self.respawn_timer:remove()
+      self.respawn_timer:close()
       self.respawn_timer = nil
     end
     if self.ghost then
@@ -1795,7 +1795,7 @@ end
 function Client:respawn()
   if self.map then -- check if still on the world
     if self.respawn_timer then
-      self.respawn_timer:remove()
+      self.respawn_timer:close()
       self.respawn_timer = nil
     end
     self:setGhost(false)

@@ -1,7 +1,7 @@
 -- Slayers Online RE - a rewrite from scratch of Slayers Online
 -- Copyright (c) 2019 ImagicTheCat
 
-local ev = require("ev")
+local ljuv = require("ljuv")
 local Luaoop = require("Luaoop")
 class = Luaoop.class
 xtype = require("xtype")
@@ -13,26 +13,21 @@ math.randomseed(os.time())
 
 -- global utils
 
--- Return current loop time in seconds.
-function clock()
-  return ev.Loop.default:now()
-end
+loop = ljuv.loop -- main event loop
 
--- Execute callback after delay (seconds).
--- return timer (timer:remove() to prevent callback)
-function timer(delay, cb)
-  local timer = ev.Timer.new(function() cb() end, delay)
-  function timer:remove() self:stop(ev.Loop.default) end
-  timer:start(ev.Loop.default)
+-- Execute callback after timeout (seconds).
+-- return timer (timer:close() to prevent callback)
+function timer(timeout, callback)
+  local timer = loop:timer()
+  timer:start(timeout, 0, function(timer) timer:close(); callback(timer) end)
   return timer
 end
 
 -- Execute callback with period (seconds).
--- return timer (timer:remove() to stop interval)
-function itimer(delay, cb)
-  local timer = ev.Timer.new(function() cb() end, delay, delay)
-  function timer:remove() self:stop(ev.Loop.default) end
-  timer:start(ev.Loop.default)
+-- return timer (timer:close() to stop interval)
+function itimer(period, callback)
+  local timer = loop:timer()
+  timer:start(period, period, callback)
   return timer
 end
 
@@ -56,24 +51,21 @@ server = Server(config) -- global
 local function stop()
   async(function()
     server:close()
-    ev.Loop.default:unloop()
+    loop:stop()
   end)
 end
 
 -- register close signals
 
 -- SIGINT
-local sigint = ev.Signal.new(function(loop, sig)
+local sigint = loop:signal()
+sigint:start(2, function()
   print() -- Ctrl-C new line
   stop()
-end, 2)
-sigint:start(ev.Loop.default)
+end)
 
 -- SIGTERM
-local sigterm = ev.Signal.new(function(loop, sig)
-  stop()
-end, 15)
-sigterm:start(ev.Loop.default)
+local sigterm = loop:signal()
+sigterm:start(15, stop)
 
--- start loop
-ev.Loop.default:loop()
+loop:run()

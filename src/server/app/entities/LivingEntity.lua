@@ -368,9 +368,9 @@ function LivingEntity:setMoveForward(move_forward)
       self:stopMovements(false)
       self.move_forward = true
       -- movement
-      self.move_time = clock()
+      self.move_time = loop:now()
       self.move_timer = itimer(1/cfg.tickrate, function()
-        local dt = clock()-self.move_time
+        local dt = loop:now()-self.move_time
         local speed = LivingEntity.pixelSpeed(self.speed)
         -- move following the orientation
         local dx, dy = LivingEntity.orientationVector(self.orientation)
@@ -430,13 +430,13 @@ function LivingEntity:moveToCell(cx, cy, blocking, speed_factor)
   local speed = LivingEntity.pixelSpeed(self.speed)*(speed_factor or 1) -- pixels per second
   local dist = math.sqrt(dx*dx+dy*dy)
   local duration = dist/speed
-  local time = clock()
+  local time = loop:now()
   local x, y = self.x, self.y
   self:setOrientation(LivingEntity.vectorOrientation(dx,dy))
   self:broadcastPacket("move-to-cell", {cx = cx, cy = cy, speed = speed})
   -- movement
   self.move_timer = itimer(1/cfg.tickrate, function()
-    local progress = (clock()-time)/duration
+    local progress = (loop:now()-time)/duration
     if progress <= 1 then
       self.x = utils.lerp(x, cx*16, progress)
       self.y = utils.lerp(y, cy*16, progress)
@@ -454,11 +454,11 @@ function LivingEntity:stopMovements(status)
   self.move_forward = false
   -- end timers
   if self.move_timer then
-    self.move_timer:remove()
+    self.move_timer:close()
     self.move_timer = nil
   end
   if self.move_final_timer then
-    self.move_final_timer:remove()
+    self.move_final_timer:close()
     self.move_final_timer = nil
   end
   -- complete task

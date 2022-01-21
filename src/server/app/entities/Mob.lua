@@ -51,7 +51,7 @@ end
 local function waitAction(self, delay)
   local task = async(); self.wait_task = task
   local rtimer = timer(delay, task); task:wait()
-  rtimer:remove(); self.wait_task = nil
+  rtimer:close(); self.wait_task = nil
 end
 
 -- Seek target, if not in range move towards it (AI).
