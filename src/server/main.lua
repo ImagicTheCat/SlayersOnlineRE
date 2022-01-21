@@ -68,4 +68,10 @@ end)
 local sigterm = loop:signal()
 sigterm:start(15, stop)
 
-loop:run()
+-- run app
+
+local function error_handler(err)
+  io.stderr:write(debug.traceback("loop: "..err, 2).."\n")
+end
+xpcall(loop.run, error_handler, loop)
+server.db:close() -- try to gracefully close the DB whatever happens

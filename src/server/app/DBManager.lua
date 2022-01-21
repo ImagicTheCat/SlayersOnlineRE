@@ -157,12 +157,15 @@ function DBManager:tick()
   until not ok
 end
 
+-- Idempotent.
 function DBManager:close()
+  if self.closed then return end
+  self.closed = true
   self.ch_in:push(nil) -- end thread loop
-  self.async:close()
   self.watcher:close()
   local ok, errtrace = self.thread:join()
-  if not ok then error(errtrace, 0) end
+  self.async:close()
+  if not ok then error("DB thread: "..errtrace, 0) end
 end
 
 return DBManager
