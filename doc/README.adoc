@@ -20,7 +20,6 @@ client:: LÖVE 11.x
 - https://github.com/libvips/lua-vips
 - http://lua.sqlite.org
 - https://keplerproject.github.io/luafilesystem/
-- https://github.com/neoxic/lua-zstd
 - https://github.com/Egor-Skriptunoff/pure_lua_SHA2
 
 .Client dependencies
