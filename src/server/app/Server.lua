@@ -2,7 +2,11 @@ local ljuv = require("ljuv")
 local enet = require("enet")
 local vips = require("vips")
 local sha2 = require("sha2")
+local sbuffer = require("string.buffer")
 local msgpack = require("MessagePack")
+local sqlite = require("lsqlite3")
+local lfs = require("lfs")
+local zstd = require("zstd")
 local Client = require("app.Client")
 local LivingEntity = require("app.entities.LivingEntity")
 local Map = require("app.Map")
@@ -14,6 +18,13 @@ local EventCompiler = require("app.EventCompiler")
 local SpellCompiler = require("app.SpellCompiler")
 local client_salt = require("app.client_salt")
 local commands = require("app.commands")
+
+-- Check SQLite3 error.
+local function sql_assert(db, code)
+  if code ~= sqlite.OK and code ~= sqlite.DONE then
+    error("sqlite("..code.."): "..db:errmsg(), 2)
+  end
+end
 
 local Server = class("Server")
 
@@ -83,10 +94,23 @@ function Server:__construct(cfg)
   compileSpells(self)
   print("spells compiled")
   -- make directories
-  os.execute("mkdir -p data/cache/maps/")
+  lfs.mkdir("data")
+  -- open cache
+  do
+    local code
+    self.cache = sqlite.open("data/cache")
+    assert(self.cache, "couldn't open cache")
+    sql_assert(self.cache, self.cache:execute("CREATE TABLE IF NOT EXISTS maps(id TEXT PRIMARY KEY, mtime INTEGER, data BLOB)"))
+    self.cache_map_stmt, code = self.cache:prepare("SELECT data FROM maps WHERE id = ?1 AND mtime >= ?2")
+    if not self.cache_map_stmt then sql_assert(self.cache, code) end
+    self.cache_mapset_stmt, code = self.cache:prepare("INSERT INTO maps(id, mtime, data) VALUES(?1, ?2, ?3) ON CONFLICT(id) DO UPDATE SET mtime = ?2, data = ?3")
+    if not self.cache_mapset_stmt then sql_assert(self.cache, code) end
+  end
   -- load maps data
   print("load maps data...")
+  self.cache:execute("BEGIN")
   for id in pairs(self.project.maps) do self:loadMapData(id) end
+  self.cache:execute("COMMIT")
   print("maps data loaded")
   --
   self.clients = {} -- map of peer => client
@@ -204,6 +228,7 @@ function Server:close()
   self.host:flush()
   self.db:close()
   self.tick_timer:close()
+  sql_assert(self.cache, self.cache:close())
   print("shutdown.")
 
   -- end guard
@@ -308,17 +333,16 @@ function Server:loadMapData(id)
       -- load cache
       local cache = {}
       local cache_modified = false
-      -- Don't load cache if source .ev0 is newer.
-      if os.execute("test \"resources/project/Maps/"..id..".ev0\" -nt \"data/cache/maps/"..id.."\"") ~= 0 then
-        local cache_file = io.open("data/cache/maps/"..id)
-        if cache_file then
-          local data = cache_file:read("*a")
-          cache_file:close()
-          if data then
-            local ok, cache_data = pcall(msgpack.unpack, data)
-            if ok then cache = cache_data end
-          end
-        end
+      -- Load cache if source .ev0 is not newer.
+      local mtime = lfs.attributes("resources/project/Maps/"..id..".ev0", "modification")
+      local stmt = self.cache_map_stmt
+      stmt:reset()
+      sql_assert(self.cache, stmt:bind(1, id))
+      sql_assert(self.cache, stmt:bind(2, mtime))
+      for row in stmt:nrows() do
+        local data = zstd.decompress(row.data)
+        local ok, cache_data = pcall(sbuffer.decode, data)
+        if ok then cache = cache_data else print("ERROR cache corrupted for "..id) end
       end
       --- compile
       local header = "local state, var, bool_var, server_var, special_var, func_var, event_var, func, inventory = ...; local S, N, R = S, N, R;"
@@ -398,10 +422,12 @@ function Server:loadMapData(id)
         end
       end
       if cache_modified then -- save cache
-        local f = io.open("data/cache/maps/"..id, "w")
-        if not f then error("couldn't create cache file for map \""..id.."\"") end
-        f:write(msgpack.pack(cache))
-        f:close()
+        local stmt = self.cache_mapset_stmt
+        stmt:reset()
+        sql_assert(self.cache, stmt:bind(1, id))
+        sql_assert(self.cache, stmt:bind(2, mtime))
+        sql_assert(self.cache, stmt:bind_blob(3, zstd.compress(sbuffer.encode(cache))))
+        sql_assert(self.cache, stmt:step())
       end
     end
   end
