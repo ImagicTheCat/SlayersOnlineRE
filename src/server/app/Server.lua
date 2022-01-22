@@ -6,7 +6,6 @@ local sbuffer = require("string.buffer")
 local msgpack = require("MessagePack")
 local sqlite = require("lsqlite3")
 local lfs = require("lfs")
-local zstd = require("zstd")
 local Client = require("app.Client")
 local LivingEntity = require("app.entities.LivingEntity")
 local Map = require("app.Map")
@@ -340,8 +339,7 @@ function Server:loadMapData(id)
       sql_assert(self.cache, stmt:bind(1, id))
       sql_assert(self.cache, stmt:bind(2, mtime))
       for row in stmt:nrows() do
-        local data = zstd.decompress(row.data)
-        local ok, cache_data = pcall(sbuffer.decode, data)
+        local ok, cache_data = pcall(sbuffer.decode, row.data)
         if ok then cache = cache_data else print("ERROR cache corrupted for "..id) end
       end
       --- compile
@@ -426,7 +424,7 @@ function Server:loadMapData(id)
         stmt:reset()
         sql_assert(self.cache, stmt:bind(1, id))
         sql_assert(self.cache, stmt:bind(2, mtime))
-        sql_assert(self.cache, stmt:bind_blob(3, zstd.compress(sbuffer.encode(cache))))
+        sql_assert(self.cache, stmt:bind_blob(3, sbuffer.encode(cache)))
         sql_assert(self.cache, stmt:step())
       end
     end
