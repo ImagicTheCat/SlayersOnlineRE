@@ -459,6 +459,8 @@ function Client:__construct(cfg)
   self.gui:add(self.xp_bar)
 
   self.input_chat = TextInput()
+  local chat_history = {} -- stack
+  local chat_history_offset = -1
   -- input chat/string valid event
   self.input_chat:listen("control-press", function(widget, event, id)
     if id == "return" then
@@ -476,7 +478,17 @@ function Client:__construct(cfg)
 
         r(text)
       else -- chat
-        self:inputChat(self.input_chat.text)
+        local text = self.input_chat.text
+        -- push to history
+        if #text > 0 then
+          -- remove existing occurrence
+          for i=#chat_history, 1, -1 do
+            if chat_history[i] == text then table.remove(chat_history, i); break end
+          end
+          table.insert(chat_history, text) -- push
+        end
+        chat_history_offset = -1 -- reset offset
+        self:inputChat(text)
         self.input_chat:set("")
         self.input_chat:setMode("plain")
         self.gui:setFocus()
@@ -489,6 +501,15 @@ function Client:__construct(cfg)
         self.gui:setFocus()
         self.w_input_chat:setVisible(false)
         self.chat_history:hide()
+      end
+    elseif id == "chat_prev" or id == "chat_next" then -- history navigation
+      if #chat_history > 0 then
+        local mod = id == "chat_prev" and 1 or -1
+        local next_offset = chat_history_offset+mod
+        if next_offset >= 0 and next_offset < #chat_history then
+          chat_history_offset = next_offset % #chat_history
+          self.input_chat:set(chat_history[#chat_history-chat_history_offset])
+        end
       end
     end
   end)

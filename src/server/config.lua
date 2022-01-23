@@ -40,6 +40,8 @@ return {
       ["3"] = "quick3",
       pagedown = "chat_up",
       pageup = "chat_down",
+      up = "chat_prev",
+      down = "chat_next",
       f11 = "fullscreen"
     },
     gamepad_controls = {

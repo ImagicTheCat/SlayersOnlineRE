@@ -82,6 +82,8 @@ local control_whitelist = {
   menu = true,
   chat_up = true,
   chat_down = true,
+  chat_prev = true,
+  chat_next = true,
   fullscreen = true
 }
 
@@ -148,7 +150,7 @@ end, "[<parameter_path> [<value> | default]]", [[montrer/modifier la configurati
       gamepad_controls.<button>
         scancodes: https://love2d.org/wiki/Scancode
         gamepad: https://love2d.org/wiki/GamepadButton
-        contrôles: none, up, right, down, left, interact, attack, defend, quick1, quick2, quick3, return, menu, chat_up, chat_down, fullscreen]]}
+        contrôles: none, up, right, down, left, interact, attack, defend, quick1, quick2, quick3, return, menu, chat_up, chat_down, chat_prev, chat_next, fullscreen]]}
 
 commands.memory = {0, "server", function(self, client, args)
   local MB = collectgarbage("count")*1024/1000000
