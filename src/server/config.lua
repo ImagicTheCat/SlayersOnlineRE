@@ -22,5 +22,49 @@ return {
     map = "BZ zone combat",
     cx = 15,
     cy = 15
+  },
+  player_config = { -- default player config
+    scancode_controls = {
+      w = "up",
+      d = "right",
+      s = "down",
+      a = "left",
+      space = "attack",
+      lalt = "defend",
+      e = "interact",
+      ["return"] = "return",
+      escape = "menu",
+      acback = "menu", -- android escape key
+      ["1"] = "quick1",
+      ["2"] = "quick2",
+      ["3"] = "quick3",
+      pagedown = "chat_up",
+      pageup = "chat_down",
+      f11 = "fullscreen"
+    },
+    gamepad_controls = {
+      dpup = "up",
+      dpright = "right",
+      dpdown = "down",
+      dpleft = "left",
+      x = "attack",
+      b = "defend",
+      a = "interact",
+      back = "return",
+      start = "menu",
+      y = "quick1",
+      rightshoulder = "quick2",
+      leftshoulder = "quick3"
+    },
+    gui = {
+      font_size = 25,
+      dialog_height = 0.25,
+      chat_height = 0.25
+    },
+    quick_actions = {},
+    volume = {
+      master = 1,
+      music = 0.75
+    }
   }
 }

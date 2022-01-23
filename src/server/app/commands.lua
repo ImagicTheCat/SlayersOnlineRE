@@ -66,7 +66,6 @@ local bind_sc_blacklist = {
   ["return"] = true,
   escape = true
 }
-
 local control_whitelist = {
   none = true,
   up = true,
@@ -85,79 +84,71 @@ local control_whitelist = {
   chat_down = true,
   fullscreen = true
 }
-commands.bind = {10, "client", function(self, client, args)
-  if not args[2] or #args[2] >= 50 then return true end
-  local control = args[3]
-  local itype, input = string.match(args[2], "(%w+):(%w+)")
 
-  if itype == "sc" then -- scancode
-    if control then
-      if not control_whitelist[control] then return true end
-      if not bind_sc_blacklist[input] then
-        client:applyConfig({scancode_controls = {[input] = control}})
-        client:print("scancode \""..input.."\" assigné à \""..control.."\"")
-      else
-        client:print("scancode \""..input.."\" ne peut pas être réassigné")
-      end
-    else
-      local controls = client.player_config.scancode_controls
-      local control = (controls and controls[input] or "none")
-      client:print("scancode \""..input.."\" est assigné à \""..control.."\"")
+local love_inputs = require("app.love-inputs")
+
+-- Should return the processed value if the path/value is valid, nothing/nil
+-- otherwise.
+local function check_set_config(param, value)
+  local path = utils.split(param, "%.")
+  if path[1] == "volume" then
+    if #path ~= 2 then return end
+    if path[2] == "music" or path[2] == "master" then return tonumber(value) end
+  elseif path[1] == "gui" then
+    if #path ~= 2 then return end
+    if path[2] == "font_size" then return tonumber(value)
+    elseif path[2] == "dialog_height" then return tonumber(value)
+    elseif path[2] == "chat_height" then return tonumber(value)
     end
-  elseif itype == "gp" then -- gamepad
-    if control then
-      if not control_whitelist[control] then return true end
-      client:applyConfig({gamepad_controls = {[input] = control}})
-      client:print("gamepad \""..input.."\" assigné à \""..control.."\"")
-    else
-      local controls = client.player_config.gamepad_controls
-      local control = (controls and controls[input] or "none")
-      client:print("gamepad \""..input.."\" est assigné à \""..control.."\"")
-    end
-  else
-    client:print("type d'input invalide")
+  elseif path[1] == "scancode_controls" then
+    if #path ~= 2 then return end
+    if not control_whitelist[value] then return end
+    if not love_inputs.scancodes[path[2]] or bind_sc_blacklist[path[2]] then return end
+    return value
+  elseif path[1] == "gamepad_controls" then
+    if #path ~= 2 then return end
+    if not control_whitelist[value] then return end
+    if not love_inputs.gamepad_buttons[path[2]] then return end
+    return value
   end
-end, "<type:input> [control]", [[afficher ou assigner un (LÖVE/SDL) scancode à un contrôle
-    types: sc (scancode) / gp (gamepad)
-      scancodes: https://love2d.org/wiki/Scancode
-      gamepad: https://love2d.org/wiki/GamepadButton
-    contrôles: none, up, right, down, left, interact, attack, defend, quick1, quick2, quick3, return, menu, chat_up, chat_down, fullscreen]]
-}
+end
 
-local volume_types = {
-  master = true,
-  music = true
-}
-commands.volume = {10, "client", function(self, client, args)
-  local vtype, volume = args[2], tonumber(args[3])
-  if vtype and volume_types[vtype] and volume then
-    client:applyConfig({volume = {[vtype] = volume}})
-  else
-    return true
-  end
-end, "<type> <volume>", [[changer le volume
-    types: master, music
-    volume: 0-1]]
-}
-
-commands.gui = {10, "client", function(self, client, args)
+commands.cfg = {10, "client", function(self, client, args)
   local param, value = args[2], args[3]
-  if not param or not value then return true end
-
-  if param == "font_size" then
-    client:applyConfig({gui = {font_size = tonumber(value) or 25}})
-  elseif param == "dialog_height" then
-    client:applyConfig({gui = {dialog_height = tonumber(value) or 0.25}})
-  elseif param == "chat_height" then
-    client:applyConfig({gui = {chat_height = tonumber(value) or 0.25}})
-  else
-    client:print("paramètre invalide \""..param.."\"")
+  if param then
+    if #param > 100 then return true end -- prevent potential DoS attacks
+    if value then -- set value
+      if value == "default" then -- get default value
+        value = utils.clone(utils.tget(self.cfg.player_config, param))
+      else -- check param and value
+        value = check_set_config(param, value)
+      end
+      -- apply config
+      if value then
+        local t = {}; utils.tset(t, param, value)
+        client:applyConfig(t)
+      else client:print("Paramètre/valeur invalide.") end
+    else -- show value
+      local value = utils.tget(client.player_config, param)
+      if value ~= nil then client:print(utils.dump(value))
+      else client:print("Paramètre invalide ou non défini.") end
+    end
+  else -- show all parameters
+    client:print(utils.dump(client.player_config))
   end
-end, "<parameter> <value>", [[changer les paramètres de la GUI
-    - font_size (taille en pixels)
-    - dialog_height (0-1 facteur)
-    - chat_height (0-1 facteur)]]
-}
+end, "[<parameter_path> [<value> | default]]", [[montrer/modifier la configuration de paramètres
+    - volume
+      - master (0-1)
+      - music (0-1 facteur)
+    - gui
+      - font_size (taille en pixels)
+      - dialog_height (0-1 facteur)
+      - chat_height (0-1 facteur)
+    - scancode_controls.<scancode>
+      gamepad_controls.<button>
+        scancodes: https://love2d.org/wiki/Scancode
+        gamepad: https://love2d.org/wiki/GamepadButton
+        contrôles: none, up, right, down, left, interact, attack, defend, quick1, quick2, quick3, return, menu, chat_up, chat_down, fullscreen]]}
 
 commands.memory = {0, "server", function(self, client, args)
   local MB = collectgarbage("count")*1024/1000000

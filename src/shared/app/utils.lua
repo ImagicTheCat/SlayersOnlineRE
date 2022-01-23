@@ -47,8 +47,8 @@ function utils.lerp(a, b, x)
   return a*(1-x)+b*x
 end
 
--- merge a into b (deep)
--- replace all keys of b by a keys, unless both keys are tables => recursive merge
+-- Merge a into b (deep).
+-- Replace all keys of `b` by `a` keys, unless both keys are tables => recursive merge.
 -- a, b: tables
 function utils.mergeInto(a, b)
   for k,v in pairs(a) do
@@ -58,6 +58,31 @@ function utils.mergeInto(a, b)
       b[k] = v
     end
   end
+end
+
+-- Get table value by string path.
+function utils.tget(t, path)
+  path = utils.split(path, "%.")
+  local node = t
+  for _, k in ipairs(path) do
+    node = type(node) == "table" and node[k] or nil
+  end
+  return node
+end
+
+-- Set table value by string path.
+function utils.tset(t, path, value)
+  path = utils.split(path, "%.")
+  local node = t
+  for i=1, #path-1 do
+    local next_node = node[path[i]]
+    if type(next_node) ~= "table" then
+      next_node = {}
+      node[path[i]] = next_node
+    end
+    node = next_node
+  end
+  node[path[#path]] = value
 end
 
 -- return fixed scale (to get integer mult/div on the passed size)
@@ -89,7 +114,7 @@ function utils.dump(v, level)
   if type(v) == "table" then
     local lines = {}
     for sk,sv in pairs(v) do
-      table.insert(lines, string.rep(" ", level*2)..sk.." = "..(type(sv) == "table" and "\n" or "")..utils.dump(sv, level+1))
+      table.insert(lines, string.rep(" ", level*2)..sk..(type(sv) == "table" and "\n" or " = ")..utils.dump(sv, level+1))
     end
     return table.concat(lines, "\n")
   else

@@ -157,7 +157,7 @@ function packet:LOGIN(data)
         --- config
         do
           local ok, config = pcall(msgpack.unpack, user_row.config)
-          self:applyConfig(ok and config or {}, true)
+          self:applyConfig(ok and config or server.cfg.player_config)
         end
         --- play stats
         self.play_stats = {
@@ -1406,12 +1406,9 @@ function Client:playSound(path)
 end
 
 -- modify player config
--- no_save: if passed/true, will not trigger a DB save
-function Client:applyConfig(config, no_save)
+function Client:applyConfig(config)
   utils.mergeInto(config, self.player_config)
-  if not no_save then
-    self.player_config_changed = true
-  end
+  self.player_config_changed = true
   self:sendPacket(net.PLAYER_CONFIG, config)
 end
 
