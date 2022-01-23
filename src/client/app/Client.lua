@@ -369,38 +369,13 @@ function Client:__construct(cfg)
     defend = 0.25
   }
 
+  -- Default player config before receiving the server-side config.
   self.player_config = {
     scancode_controls = {
-      w = "up",
-      d = "right",
-      s = "down",
-      a = "left",
-      space = "attack",
-      lalt = "defend",
-      e = "interact",
       ["return"] = "return",
       escape = "menu",
       acback = "menu", -- android escape key
-      ["1"] = "quick1",
-      ["2"] = "quick2",
-      ["3"] = "quick3",
-      pagedown = "chat_up",
-      pageup = "chat_down",
       f11 = "fullscreen"
-    },
-    gamepad_controls = {
-      dpup = "up",
-      dpright = "right",
-      dpdown = "down",
-      dpleft = "left",
-      x = "attack",
-      b = "defend",
-      a = "interact",
-      back = "return",
-      start = "menu",
-      y = "quick1",
-      rightshoulder = "quick2",
-      leftshoulder = "quick3"
     },
     gui = {
       font_size = 25,
