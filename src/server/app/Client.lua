@@ -58,8 +58,9 @@ function Client.serializeItem(server, item, amount)
     mod_attack_a = (item.mod_attack_a ~= 0 and item.mod_attack_a or nil),
     mod_attack_b = (item.mod_attack_b ~= 0 and item.mod_attack_b or nil)
   }
-  data.usable = (item.type == "usable")
+  data.usable = item.type == "usable"
   data.equipable = EQUIPABLE_ITEM_TYPES[item.type]
+  data.trashable = item.type ~= "quest-item"
   local class_data = server.project.classes[item.usable_class]
   if class_data then data.req_class = class_data.name end
   return data
@@ -447,7 +448,8 @@ end
 function packet:ITEM_TRASH(data)
   if self.status ~= "logged" then return end
   local id = tonumber(data) or 0
-  self.inventory:take(id)
+  local item = server.project.objects[id]
+  if item and item.type ~= "quest-item" then self.inventory:take(id) end
 end
 function packet:SPEND_CHARACTERISTIC_POINT(data)
   if self.status ~= "logged" then return end
