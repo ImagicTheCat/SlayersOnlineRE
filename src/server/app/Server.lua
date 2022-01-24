@@ -1,7 +1,6 @@
 local ljuv = require("ljuv")
 local enet = require("enet")
 local vips = require("vips")
-local sha2 = require("sha2")
 local sbuffer = require("string.buffer")
 local msgpack = require("MessagePack")
 local sqlite = require("lsqlite3")
@@ -15,7 +14,6 @@ local DBManager = require("app.DBManager")
 local net = require("app.protocol")
 local EventCompiler = require("app.EventCompiler")
 local SpellCompiler = require("app.SpellCompiler")
-local client_salt = require("app.client_salt")
 local commands = require("app.commands")
 
 -- Check SQLite3 error.
