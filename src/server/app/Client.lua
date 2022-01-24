@@ -939,13 +939,16 @@ end
 
 -- mode: "player-self", "player", "mob-player"
 -- radius: cells
+-- ghost_allowed: (optional) truthy to allow ghost players
 -- return list of entities, sorted by ascending distance
-function Client:getSurroundingEntities(mode, radius)
+function Client:getSurroundingEntities(mode, radius, ghost_allowed)
   if not self.map then return end
   -- prepare entities
   local entities = {}
   for client in pairs(self.map.clients) do
-    if client ~= self or mode == "player-self" then table.insert(entities, client) end
+    if (client ~= self or mode == "player-self") and (not client.ghost or ghost_allowed) then
+      table.insert(entities, client)
+    end
   end
   if mode == "mob-player" then
     for mob in pairs(self.map.mobs) do table.insert(entities, mob) end
@@ -1365,9 +1368,11 @@ function Client:tryCastSpell(spell)
   -- acquire target
   local target
   if spell.target_type == "player" then
-    target = self:requestPickEntity(self:getSurroundingEntities("player-self", 7))
+    local ghosts = spell.type == "resurrect"
+    target = self:requestPickEntity(self:getSurroundingEntities("player-self", 7, ghosts))
   elseif spell.target_type == "mob-player" then
-    local pre_entities = self:getSurroundingEntities("mob-player", 7)
+    local ghosts = spell.type == "resurrect"
+    local pre_entities = self:getSurroundingEntities("mob-player", 7, ghosts)
     local entities = {}
     for _, entity in ipairs(pre_entities) do
       if not xtype.is(entity, Client) or self:canFight(entity) then
