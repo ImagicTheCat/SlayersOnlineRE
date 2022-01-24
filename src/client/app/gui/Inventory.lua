@@ -155,6 +155,7 @@ function Inventory:__construct(itype)
     if item and self.itype == "item" then
       self.menu:set(0,0, Text({item[2].usable and {1,1,1} or {0,0,0}, "Utiliser"}), true)
       self.menu:set(1,0, Text({item[2].equipable and {1,1,1} or {0,0,0}, "Équiper"}), true)
+      self.menu:set(2,0, Text({item[2].trashable and {1,1,1} or {0,0,0}, "Jeter"}), true)
     end
   end)
   self.menu:listen("control-press", function(grid, event, id)
