@@ -1,8 +1,11 @@
 -- Commands
 
-local utils = require("app.utils")
+local sha2 = require("sha2")
 local msgpack = require("MessagePack")
 local sqlite = require("lsqlite3")
+local utils = require("app.utils")
+local client_salt = require("app.client_salt")
+local EventCompiler = require("app.EventCompiler")
 local Server
 timer(0.01, function() Server = require("app.Server") end)
 
