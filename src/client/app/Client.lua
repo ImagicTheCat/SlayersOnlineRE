@@ -366,7 +366,10 @@ function Client:__construct(cfg)
   -- repeated controls, map of control id => repeat interval (seconds)
   self.controls_repeat = {
     attack = 0.25,
-    defend = 0.25
+    defend = 0.25,
+    quick1 = 0.25,
+    quick2 = 0.25,
+    quick3 = 0.25
   }
 
   -- Default player config before receiving the server-side config.
