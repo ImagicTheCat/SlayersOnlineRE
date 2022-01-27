@@ -305,13 +305,17 @@ function packet:LOGIN(data)
 end
 function packet:INPUT_ORIENTATION(data)
   if self.status ~= "logged" then return end
-  if self:canMove() then self:setOrientation(tonumber(data) or 0) end
+  if self:canMove() and (not self.acting or self.acting == "defend") then
+    self:setOrientation(tonumber(data) or 0)
+  end
 end
 function packet:INPUT_MOVE_FORWARD(data)
   if self.status ~= "logged" then return end
   -- update input state (used to stop/resume movements correctly)
   self.move_forward_input = not not data
-  if self:canMove() then self:setMoveForward(self.move_forward_input) end
+  if self:canMove() or not self.move_forward_input then
+    self:setMoveForward(self.move_forward_input)
+  end
 end
 function packet:INPUT_ATTACK(data)
   if self.status ~= "logged" then return end

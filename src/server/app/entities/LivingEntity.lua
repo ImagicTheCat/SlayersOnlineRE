@@ -370,6 +370,11 @@ function LivingEntity:setMoveForward(move_forward)
       -- movement
       self.move_time = loop:now()
       self.move_timer = itimer(1/cfg.tickrate, function()
+        -- prevent movements while acting, except for defend
+        if self.acting and self.acting ~= "defend" then
+          self.move_time = loop:now(); return
+        end
+        --
         local dt = loop:now()-self.move_time
         local speed = LivingEntity.pixelSpeed(self.speed)
         -- move following the orientation
@@ -449,7 +454,7 @@ function LivingEntity:moveToCell(cx, cy, blocking, speed_factor)
   if blocking then return self.move_task:wait() end
 end
 
--- status: boolean, success/failure if cancellation
+-- status: boolean, true or false if cancellation
 function LivingEntity:stopMovements(status)
   self.move_forward = false
   -- end timers
