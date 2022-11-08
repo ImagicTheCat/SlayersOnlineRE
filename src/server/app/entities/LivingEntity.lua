@@ -1,3 +1,6 @@
+-- https://github.com/ImagicTheCat/SlayersOnlineRE
+-- MIT license (see LICENSE, src/server/main.lua or src/client/main.lua)
+
 local utils = require("app.utils")
 local Entity = require("app.Entity")
 local XPtable = require("app.XPtable")

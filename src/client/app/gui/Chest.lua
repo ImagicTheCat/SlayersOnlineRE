@@ -1,3 +1,6 @@
+-- https://github.com/ImagicTheCat/SlayersOnlineRE
+-- MIT license (see LICENSE, src/server/main.lua or src/client/main.lua)
+
 local Widget = require("ALGUI.Widget")
 local Window = require("app.gui.Window")
 local GridInterface = require("app.gui.GridInterface")

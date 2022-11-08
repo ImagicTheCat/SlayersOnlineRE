@@ -1,3 +1,6 @@
+-- https://github.com/ImagicTheCat/SlayersOnlineRE
+-- MIT license (see LICENSE, src/server/main.lua or src/client/main.lua)
+
 local XPBar = require("app.gui.XPBar")
 local Phial = require("app.gui.Phial")
 local Window = require("app.gui.Window")

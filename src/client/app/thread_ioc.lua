@@ -1,3 +1,6 @@
+-- https://github.com/ImagicTheCat/SlayersOnlineRE
+-- MIT license (see LICENSE, src/server/main.lua or src/client/main.lua)
+
 -- I/O/Compute thread
 local sha2 = require("sha2")
 local utils = require("app.utils")

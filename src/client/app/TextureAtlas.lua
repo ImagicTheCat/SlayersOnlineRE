@@ -1,3 +1,6 @@
+-- https://github.com/ImagicTheCat/SlayersOnlineRE
+-- MIT license (see LICENSE, src/server/main.lua or src/client/main.lua)
+
 -- class to generate texture atlas cells
 local TextureAtlas = class("TextureAtlas")
 

@@ -1,3 +1,6 @@
+-- https://github.com/ImagicTheCat/SlayersOnlineRE
+-- MIT license (see LICENSE, src/server/main.lua or src/client/main.lua)
+
 local entities = require("app.entities.entities")
 local LivingEntity = require("app.entities.LivingEntity")
 local TextureAtlas = require("app.TextureAtlas")

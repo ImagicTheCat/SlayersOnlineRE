@@ -1,3 +1,6 @@
+-- https://github.com/ImagicTheCat/SlayersOnlineRE
+-- MIT license (see LICENSE, src/server/main.lua or src/client/main.lua)
+
 local net = require("app.protocol")
 local LivingEntity = require("app.entities.LivingEntity")
 local Mob = require("app.entities.Mob")

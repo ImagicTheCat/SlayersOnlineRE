@@ -1,3 +1,6 @@
+-- https://github.com/ImagicTheCat/SlayersOnlineRE
+-- MIT license (see LICENSE, src/server/main.lua or src/client/main.lua)
+
 -- Compile spell expressions/statements to Lua functions.
 -- Recursive descent parser with prediction (not LL(k)) and a lexer pass.
 --

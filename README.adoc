@@ -32,9 +32,3 @@ client:: LÖVE 11.x
 
 .Credits
 Windows MIDI SoundFont (gm.sf2):: https://musical-artifacts.com/artifacts/713
-
-.Copyright notice
-----
-Slayers Online RE - a rewrite from scratch of Slayers Online
-Copyright (c) 2019 ImagicTheCat
-----
