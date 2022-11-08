@@ -1,3 +1,6 @@
+-- https://github.com/ImagicTheCat/SlayersOnlineRE
+-- MIT license (see LICENSE, src/server/main.lua or src/client/main.lua)
+
 -- HTTP request thread
 local http = require("socket.http")
 local utils = require("app.utils")

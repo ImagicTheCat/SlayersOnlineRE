@@ -1,3 +1,6 @@
+-- https://github.com/ImagicTheCat/SlayersOnlineRE
+-- MIT license (see LICENSE, src/server/main.lua or src/client/main.lua)
+
 local struct = require("struct")
 local iconv = require("iconv")
 local utils = require("app.utils")

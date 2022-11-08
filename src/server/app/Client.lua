@@ -1,3 +1,6 @@
+-- https://github.com/ImagicTheCat/SlayersOnlineRE
+-- MIT license (see LICENSE, src/server/main.lua or src/client/main.lua)
+
 local msgpack = require("MessagePack")
 local sha2 = require("sha2")
 local net = require("app.protocol")

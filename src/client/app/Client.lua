@@ -1,3 +1,6 @@
+-- https://github.com/ImagicTheCat/SlayersOnlineRE
+-- MIT license (see LICENSE, src/server/main.lua or src/client/main.lua)
+
 local enet = require("enet")
 local msgpack = require("MessagePack")
 local URL = require("socket.url")

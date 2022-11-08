@@ -1,3 +1,6 @@
+-- https://github.com/ImagicTheCat/SlayersOnlineRE
+-- MIT license (see LICENSE, src/server/main.lua or src/client/main.lua)
+
 local ljuv = require("ljuv")
 local enet = require("enet")
 local vips = require("vips")
