@@ -33,6 +33,8 @@ local Server = class("Server")
 
 -- Console thread.
 local function console_thread(channel)
+  local ljuv = require "ljuv"
+  channel = ljuv.import(channel)
   while true do channel:push(io.stdin:read("*l")) end
 end
 
@@ -156,7 +158,7 @@ function Server:__construct(cfg)
   print("listening to \""..self.cfg.host.."\"...")
   -- console thread
   self.console_channel = ljuv.new_channel()
-  self.console = ljuv.new_thread(console_thread, self.console_channel)
+  loop:thread(console_thread, assert, ljuv.export(self.console_channel))
   -- Timers.
   do
     local last_time = loop:now()

@@ -62,19 +62,14 @@ end
 
 -- SIGINT
 local sigint = loop:signal()
-sigint:start(2, function()
+sigint:start_oneshot(2, function()
   print() -- Ctrl-C new line
   stop()
 end)
 
 -- SIGTERM
 local sigterm = loop:signal()
-sigterm:start(15, stop)
+sigterm:start_oneshot(15, stop)
 
 -- run app
-
-local function error_handler(err)
-  io.stderr:write(debug.traceback("loop: "..err, 2).."\n")
-end
-xpcall(loop.run, error_handler, loop)
-server.db:close() -- try to gracefully close the DB whatever happens
+loop:run()
