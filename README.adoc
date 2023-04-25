@@ -27,7 +27,8 @@ client:: LÖVE 11.x
 - https://github.com/ImagicTheCat/Luaseq
 - https://github.com/ImagicTheCat/ALGUI
 - https://github.com/ImagicTheCat/ELScheduler
-- https://fperrad.frama.io/lua-MessagePack/
+- https://fperrad.frama.io/lua-MessagePack
+- https://github.com/ImagicTheCat/love-threadpool
 - https://github.com/Egor-Skriptunoff/pure_lua_SHA2
 
 .Credits

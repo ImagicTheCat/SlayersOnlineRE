@@ -4,27 +4,46 @@
 --
 -- Copyright (c) 2019 ImagicTheCat
 
-local msgpack = require("MessagePack")
-local sha2 = require("sha2")
-local utils = require("app.utils")
-local URL = require("socket.url")
+local msgpack = require "MessagePack"
+local sha2 = require "sha2"
+local utils = require "app.utils"
+local URL = require "socket.url"
+local threadpool = require "love-threadpool"
 
 local ResourceManager = class("ResourceManager")
 
-function ResourceManager:__construct()
-  -- create HTTP thread
-  self.http_thread = love.thread.newThread("app/thread_http.lua")
-  self.http_cin = love.thread.newChannel()
-  self.http_cout = love.thread.newChannel()
-  self.http_thread:start(self.http_cin, self.http_cout)
-  self.http_tasks = {}
-  -- create I/O/Compute thread
-  self.ioc_thread = love.thread.newThread("app/thread_ioc.lua")
-  self.ioc_cin = love.thread.newChannel()
-  self.ioc_cout = love.thread.newChannel()
-  self.ioc_thread:start(self.ioc_cin, self.ioc_cout)
-  self.ioc_tasks = {}
+-- HTTP interface
+local function http_interface()
+  local http = require "socket.http"
+  local interface = {}
 
+  function interface.requestHTTP(url)
+    local body, code = http.request(url)
+    if body and code == 200 then
+      return love.data.newByteData(body)
+    else
+      return nil, code
+    end
+  end
+
+  return interface
+end
+
+-- I/O/Compute interface
+local function ioc_interface()
+  local sha2 = require "sha2"
+  local interface = {}
+
+  function interface.readFile(path) return love.filesystem.read("data", path) end
+  function interface.writeFile(path, data) return love.filesystem.write(path, data) end
+  function interface.computeMD5(data) return sha2.md5(data:getString()) end
+
+  return interface
+end
+
+function ResourceManager:__construct()
+  self.http_pool = threadpool.new(1, http_interface)
+  self.ioc_pool = threadpool.new(1, ioc_interface)
   self.busy_hint = "" -- hint to display
   self.local_manifest = {} -- map of path => hash
   self.remote_manifest = {} -- map of path => hash
@@ -40,7 +59,7 @@ function ResourceManager:__construct()
 end
 
 function ResourceManager:isBusy()
-  return self.http_tasks[1] or self.ioc_tasks[1]
+  return next(self.http_pool.tasks) or next(self.ioc_pool.tasks)
 end
 
 -- (async) Request HTTP file body.
@@ -48,20 +67,14 @@ end
 -- return body as Data or (nil, err) on failure
 function ResourceManager:requestHTTP(url)
   self.busy_hint = "Downloading "..url.."..."
-  local r = async()
-  table.insert(self.http_tasks, r)
-  self.http_cin:push({url})
-  return r:wait()
+  return self.http_pool.interface.requestHTTP(url)
 end
 
 -- (async)
 -- data: Data
 -- return hash (string)
 function ResourceManager:computeMD5(data)
-  local r = async()
-  table.insert(self.ioc_tasks, r)
-  self.ioc_cin:push({"md5", data})
-  return r:wait()
+  return self.ioc_pool.interface.computeMD5(data)
 end
 
 -- (async)
@@ -69,44 +82,24 @@ end
 -- return [love.filesystem.write proxy]
 function ResourceManager:writeFile(path, data)
   self.busy_hint = "Writing "..path.."..."
-  local r = async()
-  table.insert(self.ioc_tasks, r)
-  self.ioc_cin:push({"write-file", path, data})
-  return r:wait()
+  return self.ioc_pool.interface.writeFile(path, data)
 end
 
 -- (async)
 -- return [love.filesystem.read proxy]
 function ResourceManager:readFile(path)
   self.busy_hint = "Reading "..path.."..."
-  local r = async()
-  table.insert(self.ioc_tasks, r)
-  self.ioc_cin:push({"read-file", path})
-  return r:wait()
+  return self.ioc_pool.interface.readFile(path)
 end
 
 function ResourceManager:tick(dt)
-  -- http requests
-  local r = self.http_cout:pop()
-  while r do
-    local cb = table.remove(self.http_tasks, 1)
-    cb(unpack(r, 1, r.n))
-    r = self.http_cout:pop()
-  end
-  -- ioc queries
-  r = self.ioc_cout:pop()
-  while r do
-    local cb = table.remove(self.ioc_tasks, 1)
-    cb(unpack(r, 1, r.n))
-    r = self.ioc_cout:pop()
-  end
+  self.http_pool:tick()
+  self.ioc_pool:tick()
 end
 
 function ResourceManager:close()
-  self.http_cin:push({})
-  self.http_thread:wait()
-  self.ioc_cin:push({})
-  self.ioc_thread:wait()
+  self.http_pool:close()
+  self.ioc_pool:close()
 end
 
 function ResourceManager:loadLocalManifest()
