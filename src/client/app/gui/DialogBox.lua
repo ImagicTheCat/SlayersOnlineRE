@@ -15,10 +15,10 @@ function DialogBox:__construct()
   self.text = Text()
   self.grid = GridInterface(0,0,"vertical")
   self.grid:listen("cell-select", function(grid, event, cx, cy)
-    if client.dialog_task then client.dialog_task(cx+1) end
+    if client.dialog_task then client.dialog_task:complete(cx+1) end
   end)
   self.grid:listen("control-press", function(grid, event, id)
-    if id == "menu" and client.dialog_task then client.dialog_task() end -- cancel
+    if id == "menu" and client.dialog_task then client.dialog_task:complete() end -- cancel
   end)
   self.content:add(self.text)
   self.content:add(self.grid)

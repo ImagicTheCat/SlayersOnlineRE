@@ -10,7 +10,7 @@ class = Luaoop.class
 xtype = require("xtype")
 local Luaseq = require("Luaseq")
 async = Luaseq.async
-
+asyncR = require("app.utils").asyncR
 local config = require("config")
 math.randomseed(os.time())
 
@@ -52,7 +52,7 @@ server = Server(config) -- global
 
 -- loop stop function (with async support)
 local function stop()
-  async(function()
+  asyncR(function()
     server:close()
     loop:stop()
   end)

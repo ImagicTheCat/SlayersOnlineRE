@@ -565,7 +565,7 @@ commands.tp = {1, "client", function(self, client, args)
     target:teleport(cx*16,cy*16)
     client:print("Téléporté.")
   else -- offline
-    async(function()
+    asyncR(function()
       self.db:transactionWrap(function()
         -- id
         local r_id = self.db:query("user/getId", {pseudo})
@@ -595,7 +595,7 @@ commands.respawn = {1, "client", function(self, client, args)
     target:respawn()
     client:print("Respawned.")
   else -- offline
-    async(function()
+    asyncR(function()
       self.db:transactionWrap(function()
         -- id
         local r_id = self.db:query("user/getId", {pseudo})
@@ -621,7 +621,7 @@ commands.respawn = {1, "client", function(self, client, args)
 end, "[pseudo]", "respawn soi-même ou un autre joueur"}
 
 commands.chest = {1, "client", function(self, client, args)
-  async(function() client:openChest("Coffre.") end)
+  asyncR(function() client:openChest("Coffre.") end)
 end, "", "ouvrir son coffre"}
 
 commands.kill = {10, "client", function(self, client, args)
@@ -693,7 +693,7 @@ commands.create_account = {0, "server", function(self, client, args)
   urandom:close()
   -- create account
   local password = sha2.hex2bin(sha2.sha512(salt..client_password))
-  async(function()
+  asyncR(function()
     self.db:transactionWrap(function()
       self.db:query("user/createAccount", {
         pseudo = args[2],
@@ -753,14 +753,14 @@ commands.uset = {0, "server", function(self, client, args)
   if not args[2] or #args[2] == 0 or not args[3] or #args[3] == 0 then return true end
   local pseudo, prop = args[2], args[3]
   if prop == "rank" then
-    async(function()
+    asyncR(function()
       self.db:transactionWrap(function()
         local result = self.db:query("user/setRank", {pseudo = pseudo, rank = tonumber(args[4]) or 10})
         print(result.changes.." affected row(s)")
       end)
     end)
   elseif prop == "guild" then
-    async(function()
+    asyncR(function()
       self.db:transactionWrap(function()
         local result = self.db:query("user/setGuild", {
           pseudo = pseudo,
@@ -974,7 +974,7 @@ end, "<start|stop> [output_path] [options]", "LuaJIT profiler"}
 commands.ban = {2, "shared", function(self, client, args)
   local pseudo, reason, hours = args[2], args[3], tonumber(args[4]) or 1
   if not pseudo or #pseudo == 0 or not reason or #reason == 0 then return true end
-  async(function()
+  asyncR(function()
     self.db:transactionWrap(function()
       -- set ban
       local changes = self.db:query("user/setBan", {pseudo = pseudo, timestamp = os.time()+math.floor(hours*3600)}).changes
@@ -991,7 +991,7 @@ end, "<pseudo> <reason> [hours]", "bannir un joueur (1 heure par défaut, non en
 commands.unban = {2, "shared", function(self, client, args)
   local pseudo = args[2]
   if not pseudo or #pseudo == 0 then return true end
-  async(function()
+  asyncR(function()
     self.db:transactionWrap(function()
       -- set ban
       local changes = self.db:query("user/setBan", {pseudo = pseudo, timestamp = 0}).changes
@@ -1017,7 +1017,7 @@ commands.delete_account = {0, "server", function(self, client, args)
   local pseudo = args[2]
   if not pseudo or #pseudo == 0 then return true end
   if self:getClientByPseudo(pseudo) then print("user is online"); return end
-  async(function()
+  asyncR(function()
     self.db:transactionWrap(function()
       local changes = self.db:query("user/deleteAccount", {pseudo}).changes
       print(changes == 0 and "account not found" or "account deleted")
@@ -1029,7 +1029,7 @@ commands.reset = {0, "server", function(self, client, args)
   local pseudo = args[2]
   if not pseudo or #pseudo == 0 then return true end
   if self:getClientByPseudo(pseudo) then print("user is online"); return end
-  async(function()
+  asyncR(function()
     self.db:transactionWrap(function()
       local r_id = self.db:query("user/getId", {pseudo})
       local user_id = r_id.rows[1] and r_id.rows[1].id

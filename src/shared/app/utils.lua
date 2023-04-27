@@ -170,4 +170,8 @@ function utils.sanitizeInt(v)
   else return math.floor(v) end
 end
 
+-- Like Luaseq.async, but without task (and error) wrapping.
+-- "async root"
+function utils.asyncR(f, ...) coroutine.wrap(f)(...) end
+
 return utils

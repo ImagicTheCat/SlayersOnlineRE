@@ -100,7 +100,7 @@ function packet:LOGIN(data)
   if type(data) ~= "table" or type(data.pseudo) ~= "string"
     or type(data.password_hash) ~= "string" or #data.pseudo > 50 then return end
   -- login request
-  async(function()
+  asyncR(function()
     -- get salt
     local salt
     do
@@ -352,42 +352,42 @@ function packet:INPUT_CHAT(data)
 end
 function packet:EVENT_MESSAGE_SKIP(data)
   if self.status ~= "logged" then return end
-  local r = self.message_task
-  if r then
+  local task = self.message_task
+  if task then
     self.message_task = nil
-    r()
+    task:complete()
   end
 end
 function packet:EVENT_INPUT_QUERY_ANSWER(data)
   if self.status ~= "logged" then return end
-  local r = self.input_query_task
-  if r and type(data) == "number" then
+  local task = self.input_query_task
+  if task and type(data) == "number" then
     self.input_query_task = nil
-    r(data)
+    task:complete(data)
   end
 end
 function packet:EVENT_INPUT_STRING_ANSWER(data)
   if self.status ~= "logged" then return end
-  local r = self.input_string_task
-  if r and type(data) == "string" then
+  local task = self.input_string_task
+  if task and type(data) == "string" then
     self.input_string_task = nil
-    r(data)
+    task:complete(data)
   end
 end
 function packet:CHEST_CLOSE(data)
   if self.status ~= "logged" then return end
-  local r = self.chest_task
-  if r then
+  local task = self.chest_task
+  if task then
     self.chest_task = nil
-    r()
+    task:complete()
   end
 end
 function packet:SHOP_CLOSE(data)
   if self.status ~= "logged" then return end
-  local r = self.shop_task
-  if r then
+  local task = self.shop_task
+  if task then
     self.shop_task = nil
-    r()
+    task:complete()
   end
 end
 function packet:GOLD_STORE(data)
@@ -453,7 +453,7 @@ end
 function packet:ITEM_USE(data)
   if self.status ~= "logged" then return end
   local id = tonumber(data) or 0
-  if self:canUseItem() then async(function() self:tryUseItem(id) end) end
+  if self:canUseItem() then asyncR(function() self:tryUseItem(id) end) end
 end
 function packet:ITEM_TRASH(data)
   if self.status ~= "logged" then return end
@@ -546,7 +546,7 @@ function packet:ITEM_EQUIP(data)
     for k,v in pairs(old_ch) do deltas[k] = new_ch[k]-old_ch[k] end
 
     -- show delta / request
-    async(function()
+    asyncR(function()
       local fdeltas = {} -- formatted
       local append = function(new_ch, deltas, prop, title) -- format prop
         if deltas[prop] ~= 0 then
@@ -626,10 +626,10 @@ function packet:SLOT_UNEQUIP(data)
 end
 function packet:SCROLL_END(data)
   if self.status ~= "logged" then return end
-  local r = self.scroll_task
-  if r then
+  local task = self.scroll_task
+  if task then
     self.scroll_task = nil
-    r()
+    task:complete()
   end
 end
 function packet:QUICK_ACTION_BIND(data)
@@ -659,7 +659,7 @@ function packet:ENTITY_PICK(data)
   local task = self.pick_entity_task
   if task then
     self.pick_entity_task = nil
-    task(type(data) == "number" and data)
+    task:complete(type(data) == "number" and data)
   end
 end
 function packet:SPELL_CAST(data)
@@ -668,13 +668,13 @@ function packet:SPELL_CAST(data)
   local spell = server.project.spells[id]
   if spell and self:canCast(spell) then
     if self.spell_inventory.items[id] > 0 then -- check owned
-      async(function() self:tryCastSpell(spell) end)
+      asyncR(function() self:tryCastSpell(spell) end)
     end
   end
 end
 function packet:TRADE_SEEK(data)
   if self.status ~= "logged" then return end
-  async(function()
+  asyncR(function()
     -- pick target
     local entity = self:requestPickEntity(self:getSurroundingEntities("player", 7))
     if entity then
@@ -736,7 +736,7 @@ function packet:TRADE_CLOSE(data)
 end
 function packet:DIALOG_RESULT(data)
   if self.status ~= "logged" then return end
-  if self.dialog_task then self.dialog_task(tonumber(data)) end
+  if self.dialog_task then self.dialog_task:complete(tonumber(data)) end
 end
 
 -- METHODS
@@ -902,7 +902,7 @@ function Client:eventTick(timer_ticks)
       local condition = self.triggered_events[event]
       self.triggered_events[event] = nil
       self.running_event = event
-      async(function()
+      asyncR(function()
         local ok = xpcall(event.execute, event_error_handler, event, condition)
         if ok then -- events state invalidated, swipe
           self:swipeEvents()

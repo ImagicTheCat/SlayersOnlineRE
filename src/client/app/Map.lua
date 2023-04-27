@@ -23,7 +23,7 @@ function Map:__construct(data)
   self.tileset = client:loadTexture("resources/textures/sets/tileset.png") -- default
   self:build(data)
   -- load map resources
-  async(function()
+  asyncR(function()
     if client.rsc_manager:requestResource("textures/sets/"..data.tileset) then
       local tileset = client:loadTexture("resources/textures/sets/"..data.tileset, "non-fatal")
       if tileset then self.tileset = tileset end
@@ -42,7 +42,7 @@ function Map:__construct(data)
   end)
   -- request preload resources
   for path in pairs(data.preload_resources) do
-    async(function() client.rsc_manager:requestResource(path) end)
+    asyncR(function() client.rsc_manager:requestResource(path) end)
   end
   self.data = data
   self.packet_index = data.packet_index
@@ -117,7 +117,7 @@ end
 -- duration: seconds
 -- alpha: (optional) 0-1
 function Map:playAnimation(path, x, y, w, h, duration, alpha)
-  async(function()
+  asyncR(function()
     if client.rsc_manager:requestResource("textures/sets/"..path) then
       local texture = client:loadTexture("resources/textures/sets/"..path, "non-fatal")
       if texture then
@@ -136,7 +136,7 @@ end
 -- path: sound path
 -- x,y: pixel position
 function Map:playSound(path, x, y)
-  async(function()
+  asyncR(function()
     if client.rsc_manager:requestResource("audio/"..path) then
       local source = client:playSound("resources/audio/"..path)
       if source then

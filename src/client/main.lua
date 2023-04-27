@@ -9,6 +9,7 @@ class = Luaoop.class
 xtype = require("xtype")
 local Luaseq = require("Luaseq")
 async = Luaseq.async
+asyncR = require("app.utils").asyncR
 local Scheduler = require("ELScheduler")
 
 local Client = require("app.Client")

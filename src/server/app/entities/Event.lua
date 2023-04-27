@@ -888,10 +888,10 @@ function command_functions:Attente(amount)
   if amount > 0 then
     self.wait_task = async()
     timer(amount*0.03, function()
-      local r = self.wait_task
-      if r then
+      local task = self.wait_task
+      if task then
         self.wait_task = nil
-        r()
+        task:complete()
       end
     end)
     self.wait_task:wait()
@@ -1190,7 +1190,7 @@ end
 function Event:startAI()
   if not self.ai_running and (self.animation_type == "character-random" or
       self.animation_type == "character-follow") then
-    async(function() AI_thread(self) end)
+    asyncR(function() AI_thread(self) end)
   end
 end
 

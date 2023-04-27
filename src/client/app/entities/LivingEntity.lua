@@ -109,7 +109,7 @@ end
 function LivingEntity:setCharaset(charaset)
   self.charaset = charaset
   if #charaset.path > 0 then
-    async(function()
+    asyncR(function()
       -- load texture
       local texture = (client.rsc_manager:requestResource("textures/sets/"..charaset.path) and
         client:loadTexture("resources/textures/sets/"..charaset.path, "non-fatal"))
@@ -137,7 +137,7 @@ end
 -- play spatialized sound on self
 -- sound: path (will request resource)
 function LivingEntity:emitSound(sound)
-  async(function()
+  asyncR(function()
     if client.rsc_manager:requestResource("audio/"..sound) then
       local source = client:playSound("resources/audio/"..sound)
       if source then
@@ -155,7 +155,7 @@ end
 -- duration: seconds
 -- alpha: (optional) 0-1
 function LivingEntity:emitAnimation(path, x, y, w, h, duration, alpha)
-  async(function()
+  asyncR(function()
     if client.rsc_manager:requestResource("textures/sets/"..path) then
       local texture = client:loadTexture("resources/textures/sets/"..path, "non-fatal")
       if texture then

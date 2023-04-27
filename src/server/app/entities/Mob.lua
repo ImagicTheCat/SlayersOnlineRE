@@ -206,7 +206,7 @@ function Mob:onAttack(attacker)
     self:addToBingoBook(attacker, amount or 0)
     self:damage(amount)
     attacker:triggerGearSpells(self)
-    if self.wait_task then self.wait_task() end
+    if self.wait_task then self.wait_task:complete() end
     return true
   end
 end
@@ -278,7 +278,7 @@ function Mob:onMapChange()
   LivingEntity.onMapChange(self)
 
   if self.map and self.data.type ~= "breakable" then
-    if not self.ai_running then async(function() AI_thread(self) end) end
+    if not self.ai_running then asyncR(function() AI_thread(self) end) end
   end
 end
 

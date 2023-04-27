@@ -46,7 +46,7 @@ local packet = {}
 function packet:PROTOCOL(data)
 end
 function packet:MOTD_LOGIN(data)
-  async(function()
+  asyncR(function()
     -- login process
     local pseudo = self:prompt(data.motd.."\n\nPseudo: ")
     local password = self:prompt(data.motd.."\n\nMot de passe: ", "", true)
@@ -106,7 +106,7 @@ function packet:EVENT_INPUT_QUERY(data)
   self.gui:setFocus(self.input_query_grid)
 end
 function packet:EVENT_INPUT_STRING(data)
-  async(function()
+  asyncR(function()
     local str = self:prompt(data.title)
     self:sendPacket(net.EVENT_INPUT_STRING_ANSWER, str)
   end)
@@ -203,7 +203,7 @@ function packet:STATS_UPDATE(data)
 end
 function packet:PLAY_MUSIC(data)
   if data then
-    async(function()
+    asyncR(function()
       if client.rsc_manager:requestResource("audio/"..data) then
         client:playMusic("resources/audio/"..data)
       else print("failed to load music \""..data.."\"") end
@@ -213,7 +213,7 @@ end
 function packet:STOP_MUSIC(data) self.music_source:stop() end
 function packet:PLAY_SOUND(data)
   if data then
-    async(function()
+    asyncR(function()
       if client.rsc_manager:requestResource("audio/"..data) then
         client:playSound("resources/audio/"..data)
       else print("failed to load sound \""..data.."\"") end
@@ -286,7 +286,7 @@ function packet:TRADE_CLOSE(data)
 end
 function packet:DIALOG_QUERY(data)
   if data.no_busy or (not self.gui.focus and not self.pick_entity) then -- not busy
-    async(function()
+    asyncR(function()
       self:sendPacket(net.DIALOG_RESULT, self:dialog(data.ftext, data.options))
     end)
   else self:sendPacket(net.DIALOG_RESULT) end -- busy, cancel
@@ -294,7 +294,7 @@ end
 function packet:MAP_EFFECT(data)
   self.map_effect = data
   if self.map_effect == "rain" and not self.fx_rain then
-    async(function()
+    asyncR(function()
       if self.rsc_manager:requestResource("textures/sets/pluie.png") then
         local tex = self:loadTexture("resources/textures/sets/pluie.png", "non-fatal")
         if tex then
@@ -309,7 +309,7 @@ function packet:MAP_EFFECT(data)
       else print("failed to load resource \"pluie.png\"") end
     end)
   elseif self.map_effect == "snow" and not self.fx_snow then
-    async(function()
+    asyncR(function()
       if self.rsc_manager:requestResource("textures/sets/neige.png") then
         local tex = self:loadTexture("resources/textures/sets/neige.png", "non-fatal")
         if tex then
@@ -326,7 +326,7 @@ function packet:MAP_EFFECT(data)
       else print("failed to load resource \"neige.png\"") end
     end)
   elseif self.map_effect == "fog" and not self.fx_fog then
-    async(function()
+    asyncR(function()
       if self.rsc_manager:requestResource("textures/sets/brouillard.png") then
         local tex = self:loadTexture("resources/textures/sets/brouillard.png", "non-fatal")
         if tex then
@@ -474,7 +474,7 @@ function Client:__construct(cfg)
   self.input_chat:listen("control-press", function(widget, event, id)
     if id == "return" then
       if self.prompt_task then -- input string
-        local r = self.prompt_task
+        local task = self.prompt_task
         self.prompt_task = nil
 
         local text = self.input_chat.text
@@ -485,7 +485,7 @@ function Client:__construct(cfg)
         self.message_window:setVisible(false)
         self:onResize(love.graphics.getDimensions())
 
-        r(text)
+        task:complete(text)
       else -- chat
         local text = self.input_chat.text
         -- push to history
@@ -807,7 +807,7 @@ end
 
 function Client:onConnect()
   self:sendPacket(net.VERSION_CHECK, client_version)
-  async(function()
+  asyncR(function()
     -- load remote manifest
     if not self.rsc_manager:loadRemoteManifest() then
       print("couldn't reach remote resources repository manifest")

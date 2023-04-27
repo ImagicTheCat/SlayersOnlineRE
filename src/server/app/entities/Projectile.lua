@@ -18,7 +18,7 @@ end
 -- on_hit(): (optional) called if the projectile hits the target
 function Projectile:launch(target, on_hit)
   self.target = target
-  async(function()
+  asyncR(function()
     if self:moveToEntity(target) and on_hit then on_hit() end
     self.map:removeEntity(self)
   end)

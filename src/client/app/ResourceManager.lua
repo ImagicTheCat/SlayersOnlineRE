@@ -166,7 +166,7 @@ function ResourceManager:requestResource(path)
   end
   -- end guard
   self.resource_tasks[path] = nil
-  task(ret)
+  task:complete(ret)
   return ret
 end
 

@@ -132,7 +132,7 @@ function Server:__construct(cfg)
   local cfg_db = self.cfg.db
   self.db = DBManager("data/server.db")
   -- Loading.
-  async(function()
+  asyncR(function()
     -- prepare queries
     require("app.queries")(self.db)
     -- load vars
@@ -170,7 +170,7 @@ function Server:__construct(cfg)
       self:tick(dt)
     end)
   end
-  self.save_timer = itimer(self.cfg.save_period, function() async(self.save, self) end)
+  self.save_timer = itimer(self.cfg.save_period, function() asyncR(self.save, self) end)
   -- event/timer tick
   local event_period = 0.03*1/self.cfg.event_frequency_factor
   local event_timer_ticks = math.floor(1/self.cfg.event_frequency_factor)
@@ -273,7 +273,7 @@ function Server:tick(dt)
       local client = self.clients[event.peer]
       self.clients[event.peer] = nil
       print("client disconnection "..tostring(event.peer))
-      async(function() client:onDisconnect() end)
+      asyncR(function() client:onDisconnect() end)
     end
 
     event = self.host:service()

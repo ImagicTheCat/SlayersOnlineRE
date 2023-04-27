@@ -475,7 +475,7 @@ function LivingEntity:stopMovements(status)
   -- complete task
   local move_task = self.move_task
   self.move_task = nil
-  if move_task then move_task(status) end
+  if move_task then move_task:complete(status) end
 end
 
 function LivingEntity:isMoving() return self.move_timer ~= nil end
@@ -605,7 +605,7 @@ function LivingEntity:castSpell(target, spell, mode)
         target:resurrect()
         target:applySpell(self, spell)
       elseif spell.type == "jump-attack" then
-        async(function()
+        asyncR(function()
          if self:moveToEntity(target, 3) then target:applySpell(self, spell) end
         end)
       else target:applySpell(self, spell) end
@@ -673,7 +673,7 @@ function LivingEntity:applySpell(caster, spell)
     local x, y = self.x+8, self.y+8
     local x1, y1 = x-math.floor(w/2)+spell.x, y-math.floor(h/2)+spell.y
     local x2, y2 = x1+w, y1+h
-    async(function()
+    asyncR(function()
       for i=1, steps do
         -- interrupt effect if invalid
         if map ~= caster.map then break end
@@ -725,7 +725,7 @@ function LivingEntity:applySpell(caster, spell)
     end)
   else -- regular spell, apply steps
     local map = self.map
-    async(function()
+    asyncR(function()
       for i=1, steps do
         -- interrupt effect if invalid
         if self.map ~= map or self.ghost then break end
