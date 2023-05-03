@@ -42,8 +42,10 @@ Notes:
 ]]
 
 local lpeg = require "lpeg"
+local utils = require "app.utils"
+
 local P, S, R, V = lpeg.P, lpeg.S, lpeg.R, lpeg.V
-local C, Cc = lpeg.C, lpeg.Cc
+local C, Cc, Ct = lpeg.C, lpeg.Cc, lpeg.Ct
 
 local farthest_tokens = {}
 local farthest = 0
@@ -55,31 +57,32 @@ local function report_token(s, i, token)
   if i >= farthest then farthest_tokens[token] = true end
   return false
 end
+
 local function T(token) return P(token) + lpeg.Cmt(Cc(token), report_token) * P(false) end
 
-local keyword = R("az", "AZ", "09")^1
-local event_var = T"%" * (1 - P".")^1 * T"." * keyword * T"%"
-local special_var = T"%" * keyword * T"%"
-local number = P"-"^-1 * R"09"^1 * ("." * R"09"^1)^-1
-local uint = R"09"^1
+local keyword = C( R("az", "AZ", "09")^1 )
+local event_var = Ct( Cc"event_var" * T"%" * C( (1 - P".")^1 ) * T"." * keyword * T"%" )
+local special_var = Ct( Cc"special_var" * T"%" * keyword * T"%" )
+local number = C( P"-"^-1 * R"09"^1 * ("." * R"09"^1)^-1 ) / tonumber
+local uint = C( R"09"^1 )
 local index_range = uint * (T".." * uint)^-1
-local bool_var = T"Bool[" * index_range * T"]"
-local var = T"Variable[" * index_range * T"]"
+local bool_var = Ct( Cc"bool_var" * T"Bool[" * index_range * T"]" )
+local var = Ct( Cc"var" * T"Variable[" * index_range * T"]" )
 
 local lvar = var + bool_var + special_var + event_var + V"server_var"
 local expr_construct = lvar + V"function_var" + V"input_string"
 local factor = number + expr_construct + T"(" * V"expr_calc" * T")"
-local term = factor * (S"*/" * factor)^0
-local expr_calc = term * (S"+-" * term)^0
+local term = Ct( factor * (C(S"*/") * factor)^0 )
+local expr_calc = Ct( Cc"expr_calc" * term * (C(S"+-") * term)^0 )
 
 local function expr(end_pattern)
   end_pattern = P(end_pattern)
-  local expr_string_item = expr_construct + (-expr_construct * -end_pattern * 1)^1
-  local expr_string = expr_string_item^0
+  local expr_string_item = expr_construct + C( (-expr_construct * -end_pattern * 1)^1 )
+  local expr_string = Ct( Cc"expr_string" * expr_string_item^0 )
   return (expr_calc * #end_pattern) + expr_string
 end
 
-local server_var = T"Serveur[" * expr("]") * T"]"
+local server_var = Ct( Cc"server_var" * T"Serveur[" * expr("]") * T"]" )
 
 local function gen_args(s_begin, s_sep, s_end, eol)
   local e = expr(P(s_sep) + P(s_end) * (eol and P(-1) or P(true)))
@@ -92,18 +95,19 @@ local args = gen_args("(", ",", ")")
 local args_eol = gen_args("(", ",", ")", true)
 
 local expr_eol = expr(-1)
-local input_string = T"InputString" * quoted_args
-local function_var = T"%" * keyword * args * T"%"
-local concat = T"Concat" * quoted_args_eol
-local assignment = lvar * T"=" * (concat + expr_eol)
-local call = keyword * (quoted_args_eol + args_eol)^-1
-local condition_flag = T"Appuie sur bouton" + T"Automatique" + T"Auto une seul fois" + T"En contact" + T"Attaque"
-local cmp_op = T"=" + T"<=" + T">=" + T"<" + T">" + T"!="
+local input_string = Ct( Cc"input_string" * T"InputString" * quoted_args )
+local function_var = Ct( Cc"function_var" * T"%" * keyword * args * T"%" )
+local concat = Ct( Cc"concat" * T"Concat" * quoted_args_eol )
+local assignment = Ct( Cc"assignment" * lvar * T"=" * (concat + expr_eol) )
+local call = Ct( Cc"call" * keyword * (quoted_args_eol + args_eol)^-1 )
+local condition_flag = C( T"Appuie sur bouton" + T"Automatique" + T"Auto une seul fois" + T"En contact" + T"Attaque" )
+local cmp_op = C( T"=" + T"<=" + T">=" + T"<" + T">" + T"!=" )
 local condition; do
   local expr_end = expr(P"')" + -1)
-  condition = condition_flag + (T"%Inventaire%" * cmp_op * expr_end) + (expr(cmp_op) * cmp_op * expr_end)
+  local inventory_cond = Ct( Cc"inventory_cond" * T"%Inventaire%" * cmp_op * expr_end )
+  condition = condition_flag + inventory_cond + Ct( Cc"condition" * expr(cmp_op) * cmp_op * expr_end )
 end
-local call_condition = T"Condition('" * condition * T"')"
+local call_condition = Ct( Cc"call_condition" * T"Condition('" * condition * T"')" )
 local trailing = P" "^0 * (P"//" * P(1)^0)^0
 local command = (assignment + call_condition + call) * trailing
 
@@ -112,14 +116,16 @@ local l_condition = P{condition * -1, expr_calc = expr_calc, server_var = server
 
 local function test_command(instruction)
   farthest = 0
-  if not l_command:match(instruction) then
+  local r = {l_command:match(instruction)}
+  if next(r) then
+    print("OK "..instruction)
+    print(utils.dump(r))
+  else
     print("ERROR "..instruction)
     print(string.rep(" ", farthest-1+6).."^")
     for k in pairs(farthest_tokens) do print("\t"..k) end
   end
 end
-
---
 
 local M = {}
 
