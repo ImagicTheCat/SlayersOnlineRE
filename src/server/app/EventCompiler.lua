@@ -44,6 +44,10 @@ Notes:
 local lpeg = require "lpeg"
 local utils = require "app.utils"
 
+local M = {}
+
+-- Parser
+
 local P, S, R, V = lpeg.P, lpeg.S, lpeg.R, lpeg.V
 local C, Cc, Ct = lpeg.C, lpeg.Cc, lpeg.Ct
 
@@ -63,7 +67,7 @@ local function T(token) return P(token) + lpeg.Cmt(Cc(token), report_token) * P(
 local keyword = C( R("az", "AZ", "09")^1 )
 local event_var = Ct( Cc"event_var" * T"%" * C( (1 - P".")^1 ) * T"." * keyword * T"%" )
 local special_var = Ct( Cc"special_var" * T"%" * keyword * T"%" )
-local number = C( P"-"^-1 * R"09"^1 * ("." * R"09"^1)^-1 ) / tonumber
+local number = C( P"-"^-1 * R"09"^1 * ("." * R"09"^1)^-1 )
 local uint = C( R"09"^1 )
 local index_range = uint * (T".." * uint)^-1
 local bool_var = Ct( Cc"bool_var" * T"Bool[" * index_range * T"]" )
@@ -72,7 +76,7 @@ local var = Ct( Cc"var" * T"Variable[" * index_range * T"]" )
 local lvar = var + bool_var + special_var + event_var + V"server_var"
 local expr_construct = lvar + V"function_var" + V"input_string"
 local factor = number + expr_construct + T"(" * V"expr_calc" * T")"
-local term = Ct( factor * (C(S"*/") * factor)^0 )
+local term = Ct( Cc"expr_calc" * factor * (C(S"*/") * factor)^0 )
 local expr_calc = Ct( Cc"expr_calc" * term * (C(S"+-") * term)^0 )
 
 local function expr(end_pattern)
@@ -104,649 +108,276 @@ local condition_flag = C( T"Appuie sur bouton" + T"Automatique" + T"Auto une seu
 local cmp_op = C( T"=" + T"<=" + T">=" + T"<" + T">" + T"!=" )
 local condition; do
   local expr_end = expr(P"')" + -1)
-  local inventory_cond = Ct( Cc"inventory_cond" * T"%Inventaire%" * cmp_op * expr_end )
-  condition = condition_flag + inventory_cond + Ct( Cc"condition" * expr(cmp_op) * cmp_op * expr_end )
+  local condition_inv = Ct( Cc"condition_inv" * T"%Inventaire%" * cmp_op * expr_end )
+  condition = condition_flag + condition_inv + Ct( Cc"condition_expr" * expr(cmp_op) * cmp_op * expr_end )
 end
 local call_condition = Ct( Cc"call_condition" * T"Condition('" * condition * T"')" )
-local trailing = P" "^0 * (P"//" * P(1)^0)^0
-local command = (assignment + call_condition + call) * trailing
+local command = assignment + call_condition + call
 
-local l_command = P{command * -1, expr_calc = expr_calc, server_var = server_var, input_string = input_string, function_var = function_var}
-local l_condition = P{condition * -1, expr_calc = expr_calc, server_var = server_var, input_string = input_string, function_var = function_var}
+local comment = P"//" * P(1)^0
 
-local function test_command(instruction)
+local l_command = P{
+  command + comment,
+  expr_calc = expr_calc,
+  server_var = server_var,
+  input_string = input_string,
+  function_var = function_var
+}
+
+local l_condition = P{
+  condition + comment,
+  expr_calc = expr_calc,
+  server_var = server_var,
+  input_string = input_string,
+  function_var = function_var
+}
+
+-- Code generation
+
+local function escape(str) return string.format("%q", str) end
+
+local gen = {}
+
+local function dispatch(state, ast) return gen[ast[1]](state, ast) end
+
+function gen.command(state, ast) return dispatch(state, ast) end
+
+local CONDITION_FLAGS = {
+  ["Appuie sur bouton"] = "interact",
+  ["Automatique"] = "auto",
+  ["Auto une seul fois"] = "auto-once",
+  ["En contact"] = "contact",
+  ["Attaque"] = "attack"
+}
+
+function gen.condition(state, ast)
+  if type(ast) == "string" then
+    state.flags[CONDITION_FLAGS[ast]] = true
+    return ""
+  else
+    return dispatch(state, ast)
+  end
+end
+
+function gen.assignment(state, ast)
+  local lhs, rhs = ast[2], ast[3]
+  -- lhs: numeric
+  if lhs[1] == "var" or lhs[1] == "bool_var" then
+    assert(rhs[1] ~= "concat" and rhs[1] ~= "expr_string", "string expression into numeric variable")
+    if #lhs > 2 then -- range
+      local a, b = tonumber(lhs[2]), tonumber(lhs[3])
+      assert(a < b, "invalid range")
+      return "for i="..a..","..b.." do "..lhs[1].."(i, "..dispatch(state, rhs)..") end"
+    end
+    return lhs[1].."("..lhs[2]..", "..dispatch(state, rhs)..")"
+  end
+  -- lhs: other
+  local prefix
+  if lhs[1] == "special_var" then
+    prefix = lhs[1].."("..escape(lhs[2])
+  elseif lhs[1] == "event_var" then
+    prefix = lhs[1].."("..escape(lhs[2])..", "..escape(lhs[3])
+  elseif lhs[1] == "server_var" then
+    prefix = lhs[1].."("..dispatch(state, lhs[2])
+  end
+  if rhs[1] == "concat" then
+    assert(#rhs == 2, "wrong number of concat arguments")
+    return prefix..", "..prefix..").."..dispatch(state, rhs[2])..")"
+  else
+    return prefix..", "..dispatch(state, rhs)..")"
+  end
+end
+
+function gen.call_condition(state, ast)
+  local condition = ast[2]
+  local label = "::condition"..state.condition_count.."::"
+  state.condition_count = state.condition_count+1
+  if type(condition) == "string" then
+    return label.." if state.condition ~= "..escape(condition).." then goto condition"..state.condition_count.." end"
+  else
+    return label.." if not ("..dispatch(state, condition)..") then goto condition"..state.condition_count.." end"
+  end
+end
+
+function gen.condition_expr(state, ast)
+  local lhs, op, rhs = ast[2], ast[3], ast[4]
+  -- conversion to Lua operators
+  if op == "!=" then op = "~=" end
+  if op == "=" then op = "==" end
+  -- gen
+  if op == "==" or op == "~=" then -- string comparison
+    return "S("..dispatch(state, lhs)..") "..op.." S("..dispatch(state, rhs)..")"
+  else
+    return dispatch(state, lhs).." "..op.." "..dispatch(state, rhs)
+  end
+end
+
+function gen.condition_inv(state, ast)
+  local cmp_op, expr = ast[2], ast[3]
+  if cmp_op == "=" then
+    return "inventory("..dispatch(state, expr)..") > 0"
+  elseif cmp_op == "!=" then
+    return "inventory("..dispatch(state, expr)..") == 0"
+  else
+    error("invalid inventory condition operator")
+  end
+end
+
+function gen.call(state, ast)
+  local id = ast[2]
+  local args = { escape(id) }
+  for i=3, #ast do table.insert(args, dispatch(state, ast[i])) end
+  local call_code = "func("..table.concat(args, ", ")..")"
+  -- query control flow
+  if id == "InputQuery" then
+    return "state.qresult = "..call_code
+  elseif id == "OnResultQuery" then
+    assert(#ast == 3, "wrong number of arguments to OnResultQuery")
+    local label = "::query"..state.query_count.."::"
+    state.query_count = state.query_count+1
+    return label.." if state.qresult ~= "..(args[2] or "").." then goto query"..state.query_count.." end"
+  elseif id == "QueryEnd" then
+    local label = "::query"..state.query_count.."::"
+    state.query_count = state.query_count+1
+    return label
+  else
+    return call_code
+  end
+end
+
+function gen.expr_calc(state, ast)
+  local args = {}
+  for i=2, #ast do
+    local arg = ast[i]
+    if type(arg) == "string" then -- operator or number
+      table.insert(args, arg)
+    else -- other
+      table.insert(args, dispatch(state, arg))
+    end
+  end
+  return #args == 1 and table.concat(args) or "("..table.concat(args)..")"
+end
+
+function gen.expr_string(state, ast)
+  local args = {}
+  for i=2, #ast do
+    local arg = ast[i]
+    if type(arg) == "string" then -- literal string
+      table.insert(args, escape(arg))
+    else -- other
+      table.insert(args, dispatch(state, arg))
+    end
+  end
+  if #args == 0 then
+    return [[""]]
+  else
+    return table.concat(args, "..")
+  end
+end
+
+function gen.var(state, ast)
+  assert(#ast == 2, "range as variable index")
+  return "var("..ast[2]..")"
+end
+
+function gen.bool_var(state, ast)
+  assert(#ast == 2, "range as variable index")
+  return "bool_var("..ast[2]..")"
+end
+
+function gen.special_var(state, ast)
+  return "special_var("..escape(ast[2])..")"
+end
+
+function gen.event_var(state, ast)
+  return "event_var("..escape(ast[2])..", "..escape(ast[3])..")"
+end
+
+function gen.server_var(state, ast)
+  return "server_var("..dispatch(state, ast[2])..")"
+end
+
+function gen.function_var(state, ast)
+  local args = { escape(ast[2]) }
+  for i=3, #ast do table.insert(args, dispatch(state, ast[i])) end
+  return "func_var("..table.concat(args, ", ")..")"
+end
+
+function gen.input_string(state, ast)
+  local args = { escape("InputString") }
+  for i=3, #ast do table.insert(args, dispatch(state, ast[i])) end
+  return "func("..table.concat(args, ", ")..")"
+end
+
+local function compileInstruction(itype, state, instruction)
+  local parser = itype == "condition" and l_condition or l_command
   farthest = 0
-  local r = {l_command:match(instruction)}
-  if next(r) then
-    print("OK "..instruction)
-    print(utils.dump(r))
-  else
-    print("ERROR "..instruction)
-    print(string.rep(" ", farthest-1+6).."^")
-    for k in pairs(farthest_tokens) do print("\t"..k) end
+  farthest_tokens = {}
+  local ast = parser:match(instruction)
+  if not ast then
+    local expected_tokens = {}
+    for k in pairs(farthest_tokens) do table.insert(expected_tokens, '"'..k..'"') end
+    error("unexpected input, expected "..table.concat(expected_tokens, ", ").."\n"..
+      instruction.."\n"..string.rep(" ", farthest - 1).."^")
   end
-end
-
-local M = {}
-
-local keywords = {"Variable", "Bool", "Serveur", "InputString"}
-
--- Lexer pass.
--- Extract token strings: grammar symbol, whitespace and text.
--- A symbol token only contains one character.
--- Whitespace matches "%s" pattern.
--- Text can contain anything else.
--- Keywords will be used to fragment the text.
---
--- return list of tokens
---- token: {str, type}
-local function lex(str)
-  local tokens = {}
-  local cur = 1
-  local mode
-  local function advance(i, new_mode)
-    -- find keyword at the end of the current text buffer
-    if mode == "text" then
-      local buffer = str:sub(cur, i-1)
-      for _, keyword in ipairs(keywords) do
-        local part = buffer:match("^(.*)"..keyword.."$")
-        if part then
-          if #part > 0 then table.insert(tokens, {part, mode}) end
-          -- insert keyword
-          table.insert(tokens, {keyword, mode})
-          cur = i
-          break
-        end
-      end
-    end
-    if mode ~= new_mode then
-      if cur < i then table.insert(tokens, {str:sub(cur, i-1), mode}) end
-      mode = new_mode; cur = i
-    end
-  end
-  for i=1, #str do
-    local c = str:sub(i,i)
-    if c:match("[%.%(%)%%%[%],'=<>!%+%-%*/]") then -- symbol
-      advance(i, "symbol")
-      table.insert(tokens, {c, "symbol"})
-      cur = i+1
-    elseif c:match("%s") then -- whitespace
-      advance(i, "whitespace")
-    else -- text
-      advance(i, "text")
-    end
-  end
-  advance(#str+1, "end")
-  return tokens
-end
-
-local Parser = {}
-
-function Parser:init(tokens)
-  self.tokens = tokens
-  self.i, self.pos = 1, 1
-end
-
-function Parser:error(err)
-  local t = self.tokens[self.i]
-  error("parse error at character "..self.pos.." " --
-    ..(t and "\""..t[1].."\"" or "<end>")..": "..err)
-end
-
--- Advance by n tokens.
-function Parser:advance(n)
-  -- accumulate character position
-  for i=1,n do
-    local t = self.tokens[self.i+i-1]
-    self.pos = self.pos+(t and #t[1] or 0)
-  end
-  self.i = self.i+n
-end
-
--- Tokens prediction.
--- ...: list of match tokens {str, type}, str and type can be omitted with nil
---- special tokens:
----- "end": end of the token stream
----- "identifier": identifier made of text, spaces and '-' symbol
--- return bool
-function Parser:predict(...)
-  local i = 1 -- relative token index
-  for _, arg in ipairs({...}) do
-    if arg == "end" then
-      if self.i+i-1 <= #self.tokens then return false end
-      i = i+1
-    elseif arg == "identifier" then
-      local found = false
-      local token = self.tokens[self.i+i-1]
-      while token and (token[2] == "text" or token[2] == "whitespace" or
-          (token[2] == "symbol" and token[1] == '-')) do
-        i = i+1; found = true
-        token = self.tokens[self.i+i-1]
-      end
-      if not found then return false end
-    else -- token matching
-      local t = self.tokens[self.i+i-1]
-      if not t or (arg[1] and t[1] ~= arg[1]) or (arg[2] and t[2] ~= arg[2]) then
-        return false
-      end
-      i = i+1
-    end
-  end
-  return true
-end
-
--- Multiple tokens predictions.
--- ...: list of list of predict() arguments
--- return bool
-function Parser:predictAny(...)
-  for i, arg in ipairs({...}) do
-    if self:predict(unpack(arg)) then return true end
-  end
-end
-
--- Check following tokens and advance on success.
--- return bool
--- ...: token strings
-function Parser:check(...)
-  local args = {...}
-  for i, arg in ipairs(args) do
-    local token = self.tokens[self.i+i-1]
-    if not token or token[1] ~= arg then return false end
-  end
-  self:advance(#args)
-  return true
-end
-
--- Expect following tokens.
--- ...: token strings
-function Parser:expect(...)
-  if not self:check(...) then self:error("expecting \""..table.concat({...}).."\"") end
-end
-
--- Prefix a non-terminal produced data while preserving boolean property.
-local function prefix(name, data) return data and {name, data} end
-
--- ttype: (optional) token type
-function Parser:token(ttype)
-  local t = self.tokens[self.i]
-  if t and (not ttype or t[2] == ttype) then
-    self:advance(1)
-    return t
-  end
-end
-
-function Parser:cmp_op()
-  if self:check('=') then return '=='
-  elseif self:check('<', '=') then return '<='
-  elseif self:check('>', '=') then return '>='
-  elseif self:check('<') then return '<'
-  elseif self:check('>') then return '>'
-  elseif self:check('!', '=') then return '~='
-  end
-end
-
-function Parser:range()
-  local a = self:token("text")
-  if a then
-    self:expect('.', '.')
-    local b = self:token("text")
-    if not b then self:error("expecting integer") end
-    -- produce data
-    a = tonumber(a[1]); if not a then self:error("invalid range integer") end
-    b = tonumber(b[1]); if not b then self:error("invalid range integer") end
-    return {a,b}
-  end
-end
-
-function Parser:var_index()
-  if self:predict({nil, "text"}, {'.'}, {'.'}) then return prefix("range", self:range())
-  else return prefix("expr", self:expr(false, {{{']'}}})) end
-end
-
-function Parser:var()
-  if self:check('Variable', '[') then
-    local var_index = self:var_index()
-    if not var_index then self:error("expecting var index") end
-    self:expect(']')
-    return var_index
-  end
-end
-
-function Parser:bool_var()
-  if self:check('Bool', '[') then
-    local var_index = self:var_index()
-    if not var_index then self:error("expecting var index") end
-    self:expect(']')
-    return var_index
-  end
-end
-
-function Parser:server_var()
-  if self:check('Serveur', '[') then
-    local expr = self:expr(false, {{{']'}}})
-    if not expr then self:error("expecting expression") end
-    self:expect(']')
-    return expr
-  end
-end
-
-function Parser:special_var()
-  if self:check('%') then
-    local id = self:token("text")
-    if not id then self:error("expecting identifier") end
-    self:expect('%')
-    return id[1]
-  end
-end
-
-function Parser:identifier()
-  local item = self:identifier_item()
-  if item then
-    local items = {item[1]}
-    while item do
-      item = self:identifier_item()
-      table.insert(items, item and item[1])
-    end
-    return table.concat(items)
-  end
-end
-
-function Parser:identifier_item()
-  if self:predictAny({{'-', "symbol"}}, {{nil, "whitespace"}}, {{nil, "text"}}) then
-    return self:token()
-  end
-end
-
-function Parser:event_var()
-  if self:check('%') then
-    local event_id = self:identifier()
-    if not event_id then self:error("expecting event identifier") end
-    self:expect('.')
-    local var_id = self:token("text")
-    if not var_id then self:error("expecting variable identifier") end
-    self:expect('%')
-    return {event_id, var_id[1]}
-  end
-end
-
-function Parser:lvar() -- left value var, LHS
-  local lvar = prefix("var", self:var()) or
-    prefix("bool_var", self:bool_var()) or
-    prefix("server_var", self:server_var())
-  if not lvar then
-    if self:predict({'%'}, {nil, "text"}, {'%'}) then
-      lvar = prefix("special_var", self:special_var())
-    elseif self:predict({'%'}, "identifier", {'.'}, {nil, "text"}, {'%'}) then
-      lvar = prefix("event_var", self:event_var())
-    end
-  end
-  return lvar
-end
-
--- end_token: (optional) additional prediction token to end the argument production
--- return code
-function Parser:args(end_token)
-  if self:check('(') then
-    local args = {}
-    repeat
-      -- end expression at "," or ")"
-      local expr = self:expr(true, { {{','}}, {{')'}, end_token} })
-      if not expr then self:error("expecting expression") end
-      table.insert(args, expr)
-    until not self:check(',')
-    self:expect(')')
-    return table.concat(args, ", ")
-  end
-end
-
--- end_token: (optional) additional prediction token to end the argument production
--- return code
-function Parser:quoted_args(end_token)
-  if self:check('(', "'") then
-    local args = {}
-    repeat
-      -- end expression at "','" or "')"
-      local expr = self:expr(true, {{{"'"}, {','}, {"'"}}, {{"'"}, {')'}, end_token}})
-      if not expr then self:error("expecting expression") end
-      table.insert(args, expr)
-    until not self:check("'", ',', "'")
-    self:expect("'", ')')
-    return table.concat(args, ", ")
-  end
-end
-
--- return code
-function Parser:function_var()
-  if self:check('%') then
-    local id = self:token("text")
-    if not id then self:error("expecting identifier") end
-    local args = self:args({'%'})
-    if not args then self:error("expecting arguments") end
-    self:expect('%')
-    return "func_var(\""..id[1].."\", "..args..")"
-  end
-end
-
--- return code
-function Parser:input_string()
-  if self:check('InputString') then
-    local args = self:quoted_args()
-    if not args then self:error("expecting quoted arguments") end
-    return "func(\"InputString\""..(#args > 0 and ", "..args..")" or ")")
-  end
-end
-
--- return code
-function Parser:concat()
-  if self:check('Concat') then
-    local args = self:quoted_args()
-    if not args then self:error("expecting quoted arguments") end
-    return args
-  end
-end
-
-function Parser:inventory()
-  return self:check('%', 'Inventaire', '%')
-end
-
-function Parser:expr_item()
-  if self:predict({'%'}, {nil, "text"}, {'('}) then
-    return prefix("code", self:function_var())
-  else
-    -- Generate lvar expr code.
-    local lvar = self:lvar()
-    if lvar then
-      local code
-      if lvar[1] == "var" or lvar[1] == "bool_var" then
-        local var_index = lvar[2]
-        if var_index[1] == "range" then
-          self:error("a range is invalid in an expression")
-        else -- expr
-          code = lvar[1].."("..var_index[2]..")"
-        end
-      elseif lvar[1] == "server_var" then code = "server_var("..lvar[2]..")"
-      elseif lvar[1] == "special_var" then code = "special_var(\""..lvar[2].."\")"
-      elseif lvar[1] == "event_var" then
-        local event_var = lvar[2]
-        code = "event_var(\""..event_var[1].."\", \""..event_var[2].."\")"
-      end
-      if not code then self:error("no code generated for lvar") end
-      lvar = code
-    end
-    return prefix("code", lvar) or
-      prefix("code", self:input_string()) or
-      prefix("token", self:token())
-  end
-end
-
-local function escape_token(str)
-  -- escape ", \, but allow \n
-  return (str:gsub("\\([^n])", "\\\\%1") --
-    :gsub("\\$", "\\\\") --
-    :gsub("\"", "\\\""))
-end
-
--- end_predictions: (optional) list of predictions to end the expression
--- return code
-function Parser:expr(allow_empty, end_predictions)
-  -- check for first item
-  if (not end_predictions or not self:predictAny(unpack(end_predictions))) then
-    local first_item = self:expr_item()
-    if first_item then
-      local items = {first_item}
-      -- take more items
-      while (not end_predictions or not self:predictAny(unpack(end_predictions))) do
-        local item = self:expr_item()
-        if not item then break end
-        table.insert(items, item)
-      end
-      -- Generate code.
-      -- We must detect if the expression is a computation or a concatenation.
-      -- A computation will produce an integer from the expression, whereas a
-      -- concatenation will produce a string. We try the computation first.
-      local parts = {}
-      -- A valid computation has multiple items or a single one, a number.
-      local valid_computation = (#items > 1 or
-        (items[1][1] == "token" and tonumber(items[1][2][1])))
-      -- A valid computation has only number/whitespace tokens and other non-tokens.
-      for _, item in ipairs(items) do -- add code or token str
-        if item[1] == "token" then -- token, check if not text (except number)
-          local token = item[2]
-          if token[2] == "text" and not tonumber(token[1]) then
-            valid_computation = false; break
-          end
-          table.insert(parts, token[1])
-        else table.insert(parts, "N("..item[2]..")") end -- code
-      end
-      -- Check for valid computation expression.
-      local code = "R("..table.concat(parts)..")"
-      if not valid_computation or not loadstring("return "..code) then
-        -- fallback to concatenation
-        local parts = {}
-        local i = 1
-        while i <= #items do -- each item
-          local item = items[i]
-          if item[1] == "token" then -- token, quoted with escape
-            local tokens = {}
-            repeat -- aggregate tokens as one
-              table.insert(tokens, escape_token(item[2][1]))
-              i = i+1
-              item = items[i]
-            until not item or item[1] ~= "token"
-            table.insert(parts, "\""..table.concat(tokens).."\"")
-          else table.insert(parts, "S("..item[2]..")"); i = i+1 end -- raw code
-        end
-        code = table.concat(parts, "..")
-      end
-      return code
-    end
-  end
-  if allow_empty then return "\"\"" end -- empty string
-end
-
-function Parser:condition_flag()
-  -- handle special flag conditions
-  if self:check('Appuie', ' ', 'sur', ' ', 'bouton') then return "interact"
-  elseif self:check('Automatique') then return "auto"
-  elseif self:check('Auto', ' ', 'une', ' ', 'seul', ' ', 'fois') then return "auto-once"
-  elseif self:check('En', ' ', 'contact') then return "contact"
-  elseif self:check('Attaque') then return "attack"
-  end
-end
-
--- end_predictions: (optional) list of predictions to end the right expression
-function Parser:condition(end_predictions)
-  -- flag
-  local cflag = self:condition_flag()
-  if cflag then return {"flag", cflag} end
-  -- inventory comparison
-  if self:inventory() then
-    local op = self:cmp_op()
-    if not op then self:error("expecting comparison operator") end
-    local expr = self:expr(true, end_predictions)
-    if not expr then self:error("expecting expression") end
-    if op == "==" then return {"code", "inventory("..expr..")>0"}
-    elseif op == "~=" then return {"code", "inventory("..expr..")==0"}
-    else self:error("invalid inventory comparison operator") end
-  end
-  -- expression comparison
-  local lexpr = self:expr(false, { {{'='}}, {{'<'}}, {{'>'}}, {{'!'}} })
-  if lexpr then
-    local op = self:cmp_op()
-    if not op then self:error("expecting comparison operator") end
-    local rexpr = self:expr(true, end_predictions)
-    if not rexpr then self:error("expecting expression") end
-    -- Convert both operands to string or number based on the operator.
-    if op == "==" or op == "~=" then
-      return {"code", "S("..lexpr..")"..op.."S("..rexpr..")"}
-    else
-      return {"code", "N("..lexpr..")"..op.."N("..rexpr..")"}
-    end
-  end
-end
-
--- return code
-function Parser:call()
-  local id = self:token("text")
-  if id then
-    local args = self:quoted_args("end") or self:args("end")
-    -- generate code
-    --- regular call
-    local call = "func(\""..id[1].."\""..(args and ", "..args..")" or ")")
-    --- query control flow
-    if id[1] == "InputQuery" then
-      return "state.qresult = "..call
-    elseif id[1] == "OnResultQuery" then
-      local label = "::query"..self.queries.."::"
-      self.queries = self.queries+1
-      return label.."; if state.qresult ~= "..(args or "").." then goto query"..self.queries.." end"
-    elseif id[1] == "QueryEnd" then
-      local label = "::query"..self.queries.."::"
-      self.queries = self.queries+1
-      return label
-    else return call end
-  end
-end
-
--- return code
-function Parser:call_condition()
-  if self:check('Condition', '(', "'") then
-    local condition = self:condition({{{"'"}, {')'}}})
-    if not condition then self:error("expecting condition") end
-    self:expect("'", ')')
-    -- generate code
-    local label = "::condition"..self.conditions.."::"
-    self.conditions = self.conditions+1
-    if condition[1] == "flag" then
-      return label.."; if state.condition ~= \""..condition[2].."\" then goto condition"..self.conditions.." end"
-    else -- comparison code
-      return label.."; if not ("..condition[2]..") then goto condition"..self.conditions.." end"
-    end
-  end
-end
-
--- return code
-function Parser:assignment()
-  local lvar = self:lvar()
-  if lvar then
-    self:expect('=')
-    -- check for concat or expression
-    local concat = self:concat()
-    local expr
-    if concat then -- Concat(...)
-      if lvar[1] == "server_var" then
-        expr = "S(server_var("..lvar[2].."))..("..concat..")"
-      elseif lvar[1] == "special_var" then
-        expr = "S(special_var(\""..lvar[2].."\"))..("..concat..")"
-      elseif lvar[1] == "event_var" then
-        local event_var = lvar[2]
-        expr = "S(event_var(\""..event_var[1].."\", \""..event_var[2].."\"))..("..concat..")"
-      end
-    else expr = self:expr(true) end
-    if not expr then self:error("expecting expression") end
-    -- generate code
-    local code
-    if lvar[1] == "var" or lvar[1] == "bool_var" then
-      local var_index = lvar[2]
-      if var_index[1] == "range" then
-        local range = var_index[2]
-        code = "for i="..range[1]..","..range[2].." do "..lvar[1].."(i, "..expr..") end"
-      else -- expr
-        code = lvar[1].."("..var_index[2]..", "..expr..")"
-      end
-    elseif lvar[1] == "server_var" then code = "server_var("..lvar[2]..", "..expr..")"
-    elseif lvar[1] == "special_var" then code = "special_var(\""..lvar[2].."\", "..expr..")"
-    elseif lvar[1] == "event_var" then
-      local event_var = lvar[2]
-      code = "event_var(\""..event_var[1].."\", \""..event_var[2].."\", "..expr..")"
-    end
-    if not code then self:error("no assignment code generated") end
-    return code
-  end
-end
-
-function Parser:command()
-  if self:predict({'%'}) or self:predict({nil, "text"}, {'['}) then
-    return self:assignment()
-  else
-    return self:call_condition() or self:call()
-  end
-end
-
--- Compilation.
-
--- Compile condition instruction to Lua code.
-local function compileCondition(p, instruction)
-  if not instruction:match("^//") then -- ignore comment
-    p:init(lex(instruction))
-    local condition = p:condition()
-    if not condition then p:error("expecting condition") end
-    if p.i <= #p.tokens then p:error("unexpected token") end
-    if condition[1] == "flag" then
-      p.flags[condition[2]] = true
-    else return condition[2] end -- code
-  end
+  if type(ast) == "number" then return "" end
+  return gen[itype](state, ast)
 end
 
 -- Compile condition block.
 -- return (code, flags) or (nil, err)
 function M.compileConditions(instructions)
-  local p = setmetatable({flags = {}}, {__index = Parser})
+  local state = {flags = {}}
   local lines = {}
+  local empty = true
   for i, instruction in ipairs(instructions) do
-    local ok, r = pcall(compileCondition, p, instruction)
+    local ok, r = pcall(compileInstruction, "condition", state, instruction)
     if not ok then return nil, "CD:"..i..":"..instruction.."\n"..r end
+    assert(r, "missing generated code")
     -- match an editor line with a Lua line
-    table.insert(lines, r and "and "..r or "")
+    if r == "" then
+      table.insert(lines, "")
+    else
+      table.insert(lines, empty and r or " and "..r)
+      empty = false
+    end
   end
-  return "return true "..table.concat(lines, "\n"), p.flags
-end
-
--- Compile command instruction to Lua code.
-local function compileCommand(p, instruction)
-  if not instruction:match("^//") then -- ignore comment
-    p:init(lex(instruction))
-    local command = p:command()
-    if not command then p:error("expecting command") end
-    if p.i <= #p.tokens then p:error("unexpected token") end
-    return command
-  end
+  return (empty and "return true " or "return ")..table.concat(lines, "\n"), state.flags
 end
 
 -- Compile command block.
 -- return code or (nil, err)
 function M.compileCommands(instructions)
-  local p = setmetatable({conditions = 0, queries = 0}, {__index = Parser})
+  local state = {query_count = 0, condition_count = 0}
   local lines = {}
   for i, instruction in ipairs(instructions) do
-    local ok, r = pcall(compileCommand, p, instruction)
+    local ok, r = pcall(compileInstruction, "command", state, instruction)
     if not ok then return nil, "EV:"..i..":"..instruction.."\n"..r end
     -- match an editor line with a Lua line
     table.insert(lines, r or "")
   end
   -- end conditions label
-  table.insert(lines, "::condition"..p.conditions..":: ::query"..p.queries.."::")
+  table.insert(lines, "::condition"..state.condition_count..":: ::query"..state.query_count.."::")
   return table.concat(lines, "\n")
 end
 
 -- Validate instructions.
-local function validate(compile_func, instructions)
+local function validate(itype, instructions)
   local errors = {}
-  local p = setmetatable({flags = {}, conditions = 0, queries = 0}, {__index = Parser})
+  local state = {query_count = 0, condition_count = 0, flags = {}}
   for i, instruction in ipairs(instructions) do
-    local ok, err = pcall(compile_func, p, instruction)
+    local ok, err = pcall(compileInstruction, itype, state, instruction)
     if not ok then
       table.insert(errors, {
         i = i, instruction = instruction,
-        error = err,
-        parser = p
+        error = err
       })
     end
   end
   return errors
 end
 
-function M.validateConditions(instructions) return validate(compileCondition, instructions) end
-function M.validateCommands(instructions) return validate(compileCommand, instructions) end
+function M.validateConditions(instructions) return validate("condition", instructions) end
+function M.validateCommands(instructions) return validate("command", instructions) end
 
 return M
