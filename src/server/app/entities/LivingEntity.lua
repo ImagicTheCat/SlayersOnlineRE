@@ -19,8 +19,6 @@ end)
 
 local LivingEntity = class("LivingEntity", Entity)
 
--- STATICS
-
 -- return dx,dy (direction) or nil on invalid orientation (0-3)
 function LivingEntity.orientationVector(orientation)
   if orientation == 0 then return 0,-1
@@ -43,7 +41,7 @@ function LivingEntity.pixelSpeed(speed)
   return math.abs(speed)*4*16
 end
 
--- PRIVATE METHODS
+local checkInt = utils.checkInt
 
 -- Function vars definitions, map of id => function.
 -- form: %var(...)%
@@ -51,19 +49,15 @@ end
 local function_vars = {}
 
 function function_vars:rand(max)
-  if max then
-    return math.random(0, (max or 1)-1)
-  end
+  return math.random(0, checkInt(max)-1)
 end
+
 function function_vars:min(a, b)
-  if a and b then
-    return math.min(a or 0, b or 0)
-  end
+  return math.min(checkInt(a), checkInt(b))
 end
+
 function function_vars:max(a, b)
-  if a and b then
-    return math.max(a or 0, b or 0)
-  end
+  return math.max(checkInt(a), checkInt(b))
 end
 
 -- Caster var accessor definitions, map of id => function.
@@ -75,61 +69,70 @@ function caster_vars:Force(value)
   if not value then return self.strength_pts or 0
   else
     if xtype.is(self, Client) then
-      self.strength_pts = value
+      self.strength_pts = checkInt(value)
       self:updateCharacteristics()
     end
   end
 end
+
 function caster_vars:Dext(value)
   if not value then return self.dexterity_pts or 0
   else
     if xtype.is(self, Client) then
-      self.dexterity_pts = value
+      self.dexterity_pts = checkInt(value)
       self:updateCharacteristics()
     end
   end
 end
+
 function caster_vars:Constit(value)
   if not value then return self.constitution_pts or 0
   else
     if xtype.is(self, Client) then
-      self.constitution_pts = value
+      self.constitution_pts = checkInt(value)
       self:updateCharacteristics()
     end
   end
 end
+
 function caster_vars:Magie(value)
   if not value then return self.magic_pts or 0
   else
     if xtype.is(self, Client) then
-      self.magic_pts = value
+      self.magic_pts = checkInt(value)
       self:updateCharacteristics()
     end
   end
 end
+
 function caster_vars:Attaque(value)
   if not value then return self.ch_attack
   else
-    self.ch_attack = value
+    self.ch_attack = checkInt(value)
     if xtype.is(self, Client) then
       self:sendPacket(net.STATS_UPDATE, {attack = self.ch_attack})
     end
   end
 end
+
 function caster_vars:Defense(value)
   if not value then return self.ch_defense
   else
-    self.ch_defense = value
+    self.ch_defense = checkInt(value)
     if xtype.is(self, Client) then
       self:sendPacket(net.STATS_UPDATE, {defense = self.ch_defense})
     end
   end
 end
+
 function caster_vars:Dommage(value)
-  if not value then return self.min_damage end
+  if not value then return self.min_damage
+  else error "can't set Dommage" end
 end
+
 function caster_vars:Vie(value, state)
   if value then
+    value = checkInt(value)
     -- effect
     local delta = value-self.health
     if delta > 0 then self:emitHint({{0,1,0}, utils.fn(delta)})
@@ -150,21 +153,27 @@ function caster_vars:Vie(value, state)
     return self.health
   end
 end
+
 function caster_vars:VieMax(value)
-  if not value then return self.max_health end
+  if not value then return self.max_health
+  else error "can't set VieMax" end
 end
+
 function caster_vars:CurrentMag(value)
-  if value then self:setMana(value)
+  if value then self:setMana(checkInt(value))
   else return self.mana end
 end
+
 function caster_vars:MagMax(value)
-  if not value then
-    return self.max_mana
-  end
+  if not value then return self.max_mana
+  else error "can't set MagMax" end
 end
+
 function caster_vars:Alignement(value)
-  if not value then return self.alignment or 0
+  if not value then
+    return self.alignment or 0
   else
+    value = checkInt(value)
     if xtype.is(self, Client) then
       local delta = value-self.alignment
       self:emitHint(utils.fn(delta, true).." alignement")
@@ -172,9 +181,12 @@ function caster_vars:Alignement(value)
     end
   end
 end
+
 function caster_vars:Reputation(value)
-  if not value then return self.reputation or 0
+  if not value then
+    return self.reputation or 0
   else
+    value = checkInt(value)
     if xtype.is(self, Client) then
       local delta = value-self.alignment
       self:emitHint(utils.fn(delta, true).." réputation")
@@ -182,9 +194,12 @@ function caster_vars:Reputation(value)
     end
   end
 end
+
 function caster_vars:Gold(value)
-  if not value then return self.gold or 0
+  if not value then
+    return self.gold or 0
   else
+    value = checkInt(value)
     if xtype.is(self, Client) then
       local delta = value-self.gold
       self:emitHint({{1,0.78,0}, utils.fn(delta, true)})
@@ -192,9 +207,12 @@ function caster_vars:Gold(value)
     end
   end
 end
+
 function caster_vars:Lvl(value)
-  if not value then return self.level or 0
+  if not value then
+    return self.level or 0
   else
+    value = checkInt(value)
     if xtype.is(self, Client) then
       local xp = XPtable[value]
       if xp then
@@ -205,9 +223,12 @@ function caster_vars:Lvl(value)
     end
   end
 end
+
 function caster_vars:CurrentXP(value)
-  if not value then return self.xp or 0
+  if not value then
+    return self.xp or 0
   else
+    value = checkInt(value)
     if xtype.is(self, Client) then
       local delta = value-self.xp
       self:emitHint({{0,0.9,1}, utils.fn(delta, true)})
@@ -215,37 +236,50 @@ function caster_vars:CurrentXP(value)
     end
   end
 end
+
 function caster_vars:HandDom(value)
-  if not value then return 0 end
+  if not value then return 0
+  else error "can't set HandDom" end
 end
+
 function caster_vars:IndOff(value)
   if not value then
     local class_data = xtype.is(self, Client) and server.project.classes[self.class]
     return class_data and class_data.off_index or 0
+  else
+    error "can't set IndOff"
   end
 end
 function caster_vars:IndDef(value)
   if not value then
     local class_data = xtype.is(self, Client) and server.project.classes[self.class]
     return class_data and class_data.def_index or 0
+  else
+    error "can't set IndDef"
   end
 end
 function caster_vars:IndPui(value)
   if not value then
     local class_data = xtype.is(self, Client) and server.project.classes[self.class]
     return class_data and class_data.pow_index or 0
+  else
+    error "can't set IndPui"
   end
 end
 function caster_vars:IndVit(value)
   if not value then
     local class_data = xtype.is(self, Client) and server.project.classes[self.class]
     return class_data and class_data.health_index or 0
+  else
+    error "can't set IndVit"
   end
 end
 function caster_vars:IndMag(value)
   if not value then
     local class_data = xtype.is(self, Client) and server.project.classes[self.class]
     return class_data and class_data.mag_index or 0
+  else
+    error "can't set IndMag"
   end
 end
 
@@ -260,8 +294,10 @@ target_vars.Defense = caster_vars.Defense
 target_vars.Dommage = caster_vars.Dommage
 
 function target_vars:Bloque(value, state)
-  if not value then return self.spell_blocked and 1 or 0
+  if not value then
+    return self.spell_blocked and 1 or 0
   else
+    value = checkInt(value)
     if xtype.is(self, Client) or xtype.is(self, Mob) then
       self.spell_blocked = value > 0
       state.spell_block = true
@@ -276,34 +312,33 @@ do -- Build spell execution environment.
       if xtype.is(caster, Client) then caster:setVariable(id, value) end
     else
       if xtype.is(caster, Client) then return caster:getVariable(id) end
-      return 0
+      return 0 -- default value if not client
     end
   end
   local function func_var(state, id, ...)
     local f = function_vars[id]
-    if f then return f(state, ...) end
+    if not f then error("invalid function var "..string.format("%q", id)) end
+    return f(state, ...)
   end
   local function caster_var(state, id, value)
     local f = caster_vars[id]
-    if f then
-      if value then f(state.caster, value, state)
-      else return f(state.caster, nil, state) end
-    end
+    if not f then error("invalid caster var "..string.format("%q", id)) end
+    if value then f(state.caster, value, state)
+    else return f(state.caster, nil, state) end
   end
   local function target_var(state, id, value)
     local f = target_vars[id]
-    if f then
-      if value then f(state.target, value, state)
-      else return f(state.target, nil, state) end
-    end
+    if not f then error("invalid target var "..string.format("%q", id)) end
+    if value then f(state.target, value, state)
+    else return f(state.target, nil, state) end
   end
   -- spell command
   local function spell(state, id)
     local spell_data = server.project.spells[server.project.spells_by_name[id]]
-    if spell_data then state.target:applySpell(state.caster, spell_data) end
+    assert(spell_data, "couldn't find spell data")
+    state.target:applySpell(state.caster, spell_data)
   end
   LivingEntity.spell_env = {
-    R = utils.sanitizeInt,
     var = var,
     caster_var = caster_var,
     target_var = target_var,
