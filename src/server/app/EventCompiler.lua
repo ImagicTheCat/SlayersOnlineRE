@@ -39,7 +39,6 @@ expr_construct = lvar | function_var | input_string token
 ]]
 
 local lpeg = require "lpeg"
-local utils = require "app.utils"
 
 local M = {}
 
