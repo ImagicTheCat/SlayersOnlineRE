@@ -16,6 +16,7 @@ client:: LÖVE 11.x
 - https://github.com/ImagicTheCat/ljuv
 - https://github.com/leafo/lua-enet
 - https://luarocks.org/modules/luarocks/struct
+- https://luarocks.org/modules/gvvaughan/lpeg
 - https://luarocks.org/modules/luarocks/lua-iconv
 - https://github.com/libvips/lua-vips
 - http://lua.sqlite.org

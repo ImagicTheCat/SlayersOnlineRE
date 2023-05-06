@@ -1915,7 +1915,7 @@ end
 
 -- vtype: string, "bool" (boolean) or "var" (integer)
 function Client:setVariable(vtype, id, value)
-  id, value = tonumber(id) or 0, tonumber(value) or 0
+  id, value = utils.checkInt(id), utils.checkInt(value)
   local vars = (vtype == "bool" and self.bool_vars or self.vars)
   local changed_vars = (vtype == "bool" and self.changed_bool_vars or self.changed_vars)
   vars[id] = value
@@ -1923,7 +1923,7 @@ function Client:setVariable(vtype, id, value)
 end
 
 function Client:getVariable(vtype, id)
-  id = tonumber(id) or 0
+  id = utils.checkInt(id)
   local vars = (vtype == "bool" and self.bool_vars or self.vars)
   return vars[id] or 0
 end

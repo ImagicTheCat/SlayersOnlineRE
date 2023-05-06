@@ -19,8 +19,6 @@ end)
 
 local Event = class("Event", LivingEntity)
 
--- STATICS
-
 Event.TRIGGER_RADIUS = 15 -- visibility/trigger radius in cells
 Event.FLEE_RADIUS = 6 -- cells
 
@@ -30,7 +28,7 @@ local ORIENTED_ANIMATION_TYPES = utils.bimap({
   "character-random"
 }, true)
 
--- PRIVATE METHODS
+local checkInt = utils.checkInt
 
 -- function vars definitions, map of id => function
 -- form: %var(...)%
@@ -39,27 +37,19 @@ local ORIENTED_ANIMATION_TYPES = utils.bimap({
 local function_vars = {}
 
 function function_vars:rand(max)
-  if max then
-    return math.random(0, (tonumber(max) or 1)-1)
-  end
+  return math.random(0, checkInt(max)-1)
 end
 
 function function_vars:min(a, b)
-  if a and b then
-    return math.min(tonumber(a) or 0, tonumber(b) or 0)
-  end
+  return math.min(checkInt(a), checkInt(b))
 end
 
 function function_vars:max(a, b)
-  if a and b then
-    return math.max(tonumber(a) or 0, tonumber(b) or 0)
-  end
+  return math.max(checkInt(a), checkInt(b))
 end
 
 function function_vars:upper(str)
-  if str then
-    return string.upper(str)
-  end
+  return string.upper(str)
 end
 
 -- special var accessor definitions, map of id => function
@@ -71,12 +61,16 @@ local special_vars = {}
 function special_vars:Name(value)
   if not value then
     return self.client.pseudo
+  else
+    error "can't set Name"
   end
 end
 
 function special_vars:UpperName(value)
   if not value then
     return (string.gsub(string.upper(self.client.pseudo), "%U", ""))
+  else
+    error "can't set UpperName"
   end
 end
 
@@ -84,18 +78,22 @@ function special_vars:Classe(value)
   if not value then
     local class_data = server.project.classes[self.client.class]
     return class_data.name
+  else
+    error "can't set Classe"
   end
 end
 
 function special_vars:Skin(value)
   if not value then
     return "Chipset\\"..self.client.charaset.path
+  else
+    error "can't set Skin"
   end
 end
 
 function special_vars:Force(value)
   if value then
-    self.client.strength_pts = tonumber(value) or 0
+    self.client.strength_pts = checkInt(value)
     self.client:updateCharacteristics()
   else
     return self.client.strength_pts
@@ -104,7 +102,7 @@ end
 
 function special_vars:Dext(value)
   if value then
-    self.client.dexterity_pts = tonumber(value) or 0
+    self.client.dexterity_pts = checkInt(value)
     self.client:updateCharacteristics()
   else
     return self.client.dexterity_pts
@@ -113,7 +111,7 @@ end
 
 function special_vars:Constit(value)
   if value then
-    self.client.constitution_pts = tonumber(value) or 0
+    self.client.constitution_pts = checkInt(value)
     self.client:updateCharacteristics()
   else
     return self.client.constitution_pts
@@ -122,7 +120,7 @@ end
 
 function special_vars:Magie(value)
   if value then
-    self.client.magic_pts = tonumber(value) or 0
+    self.client.magic_pts = checkInt(value)
     self.client:updateCharacteristics()
   else
     return self.client.magic_pts
@@ -131,7 +129,7 @@ end
 
 function special_vars:Attaque(value)
   if value then
-    self.client.ch_attack = tonumber(value) or 0
+    self.client.ch_attack = checkInt(value)
     self.client:sendPacket(net.STATS_UPDATE, {attack = self.client.ch_attack})
   else
     return self.client.ch_attack
@@ -140,7 +138,7 @@ end
 
 function special_vars:Defense(value)
   if value then
-    self.client.ch_defense = tonumber(value) or 0
+    self.client.ch_defense = checkInt(value)
     self.client:sendPacket(net.STATS_UPDATE, {defense = self.client.ch_defense})
   else
     return self.client.ch_defense
@@ -149,11 +147,10 @@ end
 
 function special_vars:Vie(value)
   if value then
-    value = tonumber(value) or 0
+    value = checkInt(value)
     local delta = value-self.client.health
     if delta > 0 then self.client:emitHint({{0,1,0}, utils.fn(delta)})
     elseif delta < 0 then self.client:broadcastPacket("damage", -delta) end
-
     self.client:setHealth(value)
   else
     return self.client.health
@@ -163,12 +160,14 @@ end
 function special_vars:VieMax(value)
   if not value then
     return self.client.max_health
+  else
+    error "can't set VieMax"
   end
 end
 
 function special_vars:CurrentMag(value)
   if value then
-    self.client:setMana(tonumber(value) or 0)
+    self.client:setMana(checkInt(value))
   else
     return self.client.mana
   end
@@ -177,12 +176,14 @@ end
 function special_vars:MagMax(value)
   if not value then
     return self.client.max_mana
+  else
+    error "can't set MagMax"
   end
 end
 
 function special_vars:Alignement(value)
   if value then
-    value = tonumber(value) or 0
+    value = checkInt(value)
     local delta = value-self.client.alignment
     self.client:emitHint(utils.fn(delta, true).." alignement")
     self.client:setAlignment(value)
@@ -193,7 +194,7 @@ end
 
 function special_vars:Reputation(value)
   if value then
-    value = tonumber(value) or 0
+    value = checkInt(value)
     local delta = value-self.client.alignment
     self.client:emitHint(utils.fn(delta, true).." réputation")
     self.client:setReputation(value)
@@ -204,7 +205,7 @@ end
 
 function special_vars:Gold(value)
   if value then
-    value = tonumber(value) or 0
+    value = checkInt(value)
     local delta = value-self.client.gold
     self.client:emitHint({{1,0.78,0}, utils.fn(delta, true)})
     self.client:setGold(value)
@@ -215,7 +216,7 @@ end
 
 function special_vars:Lvl(value)
   if value then
-    local xp = XPtable[tonumber(value) or 0]
+    local xp = XPtable[checkInt(value)]
     if xp then
       local delta = xp-self.client.xp
       self.client:emitHint({{0,0.9,1}, utils.fn(delta, true)})
@@ -228,7 +229,7 @@ end
 
 function special_vars:LvlPoint(value)
   if value then
-    self.client:setRemainingPoints(tonumber(value) or 0)
+    self.client:setRemainingPoints(checkInt(value))
   else
     return self.client.remaining_pts
   end
@@ -236,7 +237,7 @@ end
 
 function special_vars:CurrentXP(value)
   if value then
-    value = tonumber(value) or 0
+    value = checkInt(value)
     local delta = value-self.client.xp
     self.client:emitHint({{0,0.9,1}, utils.fn(delta, true)})
     self.client:setXP(tonumber(value) or 0)
@@ -248,12 +249,14 @@ end
 function special_vars:NextXP(value)
   if not value then
     return XPtable[self.client.level+1] or self.client.xp
+  else
+    error "can't set NextXP"
   end
 end
 
 function special_vars:Timer(value)
   if value then
-    self.client.timers[1] = tonumber(value) or 0
+    self.client.timers[1] = checkInt(value)
   else
     return self.client.timers[1]
   end
@@ -261,7 +264,7 @@ end
 
 function special_vars:Timer2(value)
   if value then
-    self.client.timers[2] = tonumber(value) or 0
+    self.client.timers[2] = checkInt(value)
   else
     return self.client.timers[2]
   end
@@ -269,7 +272,7 @@ end
 
 function special_vars:Timer3(value)
   if value then
-    self.client.timers[3] = tonumber(value) or 0
+    self.client.timers[3] = checkInt(value)
   else
     return self.client.timers[3]
   end
@@ -277,7 +280,7 @@ end
 
 function special_vars:KillPlayer(value)
   if value then
-    self.client.kill_player = tonumber(value) or 0
+    self.client.kill_player = checkInt(value)
   else
     return self.client.kill_player
   end
@@ -285,7 +288,7 @@ end
 
 function special_vars:Visible(value)
   if value then
-    self.client.visible = (tonumber(value) or 0) > 0
+    self.client.visible = checkInt(value) > 0
     self.client:broadcastPacket("ch-visible", visible)
   else
     return self.client.visible and 1 or 0
@@ -294,7 +297,7 @@ end
 
 function special_vars:Bloque(value)
   if value then
-    self.client.blocked = (tonumber(value) or 0) > 0
+    self.client.blocked = checkInt(value) > 0
   else
     return self.client.blocked and 1 or 0
   end
@@ -303,7 +306,7 @@ end
 -- async
 function special_vars:CaseX(value)
   if value then
-    self.client:moveToCell(tonumber(value) or self.client.cx, self.client.cy, true)
+    self.client:moveToCell(checkInt(value), self.client.cy, true)
   else
     return self.client.cx
   end
@@ -312,7 +315,7 @@ end
 -- async
 function special_vars:CaseY(value)
   if value then
-    self.client:moveToCell(self.client.cx, tonumber(value) or self.client.cy, true)
+    self.client:moveToCell(self.client.cx, checkInt(value), true)
   else
     return self.client.cy
   end
@@ -320,7 +323,7 @@ end
 
 function special_vars:Position(value)
   if value then
-    self.client.draw_order = tonumber(value) or 0
+    self.client.draw_order = checkInt(value)
     self.client:broadcastPacket("ch-draw-order", self.client.draw_order)
   else
     return self.client.draw_order
@@ -329,25 +332,25 @@ end
 
 function special_vars:CentreX(value)
   if value then
-    self.client.view_shift[1] = (tonumber(value) or 0)*(-16)
+    self.client.view_shift[1] = checkInt(value) * -16
     self.client:sendPacket(net.VIEW_SHIFT_UPDATE, self.client.view_shift)
   else
-    return self.client.view_shift[1]/-16
+    return self.client.view_shift[1] / -16
   end
 end
 
 function special_vars:CentreY(value)
   if value then
-    self.client.view_shift[2] = (tonumber(value) or 0)*(-16)
+    self.client.view_shift[2] = checkInt(value) * -16
     self.client:sendPacket(net.VIEW_SHIFT_UPDATE, self.client.view_shift)
   else
-    return self.client.view_shift[2]/-16
+    return self.client.view_shift[2] / -16
   end
 end
 
 function special_vars:BloqueChangeSkin(value)
   if value then
-    self.client.blocked_skin = (tonumber(value) or 0) > 0
+    self.client.blocked_skin = checkInt(value) > 0
   else
     return self.client.blocked_skin and 1 or 0
   end
@@ -355,7 +358,7 @@ end
 
 function special_vars:BloqueAttaque(value)
   if value then
-    self.client.blocked_attack = (tonumber(value) or 0) > 0
+    self.client.blocked_attack = checkInt(value) > 0
   else
     return self.client.blocked_attack and 1 or 0
   end
@@ -363,7 +366,7 @@ end
 
 function special_vars:BloqueDefense(value)
   if value then
-    self.client.blocked_defend = (tonumber(value) or 0) > 0
+    self.client.blocked_defend = checkInt(value) > 0
   else
     return self.client.blocked_defend and 1 or 0
   end
@@ -371,7 +374,7 @@ end
 
 function special_vars:BloqueMagie(value)
   if value then
-    self.client.blocked_cast = (tonumber(value) or 0) > 0
+    self.client.blocked_cast = checkInt(value) > 0
   else
     return self.client.blocked_cast and 1 or 0
   end
@@ -379,7 +382,7 @@ end
 
 function special_vars:BloqueDialogue(value)
   if value then
-    self.client.blocked_chat = (tonumber(value) or 0) > 0
+    self.client.blocked_chat = checkInt(value) > 0
   else
     return self.client.blocked_chat and 1 or 0
   end
@@ -393,6 +396,8 @@ end
 function special_vars:NbObjetInventaire(value)
   if not value then
     return self.client.inventory:getAmount()
+  else
+    error "can't set NbObjetInventaire"
   end
 end
 
@@ -400,6 +405,8 @@ function special_vars:Arme(value)
   if not value then
     local item = server.project.objects[self.client.weapon_slot]
     return item and item.name or ""
+  else
+    error "can't set Arme"
   end
 end
 
@@ -407,6 +414,8 @@ function special_vars:Bouclier(value)
   if not value then
     local item = server.project.objects[self.client.shield_slot]
     return item and item.name or ""
+  else
+    error "can't set Bouclier"
   end
 end
 
@@ -414,6 +423,8 @@ function special_vars:Casque(value)
   if not value then
     local item = server.project.objects[self.client.helmet_slot]
     return item and item.name or ""
+  else
+    error "can't set Casque"
   end
 end
 
@@ -421,12 +432,14 @@ function special_vars:Armure(value)
   if not value then
     local item = server.project.objects[self.client.armor_slot]
     return item and item.name or ""
+  else
+    error "can't set Armure"
   end
 end
 
 function special_vars:Direction(value)
   if value then
-    self.client:setOrientation(tonumber(value) or 0)
+    self.client:setOrientation(checkInt(value))
   else
     return self.client.orientation
   end
@@ -443,24 +456,30 @@ end
 function special_vars:Guilde(value)
   if not value then
     return self.client.guild
+  else
+    error "can't set Guilde"
   end
 end
 
 function special_vars:Rang(value)
   if not value then
     return self.client.guild_rank_title
+  else
+    error "can't set Rang"
   end
 end
 
 function special_vars:Grade(value)
   if not value then
     return self.client.guild_rank
+  else
+    error "can't set Grade"
   end
 end
 
 function special_vars:String1(value)
   if value then
-    self.client.strings[1] = value
+    self.client.strings[1] = tostring(value)
   else
     return self.client.strings[1]
   end
@@ -468,7 +487,7 @@ end
 
 function special_vars:String2(value)
   if value then
-    self.client.strings[2] = value
+    self.client.strings[2] = tostring(value)
   else
     return self.client.strings[2]
   end
@@ -476,7 +495,7 @@ end
 
 function special_vars:String3(value)
   if value then
-    self.client.strings[3] = value
+    self.client.strings[3] = tostring(value)
   else
     return self.client.strings[3]
   end
@@ -491,13 +510,17 @@ end
 function special_vars:EvCaseY(value)
   if not value then
     return self.cy
+  else
+    error "can't set EvCaseY"
   end
 end
 
 function special_vars:Effect(value)
   if not value then
     return self.client.map_effect
-  else self.client:setMapEffect(tonumber(value) or 0) end
+  else
+    self.client:setMapEffect(checkInt(value))
+  end
 end
 
 -- aliases
@@ -518,9 +541,7 @@ function event_vars:Name(value)
     if entity == self then
       self.client.events_by_name[self.name] = nil
     end
-
-    self.name = value
-
+    self.name = tostring(value)
     -- reference
     self.client.events_by_name[self.name] = self
   else
@@ -539,7 +560,7 @@ end
 
 function event_vars:Bloquant(value)
   if value then
-    self.obstacle = ((tonumber(value) or 0) > 0)
+    self.obstacle = checkInt(value) > 0
   else
     return (self.obstacle and 1 or 0)
   end
@@ -547,7 +568,7 @@ end
 
 function event_vars:Visible(value)
   if value then
-    self.active = ((tonumber(value) or 0) > 0)
+    self.active = checkInt(value) > 0
     self:broadcastPacket("ch-active", self.active)
   else
     return (self.active and 1 or 0)
@@ -556,7 +577,7 @@ end
 
 function event_vars:TypeAnim(value)
   if value then
-    value = tonumber(value) or 0
+    value = checkInt(value)
     self.animation_type = Deserializer.EVENT_ANIMATION_TYPES[value] or "static"
     -- update
     local data = {animation_type = self.animation_type}
@@ -578,7 +599,7 @@ end
 
 function event_vars:Direction(value)
   if value then
-    self:setOrientation(tonumber(value) or 0)
+    self:setOrientation(checkInt(value))
   else
     return self.orientation
   end
@@ -586,7 +607,7 @@ end
 
 function event_vars:CaseX(value)
   if value then
-    self:moveToCell(tonumber(value) or self.cx, self.cy, true)
+    self:moveToCell(checkInt(value), self.cy, true)
   else
     return self.cx
   end
@@ -594,7 +615,7 @@ end
 
 function event_vars:CaseY(value)
   if value then
-    self:moveToCell(self.cx, tonumber(value) or self.cy, true)
+    self:moveToCell(self.cx, checkInt(value), true)
   else
     return self.cy
   end
@@ -602,19 +623,23 @@ end
 
 function event_vars:CaseNBX(value)
   if value then
-    self:moveToCell(tonumber(value) or self.cx, self.cy)
+    self:moveToCell(checkInt(value), self.cy)
+  else
+    error "can't set Ev.CaseNBX"
   end
 end
 
 function event_vars:CaseNBY(value)
   if value then
-    self:moveToCell(self.cx, tonumber(value) or self.cy)
+    self:moveToCell(self.cx, checkInt(value))
+  else
+    error "can't set Ev.CaseNBY"
   end
 end
 
 function event_vars:X(value)
   if value then
-    self.charaset.x = (tonumber(value) or 0)
+    self.charaset.x = checkInt(value)
     self:setCharaset(self.charaset)
   else
     return self.charaset.x
@@ -623,7 +648,7 @@ end
 
 function event_vars:Y(value)
   if value then
-    self.charaset.y = (tonumber(value) or 0)
+    self.charaset.y = checkInt(value)
     self:setCharaset(self.charaset)
   else
     return self.charaset.y
@@ -632,7 +657,7 @@ end
 
 function event_vars:W(value)
   if value then
-    self.charaset.w = (tonumber(value) or 0)
+    self.charaset.w = checkInt(value)
     self:setCharaset(self.charaset)
   else
     return self.charaset.w
@@ -641,7 +666,7 @@ end
 
 function event_vars:H(value)
   if value then
-    self.charaset.h = (tonumber(value) or 0)
+    self.charaset.h = checkInt(value)
     self:setCharaset(self.charaset)
   else
     return self.charaset.h
@@ -650,7 +675,7 @@ end
 
 function event_vars:NumAnim(value)
   if value then
-    self.animation_number = (tonumber(value) or 0)
+    self.animation_number = checkInt(value)
     self:broadcastPacket("ch-animation-number", self.animation_number)
   else
     return self.animation_number
@@ -659,7 +684,7 @@ end
 
 function event_vars:Vitesse(value)
   if value then
-    self.speed = (tonumber(value) or 0)
+    self.speed = checkInt(value)
   else
     return self.speed
   end
@@ -667,7 +692,7 @@ end
 
 function event_vars:Transparent(value)
   if value then
-    self:setGhost((tonumber(value) or 0) > 0)
+    self:setGhost(checkInt(value) > 0)
   else
     return self.ghost and 1 or 0
   end
@@ -694,7 +719,7 @@ end
 local command_functions = {}
 
 function command_functions:AddObject(name, amount)
-  amount = tonumber(amount) or 1
+  amount = amount and checkInt(amount) or 1
   local id = server.project.objects_by_name[name]
   if id and amount > 0 then
     -- save
@@ -711,7 +736,7 @@ function command_functions:AddObject(name, amount)
 end
 
 function command_functions:DelObject(name, amount)
-  amount = tonumber(amount) or 1
+  amount = amount and checkInt(amount) or 1
   local id = server.project.objects_by_name[name]
   if id and amount > 0 then
     -- save
@@ -728,43 +753,32 @@ function command_functions:DelObject(name, amount)
 end
 
 function command_functions:Teleport(map_name, cx, cy)
-  local cx = tonumber(cx)
-  local cy = tonumber(cy)
-  if map_name and cx and cy then
-    local map = server:getMap(map_name)
-    if map then
-      self.client.prevent_next_contact = true -- prevent teleport loop
-      map:addEntity(self.client)
-      self.client:teleport(cx*16, cy*16)
-    end
-  end
+  local cx, cy = checkInt(cx), checkInt(cy)
+  local map = server:getMap(map_name)
+  assert(map, "teleport: invalid map")
+  self.client.prevent_next_contact = true -- prevent teleport loop
+  map:addEntity(self.client)
+  self.client:teleport(cx*16, cy*16)
 end
 
 function command_functions:ChangeResPoint(map_name, cx, cy)
-  cx = tonumber(cx)
-  cy = tonumber(cy)
-
-  if map_name and cx and cy then
-    -- save
-    if not self.transaction.respawn_point then
-      self.transaction.respawn_point = self.client.respawn_point
-    end
-    -- set
-    self.client.respawn_point = {
-      map = map_name,
-      cx = cx,
-      cy = cy
-    }
+  cx, cy = checkInt(cx), checkInt(cy)
+  assert(type(map_name) == "string", "invalid map name")
+  -- save
+  if not self.transaction.respawn_point then
+    self.transaction.respawn_point = self.client.respawn_point
   end
+  -- set
+  self.client.respawn_point = {
+    map = map_name,
+    cx = cx,
+    cy = cy
+  }
 end
 
 function command_functions:SScroll(cx, cy)
-  cx = tonumber(cx)
-  cy = tonumber(cy)
-
-  if cx and cy then
-    self.client:scrollTo(cx*16, cy*16)
-  end
+  cx, cy = checkInt(cx), checkInt(cy)
+  self.client:scrollTo(cx*16, cy*16)
 end
 
 function command_functions:ChangeSkin(path)
@@ -781,47 +795,47 @@ function command_functions:ChangeSkin(path)
 end
 
 function command_functions:Message(msg)
-  if msg then
-    self.client:requestMessage(msg)
-  end
+  assert(msg, "missing message")
+  self.client:requestMessage(msg)
 end
 
 function command_functions:InputString(title)
+  assert(title, "missing title")
   return self.client:requestInputString(title)
 end
 
 function command_functions:InputQuery(title, ...)
+  assert(title, "missing title")
   local options = {...}
   return options[self.client:requestInputQuery(title, options)] or ""
 end
 
 function command_functions:Magasin(title, ...)
+  assert(title, "missing title")
   local items, items_id = {...}, {}
   local objects_by_name = server.project.objects_by_name
   for _, item in ipairs(items) do
     local id = objects_by_name[item]
     if id then table.insert(items_id, id) end
   end
-
   self.client:openShop(title, items_id)
 end
 
 function command_functions:Coffre(title)
+  assert(title, "missing title")
   self.client:openChest(title)
 end
 
 function command_functions:GenereMonstre(name, x, y, amount)
-  x,y,amount = tonumber(x), tonumber(y), tonumber(amount) or 0
-  if name and x and y and amount > 0 then
-    local mob_data = server.project.mobs[server.project.mobs_by_name[name]]
-    if mob_data then
-      for i=1,amount do
-        local mob = Mob(mob_data)
-        self.map:addEntity(mob)
-        mob:teleport(x*16, y*16)
-        self.map:bindGeneratedMob(mob)
-      end
-    end
+  x, y, amount = checkInt(x), checkInt(y), checkInt(amount)
+  assert(amount > 0, "invalid amount")
+  local mob_data = server.project.mobs[server.project.mobs_by_name[name]]
+  assert(mob_data, "missing mob data")
+  for i=1,amount do
+    local mob = Mob(mob_data)
+    self.map:addEntity(mob)
+    mob:teleport(x*16, y*16)
+    self.map:bindGeneratedMob(mob)
   end
 end
 
@@ -830,37 +844,37 @@ function command_functions:TueMonstre()
 end
 
 function command_functions:AddMagie(name, amount)
-  amount = tonumber(amount) or 1
+  amount = amount and checkInt(amount) or 1
   local id = server.project.spells_by_name[name]
-  if id and amount > 0 then
-    -- save
-    if not self.transaction.spells[id] then
-      self.transaction.spells[id] = self.client.spell_inventory:get(id)
-    end
-    -- set
-    local count = 0
-    for i=1,amount do
-      if self.client.spell_inventory:put(id) then count = count+1 end
-    end
-    if count > 0 then self.client:emitHint("+ "..name..(count > 1 and " x"..count or "")) end
+  assert(id, "couldn't find spell")
+  assert(amount > 0, "invalid amount")
+  -- save
+  if not self.transaction.spells[id] then
+    self.transaction.spells[id] = self.client.spell_inventory:get(id)
   end
+  -- set
+  local count = 0
+  for i=1,amount do
+    if self.client.spell_inventory:put(id) then count = count+1 end
+  end
+  if count > 0 then self.client:emitHint("+ "..name..(count > 1 and " x"..count or "")) end
 end
 
 function command_functions:DelMagie(name, amount)
-  amount = tonumber(amount) or 1
+  amount = amount and checkInt(amount) or 1
   local id = server.project.spells_by_name[name]
-  if id and amount > 0 then
-    -- save
-    if not self.transaction.spells[id] then
-      self.transaction.spells[id] = self.client.spell_inventory:get(id)
-    end
-    -- set
-    local count = 0
-    for i=1,amount do
-      if self.client.spell_inventory:take(id) then count = count+1 end
-    end
-    if count > 0 then self.client:emitHint("- "..name..(count > 1 and " x"..count or "")) end
+  assert(id, "couldn't find spell")
+  assert(amount > 0, "invalid amount")
+  -- save
+  if not self.transaction.spells[id] then
+    self.transaction.spells[id] = self.client.spell_inventory:get(id)
   end
+  -- set
+  local count = 0
+  for i=1,amount do
+    if self.client.spell_inventory:take(id) then count = count+1 end
+  end
+  if count > 0 then self.client:emitHint("- "..name..(count > 1 and " x"..count or "")) end
 end
 
 function command_functions:ChAttaqueSound(path)
@@ -884,25 +898,24 @@ function command_functions:ChBlesseSound(path)
 end
 
 function command_functions:Attente(amount)
-  amount = tonumber(amount) or 0
-  if amount > 0 then
-    self.wait_task = async()
-    timer(amount*0.03, function()
-      local task = self.wait_task
-      if task then
-        self.wait_task = nil
-        task:complete()
-      end
-    end)
-    self.wait_task:wait()
-  end
+  amount = checkInt(amount)
+  assert(amount > 0, "invalid amount")
+  self.wait_task = async()
+  timer(amount*0.03, function()
+    local task = self.wait_task
+    if task then
+      self.wait_task = nil
+      task:complete()
+    end
+  end)
+  self.wait_task:wait()
 end
 
 function command_functions:PlayMusic(path)
   local sub_path = string.match(path, "^Sound\\(.+)%.mid$")
-  path = sub_path and sub_path..".ogg"
-
-  if path then self.client:playMusic(path) end
+  assert(sub_path, "wrong path")
+  path = sub_path..".ogg"
+  self.client:playMusic(path)
 end
 
 function command_functions:StopMusic()
@@ -913,7 +926,7 @@ function command_functions:PlaySound(path)
   self.client:playSound(string.sub(path, 7)) -- remove Sound\ part
 end
 
--- METHODS
+-- Event class
 
 -- page_index: specific state or nil
 function Event:__construct(client, data, page_index)
@@ -929,7 +942,9 @@ function Event:__construct(client, data, page_index)
       end
       -- set
       self.client:setVariable("var", id, value)
-    else return self.client:getVariable("var", id) end
+    else
+      return self.client:getVariable("var", id)
+    end
   end
   local function bool_var(id, value)
     if value then
@@ -939,7 +954,9 @@ function Event:__construct(client, data, page_index)
       end
       -- set
       self.client:setVariable("bool", id, value)
-    else return self.client:getVariable("bool", id) end
+    else
+      return self.client:getVariable("bool", id)
+    end
   end
   local function server_var(id, value)
     if value then
@@ -949,37 +966,40 @@ function Event:__construct(client, data, page_index)
       end
       -- set
       server:setVariable(id, value)
-    else return server:getVariable(id) end
+    else
+      return server:getVariable(id)
+    end
   end
   local function special_var(id, value)
     local f = special_vars[id]
-    if f then
-      if value then
-        -- save
-        if not self.transaction.special_vars[id] and id ~= "CaseX" and id ~= "CaseY" then
-          self.transaction.special_vars[id] = f(self)
-        end
-        -- set
-        f(self, value)
-      else return f(self) end
+    if not f then error("unknown special var "..string.format("%q", id)) end
+    if value then
+      -- save
+      if not self.transaction.special_vars[id] and id ~= "CaseX" and id ~= "CaseY" then
+        self.transaction.special_vars[id] = f(self)
+      end
+      -- set
+      f(self, value)
+    else
+      return f(self)
     end
   end
   local function func_var(id, ...)
     local f = function_vars[id]
-    if f then return f(self, ...) end
+    if not f then error("unknown function var "..string.format("%q", id)) end
+    return f(self, ...)
   end
   local function event_var(event_id, id, value)
     local event = self.client.events_by_name[event_id]
-    if event then
-      local f = event_vars[id]
-      if f then
-        return f(event, value)
-      end
-    end
+    if not event then error("couldn't find event "..string.format("%q", event_id)) end
+    local f = event_vars[id]
+    if not f then error("unknown event var "..string.format("%q", id)) end
+    return f(event, value)
   end
   local function func(id, ...)
     local f = command_functions[id]
-    if f then return f(self, ...) end
+    if not f then error("unknown command "..string.format("%q", id)) end
+    return f(self, ...)
   end
   local function inventory(item)
     -- return item quantity in inventory

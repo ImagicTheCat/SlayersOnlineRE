@@ -222,7 +222,7 @@ function gen.condition_expr(state, ast)
   if op == "==" or op == "~=" then -- string comparison
     return "S("..dispatch(state, lhs)..") "..op.." S("..dispatch(state, rhs)..")"
   else
-    return dispatch(state, lhs).." "..op.." "..dispatch(state, rhs)
+    return "N("..dispatch(state, lhs)..") "..op.." N("..dispatch(state, rhs)..")"
   end
 end
 

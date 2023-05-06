@@ -170,6 +170,14 @@ function utils.sanitizeInt(v)
   else return math.floor(v) end
 end
 
+function utils.checkInt(v)
+  local v = tonumber(v)
+  if not v then error "check int: no number"
+  elseif v ~= v then error "check int: NaN"
+  elseif math.abs(v) == 1/0 then error "check int: infinity"
+  else return math.floor(v+0.5) end
+end
+
 -- Like Luaseq.async, but without task (and error) wrapping.
 -- "async root"
 function utils.asyncR(f, ...) coroutine.wrap(f)(...) end

@@ -349,9 +349,9 @@ function Server:loadMapData(id)
         if ok then cache = cache_data else print("ERROR cache corrupted for "..id) end
       end
       --- compile
-      local header = "local state, var, bool_var, server_var, special_var, func_var, event_var, func, inventory = ...; local S, N, R = S, N, R;"
+      local header = "local state, var, bool_var, server_var, special_var, func_var, event_var, func, inventory = ...; local S, N = S, N;"
       local function to_number(v) return v and tonumber(v) or 0 end
-      local env = {S = tostring, N = to_number, R = utils.sanitizeInt}
+      local env = {S = tostring, N = utils.checkInt}
       local function compileConditions(page, chunkname) -- return error or nil
         local code, flags = EventCompiler.compileConditions(page.conditions)
         if not code then return flags end
@@ -461,14 +461,19 @@ function Server:loadTilesetData(id)
   return data
 end
 
+local function check_int_str(v)
+  if type(v) == "string" then return v
+  else return utils.checkInt(v) end
+end
+
 function Server:setVariable(id, value)
-  id, value = tostring(id), tostring(value)
+  id, value = check_int_str(id), check_int_str(value)
   self.changed_vars[id] = true
   self.vars[id] = value
 end
 
 function Server:getVariable(id)
-  return self.vars[tostring(id)] or 0
+  return self.vars[check_int_str(id)] or 0
 end
 
 return Server
