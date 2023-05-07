@@ -279,7 +279,8 @@ function gen.expr_string(state, ast)
   for i=2, #ast do
     local arg = ast[i]
     if type(arg) == "string" then -- literal string
-      table.insert(args, escape(arg))
+      arg = escape(arg):gsub([[\\n]], [[\n]]) -- transform literal new lines to real new lines
+      table.insert(args, arg)
     else -- other
       table.insert(args, dispatch(state, arg))
     end
