@@ -206,7 +206,7 @@ function packet:PLAY_MUSIC(data)
     asyncR(function()
       if client.rsc_manager:requestResource("audio/"..data) then
         client:playMusic("resources/audio/"..data)
-      else print("failed to load music \""..data.."\"") end
+      else warn("failed to load music \""..data.."\"") end
     end)
   end
 end
@@ -216,7 +216,7 @@ function packet:PLAY_SOUND(data)
     asyncR(function()
       if client.rsc_manager:requestResource("audio/"..data) then
         client:playSound("resources/audio/"..data)
-      else print("failed to load sound \""..data.."\"") end
+      else warn("failed to load sound \""..data.."\"") end
     end)
   end
 end
@@ -306,7 +306,7 @@ function packet:MAP_EFFECT(data)
           self.fx_rain:setDirection(3*math.pi/4)
           self.fx_rain:start()
         end
-      else print("failed to load resource \"pluie.png\"") end
+      else warn("failed to load resource \"pluie.png\"") end
     end)
   elseif self.map_effect == "snow" and not self.fx_snow then
     asyncR(function()
@@ -323,7 +323,7 @@ function packet:MAP_EFFECT(data)
           self.fx_snow:setSpread(0.25)
           self.fx_snow:start()
         end
-      else print("failed to load resource \"neige.png\"") end
+      else warn("failed to load resource \"neige.png\"") end
     end)
   elseif self.map_effect == "fog" and not self.fx_fog then
     asyncR(function()
@@ -337,7 +337,7 @@ function packet:MAP_EFFECT(data)
           self.fx_fog.quad = love.graphics.newQuad(0, 0, w*2, h*2, w, h)
           self.fx_fog.speed = 2 -- world units/s
         end
-      else print("failed to load resource \"brouillard.png\"") end
+      else warn("failed to load resource \"brouillard.png\"") end
     end)
   end
 end
@@ -810,7 +810,7 @@ function Client:onConnect()
   asyncR(function()
     -- load remote manifest
     if not self.rsc_manager:loadRemoteManifest() then
-      print("couldn't reach remote resources repository manifest")
+      warn("couldn't reach remote resources repository manifest")
       self.chat_history:addMessage({{0,1,0.5}, "Impossible de joindre le dépôt distant de ressources."})
       return
     end
@@ -1546,11 +1546,11 @@ function Client:loadTexture(path, mode)
   local image = self.textures[path]
   if not image then
     if mode == "non-fatal" then
-      local ok, r = pcall(love.graphics.newImage, path)
+      local ok, r = wpcall(love.graphics.newImage, path)
       if ok then
         image = r
         self.textures[path] = image
-      else print("failed to load texture \""..path.."\": "..r) end
+      end
     elseif not mode then
       image = love.graphics.newImage(path)
       self.textures[path] = image
@@ -1672,9 +1672,8 @@ end
 function Client:playSound(path)
   local ok, data = true, self.sounds[path]
   if not data then -- load
-    ok, data = pcall(love.sound.newSoundData, path)
-    if ok then self.sounds[path] = data
-    else print("failed to load sound data for \""..path.."\": "..data) end
+    ok, data = wpcall(love.sound.newSoundData, path)
+    if ok then self.sounds[path] = data end
   end
   if ok then
     local source = love.audio.newSource(data, "static")

@@ -331,7 +331,7 @@ function Deserializer.loadProject(name)
 
     return prj
   else
-    print("error loading project \""..name.."\"")
+    warn("error loading project \""..name.."\"")
   end
 end
 
@@ -353,7 +353,7 @@ function Deserializer.loadTilesetPassableData(id)
 
     return data
   else
-    print("error loading passable data for tileset \""..id.."\"")
+    warn("error loading passable data for tileset \""..id.."\"")
   end
 end
 
@@ -375,7 +375,7 @@ function Deserializer.loadMapTiles(id)
 
     return tiledata
   else
-    print("error loading tiledata for map \""..id.."\"")
+    warn("error loading tiledata for map \""..id.."\"")
   end
 end
 

@@ -18,7 +18,7 @@ timer(0.01, function() Server = require("app.Server") end)
 -- optional require
 local profiler
 do
-  local ok, r = pcall(require, "jit.p")
+  local ok, r = wpcall(require, "jit.p")
   profiler = ok and r
 end
 
@@ -687,9 +687,9 @@ commands.create_account = {0, "server", function(self, client, args)
   local client_password = sha2.hex2bin(sha2.sha512(client_salt..pseudo:lower()..args[3]))
   -- generate salt
   local urandom = io.open("/dev/urandom")
-  if not urandom then print("couldn't open /dev/urandom"); return end
+  if not urandom then warn("couldn't open /dev/urandom"); return end
   local salt = urandom:read(64)
-  if not salt or #salt ~= 64 then print("couldn't read /dev/urandom"); return end
+  if not salt or #salt ~= 64 then warn("couldn't read /dev/urandom"); return end
   urandom:close()
   -- create account
   local password = sha2.hex2bin(sha2.sha512(salt..client_password))

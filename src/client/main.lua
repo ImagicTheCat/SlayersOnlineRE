@@ -9,14 +9,15 @@ class = Luaoop.class
 xtype = require("xtype")
 local Luaseq = require("Luaseq")
 async = Luaseq.async
-asyncR = require("app.utils").asyncR
+local utils = require "app.utils"
+asyncR, wpcall, warn = utils.asyncR, utils.wpcall, utils.warn
 local Scheduler = require("ELScheduler")
 
 local Client = require("app.Client")
 local cfg = require("config")
 
 function love.threaderror(thread, err)
-  print("thread error: "..err)
+  warn("thread error: "..err)
 end
 
 function love.load()

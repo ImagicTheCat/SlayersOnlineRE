@@ -163,8 +163,11 @@ function packet:LOGIN(data)
         self:setSounds(string.sub(class_data.attack_sound, 7), string.sub(class_data.hurt_sound, 7))
         --- config
         do
-          local ok, config = pcall(msgpack.unpack, user_row.config)
-          self:applyConfig(ok and config or server.cfg.player_config)
+          local config = server.cfg.player_config
+          if user_row.config then
+            config = msgpack.unpack(user_row.config)
+          end
+          self:applyConfig(config)
         end
         --- play stats
         self.play_stats = {
@@ -242,8 +245,10 @@ function packet:LOGIN(data)
           self:sendPacket(net.SPELL_INVENTORY_UPDATE_ITEMS, items)
         end
         --- state
-        local ok, state = pcall(msgpack.unpack, user_row.state)
-        state = ok and state or {}
+        local state = {}
+        if user_row.state then
+          state = msgpack.unpack(user_row.state)
+        end
         ---- charaset
         if state.charaset then
           self:setCharaset(state.charaset)
@@ -299,7 +304,7 @@ function packet:LOGIN(data)
         print("client logged "..tostring(self.peer)..": user#"..user_id.." \""..self.pseudo.."\"")
       else -- login error
         server.clients_by_id[user_id] = nil
-        print("<= login error for user#"..user_id.." \""..user_row.pseudo.."\"")
+        warn("<= login error for user#"..user_id.." \""..user_row.pseudo.."\"")
         self:kick("Erreur du serveur.")
       end
     else -- login failed

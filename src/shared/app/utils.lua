@@ -182,4 +182,20 @@ end
 -- "async root"
 function utils.asyncR(f, ...) coroutine.wrap(f)(...) end
 
+do
+  local function error_handler(err)
+    io.stderr:write(debug.traceback(err, 2).."\n")
+  end
+
+  -- Like pcall with warning to stderr.
+  function utils.wpcall(f, ...) return xpcall(f, error_handler, ...) end
+end
+
+-- Like print(), but to stderr.
+function utils.warn(...)
+  local args = utils.pack(...)
+  for i, arg in ipairs(args) do args[i] = tostring(arg) end
+  io.stderr:write(table.concat(args, "\t", 1, args.n).."\n")
+end
+
 return utils

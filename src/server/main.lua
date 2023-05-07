@@ -4,14 +4,15 @@
 --
 -- Copyright (c) 2019 ImagicTheCat
 
-local ljuv = require("ljuv")
-local Luaoop = require("Luaoop")
+local ljuv = require "ljuv"
+local Luaoop = require "Luaoop"
 class = Luaoop.class
-xtype = require("xtype")
-local Luaseq = require("Luaseq")
+xtype = require "xtype"
+local Luaseq = require "Luaseq"
 async = Luaseq.async
-asyncR = require("app.utils").asyncR
-local config = require("config")
+local utils = require "app.utils"
+asyncR, wpcall, warn = utils.asyncR, utils.wpcall, utils.warn
+local config = require "config"
 math.randomseed(os.time())
 
 -- global utils

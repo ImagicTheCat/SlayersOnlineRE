@@ -61,13 +61,13 @@ local function compileSpells(self)
   local function compile(compiler, str, chunkname) -- return f or nil
     local code, err = compiler(str)
     if not code then
-      print("ERROR compiling "..chunkname.."\n"..err.."\n")
+      warn("ERROR compiling "..chunkname.."\n"..err.."\n")
       return
     end
     --print("-- "..chunkname.." --\n"..str.."\n=>\n"..code.."\n--")
     local f, err = loadstring(header..code, "=["..chunkname.."]")
     if not f then
-      print("ERROR compiling "..chunkname.."\n"..err.."\n-- Lua --\n"..code.."\n--------a\n-")
+      warn("ERROR compiling "..chunkname.."\n"..err.."\n-- Lua --\n"..code.."\n--------a\n-")
       return
     end
     setfenv(f, LivingEntity.spell_env)
@@ -261,7 +261,7 @@ function Server:tick(dt)
       client.packets_quota:add(1)
       client.data_quota:add(#event.data)
       -- packet
-      local ok, packet = pcall(msgpack.unpack, event.data)
+      local ok, packet = wpcall(msgpack.unpack, event.data)
       if ok then client:onPacket(packet[1], packet[2]) end
     elseif event.type == "connect" then
       -- disable throttle deceleration (issue with unsequenced packets not sent)
@@ -295,7 +295,7 @@ function Server:getMap(id)
     if map_data and map_data.loaded then
       map = Map(id, map_data)
       self.maps[id] = map
-    else print("couldn't load \""..id.."\" map data") end
+    else warn("couldn't load \""..id.."\" map data") end
   end
   return map
 end
@@ -345,8 +345,8 @@ function Server:loadMapData(id)
       sql_assert(self.cache, stmt:bind(1, id))
       sql_assert(self.cache, stmt:bind(2, mtime))
       for row in stmt:nrows() do
-        local ok, cache_data = pcall(sbuffer.decode, row.data)
-        if ok then cache = cache_data else print("ERROR cache corrupted for "..id) end
+        local ok, cache_data = wpcall(sbuffer.decode, row.data)
+        if ok then cache = cache_data end
       end
       --- compile
       local header = "local state, var, bool_var, server_var, special_var, func_var, event_var, func, inventory = ...; local S, N = S, N;"
@@ -386,14 +386,14 @@ function Server:loadMapData(id)
                 page.conditions_func = f
                 page.conditions_flags = page_cache.conditions_flags
               else
-                print("ERROR loading from cache conditions map \""..map.name.."\" event ("..event.x..","..event.y..") P"..page_index..": "..err)
+                warn("ERROR loading from cache conditions map \""..map.name.."\" event ("..event.x..","..event.y..") P"..page_index..": "..err)
               end
             else -- compile
               local err = compileConditions(page, chunkname)
               if err then
-                print("ERROR compiling conditions map \""..map.name.."\" event ("..event.x..","..event.y..") P"..page_index)
-                print(err)
-                print()
+                warn("ERROR compiling conditions map \""..map.name.."\" event ("..event.x..","..event.y..") P"..page_index)
+                warn(err)
+                warn()
               else -- update cache
                 page_cache.conditions_func = string.dump(page.conditions_func)
                 page_cache.conditions_flags = page.conditions_flags
@@ -409,14 +409,14 @@ function Server:loadMapData(id)
                 setfenv(f, env)
                 page.commands_func = f
               else
-                print("ERROR loading from cache commands map \""..map.name.."\" event ("..event.x..","..event.y..") P"..page_index..": "..err)
+                warn("ERROR loading from cache commands map \""..map.name.."\" event ("..event.x..","..event.y..") P"..page_index..": "..err)
               end
             else -- compile
               local err = compileCommands(page, chunkname)
               if err then
-                print("ERROR compiling commands map \""..map.name.."\" event ("..event.x..","..event.y..") P"..page_index)
-                print(err)
-                print()
+                warn("ERROR compiling commands map \""..map.name.."\" event ("..event.x..","..event.y..") P"..page_index)
+                warn(err)
+                warn()
               else -- update cache
                 page_cache.commands_func = string.dump(page.commands_func)
                 cache_modified = true
@@ -439,9 +439,8 @@ end
 
 function Server:loadTilesetData(id)
   local data = self.project.tilesets[id]
-
   if not data then -- load tileset data
-    local ok, image = pcall(vips.Image.new_from_file, "resources/project/Chipset/"..id..".png")
+    local ok, image = wpcall(vips.Image.new_from_file, "resources/project/Chipset/"..id..".png")
     if ok then
       data = {}
 
@@ -453,11 +452,8 @@ function Server:loadTilesetData(id)
       data.passable = Deserializer.loadTilesetPassableData(id)
 
       self.project.tilesets[id] = data
-    else
-      print("error loading tileset image \""..id.."\"")
     end
   end
-
   return data
 end
 

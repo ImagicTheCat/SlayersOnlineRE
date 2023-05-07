@@ -116,7 +116,7 @@ function LivingEntity:setCharaset(charaset)
       if texture then
         self.texture = texture
         self.atlas = client:getTextureAtlas(charaset.x, charaset.y, texture:getWidth(), texture:getHeight(), charaset.w, charaset.h)
-      else print("failed to load charaset \""..charaset.path.."\"") end
+      else warn("failed to load charaset \""..charaset.path.."\"") end
     end)
   else
     self.texture = nil
@@ -145,7 +145,7 @@ function LivingEntity:emitSound(sound)
         source:setAttenuationDistances(16, 16*15)
         source:setRelative(false)
       end
-    else print("failed to load sound \""..sound.."\"") end
+    else warn("failed to load sound \""..sound.."\"") end
   end)
 end
 
@@ -170,7 +170,7 @@ function LivingEntity:emitAnimation(path, x, y, w, h, duration, alpha)
         }
         table.insert(self.animations, anim)
       end
-    else print("failed to load animation \""..path.."\"") end
+    else warn("failed to load animation \""..path.."\"") end
   end)
 end
 

@@ -28,16 +28,16 @@ function Map:__construct(data)
       local tileset = client:loadTexture("resources/textures/sets/"..data.tileset, "non-fatal")
       if tileset then self.tileset = tileset end
       self:build(data)
-    else print("failed to load map tileset \""..data.tileset.."\"") end
+    else warn("failed to load map tileset \""..data.tileset.."\"") end
     if #data.background > 0 then
       if client.rsc_manager:requestResource("textures/sets/"..data.background) then
         self.background = client:loadTexture("resources/textures/sets/"..data.background, "non-fatal")
-      else print("failed to load map background \""..data.background.."\"") end
+      else warn("failed to load map background \""..data.background.."\"") end
     end
     if data.music then
       if client.rsc_manager:requestResource("audio/"..data.music) then
         client:playMusic("resources/audio/"..data.music)
-      else print("failed to load map music \""..data.music.."\"") end
+      else warn("failed to load map music \""..data.music.."\"") end
     end
   end)
   -- request preload resources
@@ -129,7 +129,7 @@ function Map:playAnimation(path, x, y, w, h, duration, alpha)
         }
         table.insert(self.animations, anim)
       end
-    else print("failed to load animation \""..path.."\"") end
+    else warn("failed to load animation \""..path.."\"") end
   end)
 end
 
@@ -144,7 +144,7 @@ function Map:playSound(path, x, y)
         source:setAttenuationDistances(16, 16*15)
         source:setRelative(false)
       end
-    else print("failed to load path \""..path.."\"") end
+    else warn("failed to load path \""..path.."\"") end
   end)
 end
 
@@ -274,7 +274,7 @@ function Map:createEntity(edata)
 
     return entity
   else
-    print("can't instantiate entity, undefined nettype \""..edata.nettype.."\"")
+    warn("can't instantiate entity, undefined nettype \""..edata.nettype.."\"")
   end
 end
 

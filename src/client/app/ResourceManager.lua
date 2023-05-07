@@ -53,7 +53,7 @@ function ResourceManager:__construct()
   love.filesystem.createDirectory("resources_repository/audio")
   -- mount downloads
   if not love.filesystem.mount("resources_repository", "resources") then
-    print("couldn't mount resources repository")
+    warn("couldn't mount resources repository")
   end
   self:loadLocalManifest()
 end
@@ -103,7 +103,7 @@ function ResourceManager:close()
 end
 
 function ResourceManager:loadLocalManifest()
-  local ok, data = pcall(msgpack.unpack, love.filesystem.read("local.manifest"))
+  local ok, data = wpcall(msgpack.unpack, love.filesystem.read("local.manifest"))
   if ok then self.local_manifest = data end
 end
 
@@ -158,8 +158,8 @@ function ResourceManager:requestResource(path)
         if ok then -- add manifest entry
           self.local_manifest[path] = self:computeMD5(data)
           ret = true
-        else print(err) end
-      else print("download error "..path..": "..err) end
+        else warn(err) end
+      else warn("download error "..path..": "..err) end
     else -- already same as remote
       ret = true
     end
