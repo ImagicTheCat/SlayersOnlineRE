@@ -1,29 +1,28 @@
 // Program to print the first indexed color of a PNG's palette as "R G B" (8-bit integers) or
 // nothing if not indexed / on error.
-// compile: g++ print_palette.cpp -o print_palette -lpng
+// compile: gcc print_palette.c -o print_palette -lpng
 // params: <file path>
 
-#include <iostream>
-#include <cstdio>
+#include <stdio.h>
 #include <png.h>
 
 int main(int argc, char **argv)
 {
   if(argc < 2){
-    std::cerr << "missing file path" << std::endl;
+    fprintf(stderr, "%s\n", "missing file path");
     return 1;
   }
 
   FILE *fp = fopen(argv[1], "rb");
   if(!fp){
-    std::cerr << "couldn't open file" << std::endl;
+    fprintf(stderr, "%s\n", "couldn't open file");
     return 1;
   }
 
   unsigned char header[8];
   fread(header, 1, 8, fp);
   if(png_sig_cmp(header, 0, 8) != 0){
-    std::cerr << "invalid PNG file" << std::endl;
+    fprintf(stderr, "%s\n", "invalid PNG file");
     return 1;
   }
 
@@ -64,7 +63,7 @@ int main(int argc, char **argv)
   png_colorp palette;
   png_get_PLTE(png_ptr, info_ptr, &palette, &num_palette);
   if(num_palette > 0)
-    std::cout << (size_t)palette[0].red << " " << (size_t)palette[0].green << " " << (size_t)palette[0].blue << std::endl;
+    printf("%zu %zu %zu\n", (size_t)palette[0].red, (size_t)palette[0].green, (size_t)palette[0].blue);
   png_destroy_read_struct(&png_ptr, &info_ptr, &end_info);
 
   return 0;
