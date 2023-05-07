@@ -102,7 +102,7 @@ end
 -- Note: 64bit integers will be truncated to Lua numbers (2^53).
 --
 -- id: statement identifier
--- params: (optional) map of parameter values
+-- params: (optional) map of parameter values (a string wrapped in a table will be handled as BLOB)
 -- return result {} or false on failure
 --- rows: list of row, map of field => value
 --- rowid

@@ -697,8 +697,8 @@ commands.create_account = {0, "server", function(self, client, args)
     self.db:transactionWrap(function()
       self.db:query("user/createAccount", {
         pseudo = args[2],
-        salt = salt,
-        password = password,
+        salt = {salt},
+        password = {password},
         rank = tonumber(args[4]) or 10,
         timestamp = os.time()
       })
