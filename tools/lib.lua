@@ -46,9 +46,9 @@ function M.convert_midi(in_path, out_path, sf_path)
   sh:rm(out_path..".wav")()
 end
 
-function M.compute_md5(path)
+function M.compute_hash(hashf, path)
   local f = assert(io.open(path, "rb"))
-  local hash = digest.new("md5")
+  local hash = digest.new(hashf)
   repeat
     local buf = f:read(stdio.BUFSIZ)
     if buf then hash:update(buf) end

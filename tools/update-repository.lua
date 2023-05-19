@@ -84,7 +84,7 @@ async(function()
         end
         sem:supply()
       end
-      pool:call("compute_md5", cb, r_path.."/"..path)
+      pool:call("compute_hash", cb, "sha1", r_path.."/"..path)
     end
     wait()
 

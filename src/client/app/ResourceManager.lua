@@ -34,7 +34,7 @@ local function ioc_interface()
 
   function interface.readFile(path) return love.filesystem.read("data", path) end
   function interface.writeFile(path, data) return love.filesystem.write(path, data) end
-  function interface.computeMD5(data) return love.data.hash("md5", data) end
+  function interface.hash(hashf, data) return love.data.hash(hashf, data) end
 
   return interface
 end
@@ -71,8 +71,8 @@ end
 -- (async)
 -- data: Data
 -- return hash (string)
-function ResourceManager:computeMD5(data)
-  return self.ioc_pool.interface.computeMD5(data)
+function ResourceManager:hash(hashf, data)
+  return self.ioc_pool.interface.hash(hashf, data)
 end
 
 -- (async)
@@ -142,7 +142,7 @@ function ResourceManager:requestResource(path)
       local data = self:readFile("resources_repository/"..path)
       -- re-add index entry
       if data then
-        lhash = self:computeMD5(data)
+        lhash = self:hash("sha1", data)
         self.local_index[path] = lhash
       end
     end
@@ -153,7 +153,7 @@ function ResourceManager:requestResource(path)
         -- write file
         local ok, err = self:writeFile("resources_repository/"..path, data)
         if ok then -- add index entry
-          self.local_index[path] = self:computeMD5(data)
+          self.local_index[path] = self:hash("sha1", data)
           ret = true
         else warn(err) end
       else warn("download error "..path..": "..err) end
