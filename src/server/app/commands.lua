@@ -6,14 +6,14 @@
 
 -- Commands
 
-local sha2 = require("sha2")
-local msgpack = require("MessagePack")
-local sqlite = require("lsqlite3")
-local utils = require("app.utils")
-local client_salt = require("app.client_salt")
-local EventCompiler = require("app.EventCompiler")
+local digest = require "openssl.digest"
+local msgpack = require "MessagePack"
+local sqlite = require "lsqlite3"
+local utils = require "app.utils"
+local client_salt = require "app.client_salt"
+local EventCompiler = require "app.EventCompiler"
 local Server
-timer(0.01, function() Server = require("app.Server") end)
+timer(0.01, function() Server = require "app.Server" end)
 
 -- optional require
 local profiler
@@ -684,7 +684,7 @@ end, "", "envoyer un message serveur"}
 commands.create_account = {0, "server", function(self, client, args)
   if #args < 3 or #args[2] == 0 or #args[3] == 0 then return true end -- wrong parameters
   local pseudo = args[2]
-  local client_password = sha2.hex2bin(sha2.sha512(client_salt..pseudo:lower()..args[3]))
+  local client_password = digest.new("sha512"):final(client_salt..pseudo:lower()..args[3])
   -- generate salt
   local urandom = io.open("/dev/urandom")
   if not urandom then warn("couldn't open /dev/urandom"); return end
@@ -692,7 +692,7 @@ commands.create_account = {0, "server", function(self, client, args)
   if not salt or #salt ~= 64 then warn("couldn't read /dev/urandom"); return end
   urandom:close()
   -- create account
-  local password = sha2.hex2bin(sha2.sha512(salt..client_password))
+  local password = digest.new("sha512"):final(salt..client_password)
   asyncR(function()
     self.db:transactionWrap(function()
       self.db:query("user/createAccount", {

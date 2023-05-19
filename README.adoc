@@ -11,17 +11,18 @@ client:: LÖVE 11.x
 
 .Server dependencies
 - https://github.com/ImagicTheCat/Luaoop
-- https://fperrad.frama.io/lua-MessagePack/
 - https://github.com/ImagicTheCat/Luaseq
 - https://github.com/ImagicTheCat/ljuv
+- https://github.com/ImagicTheCat/lua-shapi
+- https://fperrad.frama.io/lua-MessagePack/
 - https://github.com/leafo/lua-enet
 - https://luarocks.org/modules/luarocks/struct
 - https://luarocks.org/modules/gvvaughan/lpeg
 - https://luarocks.org/modules/luarocks/lua-iconv
 - https://github.com/libvips/lua-vips
 - http://lua.sqlite.org
-- https://keplerproject.github.io/luafilesystem/
-- https://github.com/Egor-Skriptunoff/pure_lua_SHA2
+- http://lunarmodules.github.io/luafilesystem/
+- https://luarocks.org/modules/daurnimator/luaossl
 
 .Client dependencies
 - https://github.com/ImagicTheCat/Luaoop
@@ -30,7 +31,6 @@ client:: LÖVE 11.x
 - https://github.com/ImagicTheCat/ELScheduler
 - https://fperrad.frama.io/lua-MessagePack
 - https://github.com/ImagicTheCat/love-threadpool
-- https://github.com/Egor-Skriptunoff/pure_lua_SHA2
 
 .Credits
 Windows MIDI SoundFont (gm.sf2):: https://musical-artifacts.com/artifacts/713

@@ -4,21 +4,21 @@
 --
 -- Copyright (c) 2019 ImagicTheCat
 
-local msgpack = require("MessagePack")
-local sha2 = require("sha2")
-local net = require("app.protocol")
-local Quota = require("app.Quota")
-local Player = require("app.entities.Player")
-local Event = require("app.entities.Event")
-local Mob = require("app.entities.Mob")
-local utils = require("app.utils")
-local client_version = require("app.client_version")
-local Inventory = require("app.Inventory")
-local XPtable = require("app.XPtable")
+local digest = require "openssl.digest"
+local msgpack = require "MessagePack"
+local net = require "app.protocol"
+local Quota = require "app.Quota"
+local Player = require "app.entities.Player"
+local Event = require "app.entities.Event"
+local Mob = require "app.entities.Mob"
+local utils = require "app.utils"
+local client_version = require "app.client_version"
+local Inventory = require "app.Inventory"
+local XPtable = require "app.XPtable"
 -- deferred require
 local Map
 timer(0.01, function()
-  Map = require("app.Map")
+  Map = require "app.Map"
 end)
 
 -- server-side client
@@ -108,7 +108,7 @@ function packet:LOGIN(data)
       if result.rows[1] then salt = result.rows[1].salt end
     end
     -- authenticate
-    local password_hash = sha2.hex2bin(sha2.sha512((salt or "")..data.password_hash))
+    local password_hash = digest.new("sha512"):final((salt or "")..data.password_hash)
     local rows = server.db:query("user/login", {data.pseudo, {password_hash}}).rows
     if rows[1] then
       local user_row = rows[1]

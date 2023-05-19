@@ -7,7 +7,6 @@
 local enet = require("enet")
 local msgpack = require("MessagePack")
 local URL = require("socket.url")
-local sha2 = require("sha2")
 
 local utils = require("app.utils")
 local Map = require("app.Map")
@@ -50,7 +49,7 @@ function packet:MOTD_LOGIN(data)
     -- login process
     local pseudo = self:prompt(data.motd.."\n\nPseudo: ")
     local password = self:prompt(data.motd.."\n\nMot de passe: ", "", true)
-    local password_hash = sha2.hex2bin(sha2.sha512(client_salt..pseudo:lower()..password))
+    local password_hash = love.data.hash("sha512", client_salt..pseudo:lower()..password)
     self:sendPacket(net.LOGIN, {pseudo = pseudo, password_hash = password_hash})
   end)
 end

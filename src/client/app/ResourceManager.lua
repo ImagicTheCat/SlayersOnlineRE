@@ -5,7 +5,6 @@
 -- Copyright (c) 2019 ImagicTheCat
 
 local msgpack = require "MessagePack"
-local sha2 = require "sha2"
 local utils = require "app.utils"
 local URL = require "socket.url"
 local threadpool = require "love-threadpool"
@@ -31,12 +30,11 @@ end
 
 -- I/O/Compute interface
 local function ioc_interface()
-  local sha2 = require "sha2"
   local interface = {}
 
   function interface.readFile(path) return love.filesystem.read("data", path) end
   function interface.writeFile(path, data) return love.filesystem.write(path, data) end
-  function interface.computeMD5(data) return sha2.md5(data:getString()) end
+  function interface.computeMD5(data) return love.data.hash("md5", data) end
 
   return interface
 end
