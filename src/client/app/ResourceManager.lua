@@ -45,8 +45,8 @@ function ResourceManager:__construct()
   self.http_pool = threadpool.new(1, http_interface)
   self.ioc_pool = threadpool.new(1, ioc_interface)
   self.busy_hint = "" -- hint to display
-  self.local_manifest = {} -- map of path => hash
-  self.remote_manifest = {} -- map of path => hash
+  self.local_index = {} -- map of path => hash
+  self.remote_index = {} -- map of path => hash
   self.resource_tasks = {} -- map of path => async task
   -- create dirs
   love.filesystem.createDirectory("resources_repository/textures/sets")
@@ -55,7 +55,7 @@ function ResourceManager:__construct()
   if not love.filesystem.mount("resources_repository", "resources") then
     warn("couldn't mount resources repository")
   end
-  self:loadLocalManifest()
+  self:loadLocalIndex()
 end
 
 function ResourceManager:isBusy()
@@ -102,27 +102,26 @@ function ResourceManager:close()
   self.ioc_pool:close()
 end
 
-function ResourceManager:loadLocalManifest()
-  local ok, data = wpcall(msgpack.unpack, love.filesystem.read("local.manifest"))
-  if ok then self.local_manifest = data end
+function ResourceManager:loadLocalIndex()
+  local ok, data = wpcall(msgpack.unpack, love.filesystem.read("local.index"))
+  if ok then self.local_index = data end
+end
+
+function ResourceManager:saveLocalIndex()
+  love.filesystem.write("local.index", msgpack.pack(self.local_index))
 end
 
 -- (async)
 -- return true on success or false
-function ResourceManager:loadRemoteManifest()
-  local data = self:requestHTTP(client.cfg.resource_repository.."repository.manifest")
-  if data then
-    local lines = utils.split(data:getString(), "\n")
-    for _, line in ipairs(lines) do
-      local path, hash = string.match(line, "^(.*)=(%x*)$")
-      if path then
-        self.remote_manifest[path] = hash
-      end
-    end
-    return true
-  else
-    return false
-  end
+function ResourceManager:loadRemoteIndex()
+  -- request
+  local raw_data = self:requestHTTP(client.cfg.resource_repository.."repository.index")
+  if not raw_data then return false end
+  -- unpack
+  local ok, data = wpcall(msgpack.unpack, raw_data:getString())
+  if not ok then return false end
+  self.remote_index = data
+  return true
 end
 
 -- (async) request a resource from the repository
@@ -137,16 +136,16 @@ function ResourceManager:requestResource(path)
   task = async()
   self.resource_tasks[path] = task
   local ret = false
-  local lhash = self.local_manifest[path]
-  local rhash = self.remote_manifest[path]
+  local lhash = self.local_index[path]
+  local rhash = self.remote_index[path]
   if rhash then
     if not lhash then -- verify/re-hash
       print("try to re-hash resource "..path)
       local data = self:readFile("resources_repository/"..path)
-      -- re-add manifest entry
+      -- re-add index entry
       if data then
         lhash = self:computeMD5(data)
-        self.local_manifest[path] = lhash
+        self.local_index[path] = lhash
       end
     end
     if not lhash or lhash ~= rhash then -- download/update
@@ -155,8 +154,8 @@ function ResourceManager:requestResource(path)
       if data then
         -- write file
         local ok, err = self:writeFile("resources_repository/"..path, data)
-        if ok then -- add manifest entry
-          self.local_manifest[path] = self:computeMD5(data)
+        if ok then -- add index entry
+          self.local_index[path] = self:computeMD5(data)
           ret = true
         else warn(err) end
       else warn("download error "..path..": "..err) end
@@ -168,10 +167,6 @@ function ResourceManager:requestResource(path)
   self.resource_tasks[path] = nil
   task:complete(ret)
   return ret
-end
-
-function ResourceManager:saveLocalManifest()
-  love.filesystem.write("local.manifest", msgpack.pack(self.local_manifest))
 end
 
 return ResourceManager

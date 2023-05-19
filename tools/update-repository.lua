@@ -7,6 +7,7 @@ local ljuv = require "ljuv"
 local lfs = require "lfs"
 local async = require("Luaseq").async
 local semaphore = require("Luaseq").semaphore
+local msgpack = require "MessagePack"
 
 local DIR = arg[0]:match("^(.*)/.-$") or "."
 local CPU_COUNT = tonumber(sh:nproc()())
@@ -70,22 +71,27 @@ async(function()
   wait()
   refill()
 
-  print "Update manifest..."
-  local manifest = assert(io.open(r_path.."/repository.manifest", "w"))
-  for path in sh:find(r_path, "-type", "f", "-printf", "%P\n")():gmatch("[^\n]+") do
-    sem:demand()
-    local function cb(ok, hash_err)
-      if not ok then
-        io.stderr:write("error \""..path.."\": "..hash_err.."\n")
-      else
-        manifest:write(path.."="..hash_err.."\n")
+  do
+    print "Write index..."
+    local index = {}
+    for path in sh:find(r_path, "-type", "f", "-printf", "%P\n")():gmatch("[^\n]+") do
+      sem:demand()
+      local function cb(ok, hash_err)
+        if not ok then
+          io.stderr:write("error \""..path.."\": "..hash_err.."\n")
+        else
+          index[path] = hash_err
+        end
+        sem:supply()
       end
-      sem:supply()
+      pool:call("md5sum", cb, r_path.."/"..path)
     end
-    pool:call("md5sum", cb, r_path.."/"..path)
+    wait()
+
+    local file = assert(io.open(r_path.."/repository.index", "w"))
+    assert(file:write(msgpack.pack(index)))
+    file:close()
   end
-  wait()
-  manifest:close()
 
   pool:close()
 end)

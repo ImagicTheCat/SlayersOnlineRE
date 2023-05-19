@@ -401,7 +401,7 @@ function Client:__construct(cfg)
   self.touches = {} -- map of id => control
 
   self.rsc_manager = ResourceManager()
-  self.last_manifest_save = scheduler.time
+  self.last_index_save = scheduler.time
   self.stats = {}
 
   self.textures = {} -- map of texture path => image
@@ -785,10 +785,10 @@ function Client:tick(dt)
     else
       if not self.rsc_manager:isBusy() then
         self.loading_screen_time = self.loading_screen_fade -- next step, fade-out
-        -- potential manifest save when the loading end
-        if scheduler.time-self.last_manifest_save >= 300 then
-          self.rsc_manager:saveLocalManifest()
-          self.last_manifest_save = scheduler.time
+        -- potential index save when the loading end
+        if scheduler.time-self.last_index_save >= 300 then
+          self.rsc_manager:saveLocalIndex()
+          self.last_index_save = scheduler.time
         end
       end
     end
@@ -808,9 +808,9 @@ end
 function Client:onConnect()
   self:sendPacket(net.VERSION_CHECK, client_version)
   asyncR(function()
-    -- load remote manifest
-    if not self.rsc_manager:loadRemoteManifest() then
-      warn("couldn't reach remote resources repository manifest")
+    -- load remote index
+    if not self.rsc_manager:loadRemoteIndex() then
+      warn("couldn't reach remote resources repository index")
       self.chat_history:addMessage({{0,1,0.5}, "Impossible de joindre le dépôt distant de ressources."})
       return
     end
@@ -827,7 +827,7 @@ function Client:close()
   while self.peer:state() ~= "disconnected" do -- wait for disconnection
     self.host:service(100)
   end
-  self.rsc_manager:saveLocalManifest()
+  self.rsc_manager:saveLocalIndex()
 end
 
 function Client:onApplyConfig(config)
