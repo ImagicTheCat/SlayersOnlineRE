@@ -2,6 +2,8 @@
 
 local vips = require "vips"
 local sh = require "shapi"
+local stdio = require "posix.stdio"
+local digest = require "openssl.digest"
 
 local DIR
 
@@ -44,8 +46,15 @@ function M.convert_midi(in_path, out_path, sf_path)
   sh:rm(out_path..".wav")()
 end
 
-function M.md5sum(path)
-  return sh:md5sum(path):cut("-d", " ", "-f", 1)()
+function M.compute_md5(path)
+  local f = assert(io.open(path, "rb"))
+  local hash = digest.new("md5")
+  repeat
+    local buf = f:read(stdio.BUFSIZ)
+    if buf then hash:update(buf) end
+  until not buf
+  f:close()
+  return hash:final()
 end
 
 return M

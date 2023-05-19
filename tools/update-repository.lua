@@ -84,7 +84,7 @@ async(function()
         end
         sem:supply()
       end
-      pool:call("md5sum", cb, r_path.."/"..path)
+      pool:call("compute_md5", cb, r_path.."/"..path)
     end
     wait()
 
