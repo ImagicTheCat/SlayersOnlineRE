@@ -16,10 +16,6 @@ local Scheduler = require("ELScheduler")
 local Client = require("app.Client")
 local cfg = require("config")
 
-function love.threaderror(thread, err)
-  warn("thread error: "..err)
-end
-
 function love.load()
   if love.system.getOS() == "Android" then
     love.window.setMode(800, 600, {fullscreen = true, resizable = true, usedpiscale = false})

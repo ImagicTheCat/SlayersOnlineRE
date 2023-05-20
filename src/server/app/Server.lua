@@ -234,7 +234,6 @@ function Server:close()
   self.db:close()
   self.tick_timer:close()
   sql_assert(self.cache, self.cache:close())
-  print("shutdown.")
 
   -- end guard
   self.closing = nil

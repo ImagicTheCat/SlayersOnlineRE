@@ -54,6 +54,7 @@ server = Server(config) -- global
 -- loop stop function (with async support)
 local function stop()
   asyncR(function()
+    print "closing server..."
     server:close()
     loop:stop()
   end)
@@ -74,3 +75,4 @@ sigterm:start_oneshot(15, stop)
 
 -- run app
 loop:run()
+print "shutdown."
