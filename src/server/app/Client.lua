@@ -15,11 +15,6 @@ local utils = require "app.utils"
 local client_version = require "app.client_version"
 local Inventory = require "app.Inventory"
 local XPtable = require "app.XPtable"
--- deferred require
-local Map
-timer(0.01, function()
-  Map = require "app.Map"
-end)
 
 -- server-side client
 local Client = class("Client", Player)

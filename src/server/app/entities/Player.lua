@@ -8,9 +8,8 @@ local net = require("app.protocol")
 local LivingEntity = require("app.entities.LivingEntity")
 local Mob = require("app.entities.Mob")
 -- deferred require
-local Map, Client
+local Client
 timer(0.01, function()
-  Map = require("app.Map")
   Client = require("app.Client")
 end)
 

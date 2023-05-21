@@ -31,8 +31,8 @@ local function interface_loader(db_path)
     end
   end
   -- init
-  local code, err
-  db, code, err = sqlite.open(db_path)
+  local _, err
+  db, _, err = sqlite.open(db_path)
   if not db then error("sqlite: "..err) end
   sql_assert(db:execute("PRAGMA foreign_keys=true"))
 

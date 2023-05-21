@@ -48,6 +48,7 @@ function Deserializer.readProjectEntry(file)
   map.background = Deserializer.readString(file, 50)
   map.music = Deserializer.readString(file, 50)
   map.tileset = Deserializer.readString(file, 50)
+  local _
   map.width, _, map.height = struct.unpack("BBB", file:read(3))
   file:seek("cur", 52)
   map.disconnect_respawn = (struct.unpack("B", file:read(1)) > 0)
@@ -256,7 +257,7 @@ function Deserializer.loadProject(name)
 
   if file_prj and file_cls and file_mag and file_mon and file_obj then
     local prj = {}
-    
+
     -- read map entries
     prj.maps = {}
     prj.map_count = file_prj:seek("end")/778 -- 778 bytes per entry
@@ -419,7 +420,7 @@ function Deserializer.loadMapEvents(id)
       local event = events_by_coords[key]
       if not event then -- create event
         event = {
-          x = page.x, 
+          x = page.x,
           y = page.y,
           pages = {}
         }

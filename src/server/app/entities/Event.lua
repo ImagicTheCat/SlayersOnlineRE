@@ -289,7 +289,7 @@ end
 function special_vars:Visible(value)
   if value then
     self.client.visible = checkInt(value) > 0
-    self.client:broadcastPacket("ch-visible", visible)
+    self.client:broadcastPacket("ch-visible", self.client.visible)
   else
     return self.client.visible and 1 or 0
   end

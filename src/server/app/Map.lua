@@ -179,7 +179,7 @@ function Map:isCellPassable(entity, x, y)
     local index = (x*self.h+y)*4+1
     local xl, xh, yl, yh = self.tiledata[index] or 0, self.tiledata[index+1] or 0, self.tiledata[index+2] or 0, self.tiledata[index+3] or 0
     --- check passable
-    local l_passage, h_passable = true, true
+    local l_passable, h_passable = true, true
     if xl > 0 and yl > 0 then
       l_passable = tdata.passable[(xl-1)*tdata.hc+yl]
     end
