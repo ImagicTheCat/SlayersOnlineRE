@@ -1075,7 +1075,7 @@ function Event:execute(condition)
     local atype = self.animation_type
     if atype == "character-random" or atype == "static-character" then
       -- look at player
-      local orientation = LivingEntity.vectorOrientation(self.client.x-self.x, self.client.y-self.y)
+      local orientation = utils.vectorOrientation(self.client.x-self.x, self.client.y-self.y)
       self:setOrientation(orientation)
     end
   end
@@ -1150,7 +1150,7 @@ local function findRandomCell(self)
     local i = math.random(1, #dirs)
     local orientation = dirs[i]
     table.remove(dirs, i)
-    local dx, dy = LivingEntity.orientationVector(orientation)
+    local dx, dy = utils.orientationVector(orientation)
     ncx, ncy = self.cx+dx, self.cy+dy
     if self.map:isCellPassable(self, ncx, ncy) then return ncx, ncy end
   end

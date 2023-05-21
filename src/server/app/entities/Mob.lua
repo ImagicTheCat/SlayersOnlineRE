@@ -131,12 +131,12 @@ local function AI_thread(self)
             if #targets > 0 then self:castSpell(targets[math.random(1, #targets)], spell) end
           elseif seekTarget(self, self.target, spell.type == "sneak-attack" and 1 or AGGRO_RANGE) then
             -- players (enemies)
-            self:setOrientation(LivingEntity.vectorOrientation(self.target.x-self.x, self.target.y-self.y))
+            self:setOrientation(utils.vectorOrientation(self.target.x-self.x, self.target.y-self.y))
             self:castSpell(self.target, spell)
           end
         else -- regular attack
           if seekTarget(self, self.target, 1) then
-            self:setOrientation(LivingEntity.vectorOrientation(self.target.x-self.x, self.target.y-self.y))
+            self:setOrientation(utils.vectorOrientation(self.target.x-self.x, self.target.y-self.y))
             self:attack()
           end
         end
@@ -149,7 +149,7 @@ local function AI_thread(self)
             local i = math.random(1, #dirs)
             local orientation = dirs[i]
             table.remove(dirs, i)
-            local dx, dy = LivingEntity.orientationVector(orientation)
+            local dx, dy = utils.orientationVector(orientation)
             ncx, ncy = self.cx+dx, self.cy+dy
             if self:isCellPassable(ncx, ncy) then done = true end
           end

@@ -4,19 +4,15 @@
 --
 -- Copyright (c) 2019 ImagicTheCat
 
-local TextureAtlas = require("app.TextureAtlas")
-local Entity = require("app.Entity")
-local utils = require("app.utils")
+local TextureAtlas = require "app.TextureAtlas"
+local Entity = require "app.Entity"
+local utils = require "app.utils"
 
 local LivingEntity = class("LivingEntity", Entity)
 
 local HINT_DURATION = 2
 
--- STATICS
-
 local ANIM_STEP_LENGTH = 11 -- pixel length for a movement step
-
--- METHODS
 
 function LivingEntity:__construct(data)
   Entity.__construct(self, data)
@@ -198,7 +194,7 @@ function LivingEntity:tick(dt)
     -- compute movement animation
     local dist = math.abs(x-self.x)+math.abs(y-self.y)
     self.anim_move_traveled = self.anim_move_traveled+dist
-
+    --
     local steps = math.floor(self.anim_move_traveled/ANIM_STEP_LENGTH)
     self.anim_move_traveled = self.anim_move_traveled-ANIM_STEP_LENGTH*steps
     self.anim_move_index = (self.anim_move_index+steps)%4
@@ -207,7 +203,6 @@ function LivingEntity:tick(dt)
     self.x = x
     self.y = y
   end
-
   if self.acting then
     -- compute acting animation
     self.acting_time = self.acting_time+dt
@@ -215,14 +210,13 @@ function LivingEntity:tick(dt)
     if self.acting == "attack" then offset = 3
     elseif self.acting == "cast" then offset = 6
     end
-
+    --
     self.anim_x = offset+math.floor(self.acting_time/self.acting_duration*3)%3
     if self.acting_time >= self.acting_duration then -- stop
       self.acting = false
       self.anim_x = 1
     end
   end
-
   -- hints
   for i, hint in ipairs(self.hints) do
     -- prevent overlaps
@@ -255,7 +249,6 @@ function LivingEntity:drawOver()
     local scale = 1/client.world_scale -- world to GUI scale
     for _, hint in ipairs(self.hints) do
       local text, time = hint[1], hint[2]
-
       if time < HINT_DURATION then -- discard queued hints
         local w, h = text:getWidth()*scale, text:getHeight()*scale
         local x, y = self.x+8-w/2, self.y-16*(1-time/HINT_DURATION)-h
@@ -275,18 +268,24 @@ function LivingEntity:draw()
   if self.texture then
     local quad = self.atlas:getQuad(self.anim_x, self.anim_y)
     if quad then
+      -- compute defend offsets
+      local ofx, ofy = 0, 0
+      if self.acting == "defend" then
+        ofx, ofy = utils.orientationVector(self.anim_y)
+        ofx, ofy = -ofx*self.anim_x*2, -ofy*self.anim_x*2
+      end
+      -- draw
       if self.ghost then love.graphics.setColor(1,1,1,0.60) end
       if self.afterimage then love.graphics.setColor(1,1,1,self.afterimage) end
       love.graphics.draw(
-        self.texture,
-        quad,
-        self.x-math.floor((self.atlas.cell_w-16)/2),
-        self.y+16-self.atlas.cell_h)
+        self.texture, quad,
+        self.x-math.floor((self.atlas.cell_w-16)/2)+ofx,
+        self.y+16-self.atlas.cell_h+ofy
+      )
       if self.afterimage then love.graphics.setColor(1,1,1) end
       if self.ghost then love.graphics.setColor(1,1,1) end
     end
   end
-
   -- animations
   for _, anim in ipairs(self.animations) do
     local frame = math.floor(anim.time/anim.duration*anim.atlas.wc*anim.atlas.hc)
@@ -294,9 +293,11 @@ function LivingEntity:draw()
     local quad = anim.atlas:getQuad(cx, cy)
     if quad then
       if anim.alpha < 1 or self.afterimage then love.graphics.setColor(1,1,1,anim.alpha*(self.afterimage or 1)) end
-      love.graphics.draw(anim.texture, quad,
+      love.graphics.draw(
+        anim.texture, quad,
         self.x+8-math.floor(anim.atlas.cell_w/2)+anim.x,
-        self.y-math.floor(anim.atlas.cell_h/2)+anim.y)
+        self.y-math.floor(anim.atlas.cell_h/2)+anim.y
+      )
       if anim.alpha < 1 or self.afterimage then love.graphics.setColor(1,1,1) end
     end
   end

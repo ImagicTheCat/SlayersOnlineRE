@@ -19,23 +19,6 @@ end)
 
 local LivingEntity = class("LivingEntity", Entity)
 
--- return dx,dy (direction) or nil on invalid orientation (0-3)
-function LivingEntity.orientationVector(orientation)
-  if orientation == 0 then return 0,-1
-  elseif orientation == 1 then return 1,0
-  elseif orientation == 2 then return 0,1
-  elseif orientation == 3 then return -1,0 end
-end
-
--- return orientation
-function LivingEntity.vectorOrientation(dx, dy)
-  local g_x = (math.abs(dx) > math.abs(dy))
-  if dy < 0 and not g_x then return 0
-  elseif dx > 0 and g_x then return 1
-  elseif dy > 0 and not g_x then return 2
-  else return 3 end
-end
-
 -- convert game speed to px/s
 function LivingEntity.pixelSpeed(speed)
   return math.abs(speed)*4*16
@@ -419,7 +402,7 @@ function LivingEntity:setMoveForward(move_forward)
         local dt = loop:now()-self.move_time
         local speed = LivingEntity.pixelSpeed(self.speed)
         -- move following the orientation
-        local dx, dy = LivingEntity.orientationVector(self.orientation)
+        local dx, dy = utils.orientationVector(self.orientation)
         local dist = math.floor(speed*dt) -- pixels traveled
         if dist > 0 and self.map then
           self:onDistTraveled(dist)
@@ -478,7 +461,7 @@ function LivingEntity:moveToCell(cx, cy, blocking, speed_factor)
   local duration = dist/speed
   local time = loop:now()
   local x, y = self.x, self.y
-  self:setOrientation(LivingEntity.vectorOrientation(dx,dy))
+  self:setOrientation(utils.vectorOrientation(dx,dy))
   self:broadcastPacket("move-to-cell", {cx = cx, cy = cy, speed = speed})
   -- movement
   self.move_timer = itimer(1/cfg.tickrate, function()
@@ -553,7 +536,7 @@ function LivingEntity:act(action, duration)
 end
 
 function LivingEntity:attack()
-  if self:act("attack", 1) then
+  if self:act("attack", 0.7) then
     local entities = self:raycastEntities(1)
     for _, entity in ipairs(entities) do
       if xtype.is(entity, LivingEntity) and self:perceivesRealm(entity) then
@@ -779,7 +762,7 @@ function LivingEntity:raycastEntities(dist)
   local entities = {}
 
   if self.map then
-    local dx, dy = LivingEntity.orientationVector(self.orientation)
+    local dx, dy = utils.orientationVector(self.orientation)
 
     if dx ~= 0 then -- x axis
       local dc = self.y-self.cy*16
