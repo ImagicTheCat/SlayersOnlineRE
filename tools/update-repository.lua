@@ -26,7 +26,7 @@ end, DIR)
 print "Update sounds: wav files..."
 sh:rsync("-av", p_path.."/Sound/", "--include", "*/", "--include", "*.wav", "--exclude", "*", r_path.."/audio/"):__out(1)()
 
-async(function()
+coroutine.wrap(function()
   local sem = semaphore(UNITS)
   local function wait() for i=1,UNITS do sem:demand() end end
   local function refill() for i=1,UNITS do sem:supply() end end
@@ -94,6 +94,6 @@ async(function()
   end
 
   pool:close()
-end)
+end)()
 
 ljuv.loop:run()
