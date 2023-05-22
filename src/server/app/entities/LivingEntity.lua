@@ -336,6 +336,7 @@ function LivingEntity:__construct()
   Entity.__construct(self)
 
   self.orientation = 0 -- follow charaset directions (0 top, 1 right, 2 bottom, 3 left)
+  self.move_orientation = 0 -- same, but for movement
   self.move_forward = false
   self.speed = 1 -- game speed
   self.move_time = 0
@@ -379,30 +380,42 @@ function LivingEntity:setSounds(attack_sound, hurt_sound)
 end
 
 function LivingEntity:setOrientation(orientation)
-  if self.orientation ~= orientation and orientation >= 0 and orientation < 4 then
+  assert(orientation >= 0 and orientation < 4, "wrong orientation")
+  if self.orientation ~= orientation then
     self.orientation = orientation
     self:broadcastPacket("ch-orientation", orientation)
   end
 end
 
-function LivingEntity:setMoveForward(move_forward)
+-- The living entity orientation and movement orientation are decoupled.
+-- move_forward: flag
+-- orientation: movement orientation
+function LivingEntity:setMovement(move_forward, orientation)
+  -- update orientation
+  if orientation then
+    assert(orientation >= 0 and orientation < 4, "wrong orientation")
+    self.move_orientation = orientation
+  end
+  -- update movement
   if self.move_forward ~= move_forward then
     self.move_forward = move_forward
     if self.move_forward then
       self:stopMovements(false)
       self.move_forward = true
-      -- movement
       self.move_time = loop:now()
+      -- movement timer loop
       self.move_timer = itimer(1/cfg.tickrate, function()
         -- prevent movements while acting, except for defend
         if self.acting and self.acting ~= "defend" then
           self.move_time = loop:now(); return
         end
+        -- update entity orientation
+        if self.acting ~= "defend" then self:setOrientation(self.move_orientation) end
         --
         local dt = loop:now()-self.move_time
         local speed = LivingEntity.pixelSpeed(self.speed)
         -- move following the orientation
-        local dx, dy = utils.orientationVector(self.orientation)
+        local dx, dy = utils.orientationVector(self.move_orientation)
         local dist = math.floor(speed*dt) -- pixels traveled
         if dist > 0 and self.map then
           self:onDistTraveled(dist)
@@ -547,9 +560,7 @@ function LivingEntity:attack()
 end
 
 function LivingEntity:defend()
-  if self:act("defend", 1) then
-    -- TODO
-  end
+  self:act("defend", 1)
 end
 
 function LivingEntity:setHealth(health)
@@ -888,7 +899,7 @@ end
 
 -- override
 function LivingEntity:onMapChange()
-  self:setMoveForward(false)
+  self:setMovement(false)
 end
 
 return LivingEntity

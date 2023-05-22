@@ -709,9 +709,9 @@ function Client:tick(dt)
   end
   -- movement input
   local control = "up"
-  if self.orientation == 1 then control = "right"
-  elseif self.orientation == 2 then control = "down"
-  elseif self.orientation == 3 then control = "left" end
+  if self.input_orientation == 1 then control = "right"
+  elseif self.input_orientation == 2 then control = "down"
+  elseif self.input_orientation == 3 then control = "left" end
 
   self:setMoveForward(not self.gui.focus --
     and (not self.rsc_manager:isBusy() or not self.loading_screen_tex) -- not on loading screen
@@ -1226,10 +1226,10 @@ function Client:pressControl(id)
         self.pick_entity = nil
       end
     elseif not self.gui.focus then -- character controls
-      if id == "up" then self:pressOrientation(0)
-      elseif id == "right" then self:pressOrientation(1)
-      elseif id == "down" then self:pressOrientation(2)
-      elseif id == "left" then self:pressOrientation(3)
+      if id == "up" then self:pressMove(0)
+      elseif id == "right" then self:pressMove(1)
+      elseif id == "down" then self:pressMove(2)
+      elseif id == "left" then self:pressMove(3)
       elseif id == "attack" then self:inputAttack()
       elseif id == "defend" then self:inputDefend()
       elseif id == "interact" then self:inputInteract()
@@ -1255,10 +1255,10 @@ function Client:releaseControl(id)
     -- handling
     self.gui:emitControlRelease(id)
 
-    if id == "up" then self:releaseOrientation(0)
-    elseif id == "right" then self:releaseOrientation(1)
-    elseif id == "down" then self:releaseOrientation(2)
-    elseif id == "left" then self:releaseOrientation(3)
+    if id == "up" then self:releaseMove(0)
+    elseif id == "right" then self:releaseMove(1)
+    elseif id == "down" then self:releaseMove(2)
+    elseif id == "left" then self:releaseMove(3)
     end
   end
 end
@@ -1469,16 +1469,14 @@ function Client:draw()
   end
 end
 
-function Client:setOrientation(orientation)
-  self.orientation = orientation
-  self:sendPacket(net.INPUT_ORIENTATION, orientation)
-end
-
 function Client:setMoveForward(move_forward)
-  if self.move_forward ~= move_forward then
-    self.move_forward = move_forward
-    self:sendPacket(net.INPUT_MOVE_FORWARD, move_forward)
+  if self.move_forward == move_forward and self.old_input_orientation == self.input_orientation then
+    -- don't send packet if nothing changed
+    return
   end
+  self.old_input_orientation = self.input_orientation
+  self.move_forward = move_forward
+  self:sendPacket(net.INPUT_MOVE, {move_forward, self.input_orientation})
 end
 
 function Client:inputAttack()
@@ -1493,21 +1491,20 @@ function Client:inputInteract()
   self:sendPacket(net.INPUT_INTERACT)
 end
 
-function Client:pressOrientation(orientation)
+function Client:pressMove(orientation)
   table.insert(self.orientation_stack, orientation)
-  self:setOrientation(orientation)
+  self.input_orientation = orientation
 end
 
-function Client:releaseOrientation(orientation)
+function Client:releaseMove(orientation)
   for i=#self.orientation_stack,1,-1 do
     if self.orientation_stack[i] == orientation then
       table.remove(self.orientation_stack, i)
     end
   end
-
   local last = #self.orientation_stack
   if last > 0 then
-    self:setOrientation(self.orientation_stack[last])
+    self.input_orientation = self.orientation_stack[last]
   end
 end
 

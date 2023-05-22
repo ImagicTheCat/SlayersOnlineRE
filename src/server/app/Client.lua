@@ -309,18 +309,17 @@ function packet:LOGIN(data)
     end
   end)
 end
-function packet:INPUT_ORIENTATION(data)
+function packet:INPUT_MOVE(data)
   if self.status ~= "logged" then return end
-  if self:canMove() and (not self.acting or self.acting == "defend") then
-    self:setOrientation(tonumber(data) or 0)
-  end
-end
-function packet:INPUT_MOVE_FORWARD(data)
-  if self.status ~= "logged" then return end
-  -- update input state (used to stop/resume movements correctly)
-  self.move_forward_input = not not data
-  if self:canMove() or not self.move_forward_input then
-    self:setMoveForward(self.move_forward_input)
+  -- check inputs
+  local move_forward, orientation = data[1], data[2]
+  if type(move_forward) ~= "boolean" or type(orientation) ~= "number" or
+      orientation ~= math.floor(orientation) or orientation < 0 or
+      orientation >= 4 then return end
+  -- update local inputs
+  self.input_move = {move_forward, orientation}
+  if self:canMove() then
+    self:setMovement(move_forward, orientation)
   end
 end
 function packet:INPUT_ATTACK(data)
@@ -786,7 +785,7 @@ function Client:__construct(peer)
   self.blocked_cast = false
   self.blocked_chat = false
   self.strings = {"","",""} -- %StringX% vars (3)
-  self.move_forward_input = false
+  self.input_move = {false} -- {move_forward, orientation}
 
   self.player_config = {} -- stored player config
   self.player_config_changed = false
@@ -896,7 +895,7 @@ function Client:eventTick(timer_ticks)
         return a.cy < b.cy or a.cy == b.cy and a.cx < b.cx
       end)
       -- stop movement
-      self:setMoveForward(false)
+      self:setMovement(false)
       -- execute event
       local event = events[1]
       local condition = self.triggered_events[event]
@@ -911,7 +910,7 @@ function Client:eventTick(timer_ticks)
           event:rollback()
         end
         self.running_event = nil
-        self:setMoveForward(self.move_forward_input) -- resume movement
+        self:setMovement(unpack(self.input_move)) -- resume movement
       end)
     else -- swipe events when idle for timer conditions
       -- This may not be enough to handle all editor timing patterns, but
@@ -1244,6 +1243,10 @@ function Client:onMapChange()
     end
     self:sendGroupUpdate()
     self:receiveGroupUpdates()
+    -- resume movements
+    if self:canMove() then
+      self:setMovement(unpack(self.input_move))
+    end
   end
 end
 
@@ -1581,11 +1584,6 @@ function Client:save()
   state.blocked_chat = self.blocked_chat
   server.db:query("user/setState", {self.user_id, {msgpack.pack(state)}})
   return true
-end
-
--- override
-function Client:setOrientation(orientation)
-  Player.setOrientation(self, orientation)
 end
 
 -- override
