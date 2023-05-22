@@ -1158,7 +1158,6 @@ end
 
 -- async
 local function AI_thread(self)
-  self.ai_running = true
   while self.map and (self.animation_type == "character-random" or
       self.animation_type == "character-follow") do
     if not self.client.running_event then -- prevent movement during event execution
@@ -1204,13 +1203,15 @@ local function AI_thread(self)
       (self.animation_type == "character-follow" and 0.25 or 1.5) *
       (self.speed < 0 and 0.5 or 1))
   end
-  self.ai_running = nil
 end
 
 function Event:startAI()
-  if not self.ai_running and (self.animation_type == "character-random" or
+  if (not self.ai_task or self.ai_task:done()) and
+     (self.animation_type == "character-random" or
       self.animation_type == "character-follow") then
-    asyncR(function() AI_thread(self) end)
+    self.ai_task = async(AI_thread, self)
+    -- propagate errors
+    self.ai_task:wait(function(task) task:wait() end)
   end
 end
 

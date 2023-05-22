@@ -88,7 +88,6 @@ end
 
 -- async
 local function AI_thread(self)
-  self.ai_running = true
   while self.map do
     do -- target acquisition
       -- detect players if aggressive
@@ -160,7 +159,6 @@ local function AI_thread(self)
     -- next
     waitAction(self, self.target and 0.5 or math.max(0.5, utils.randf(1.5, 7.5)/self.speed))
   end
-  self.ai_running = nil
 end
 
 function Mob:addToBingoBook(client, amount)
@@ -278,7 +276,11 @@ function Mob:onMapChange()
   LivingEntity.onMapChange(self)
 
   if self.map and self.data.type ~= "breakable" then
-    if not self.ai_running then asyncR(function() AI_thread(self) end) end
+    if not self.ai_task or self.ai_task:done() then
+      self.ai_task = async(AI_thread, self)
+      -- propagate errors
+      self.ai_task:wait(function(task) task:wait() end)
+    end
   end
 end
 
