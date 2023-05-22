@@ -582,8 +582,38 @@ end
 -- target: LivingEntity
 -- return damages on hit or nil if missed
 function LivingEntity:computeAttack(target)
-  if math.random(self.ch_attack) > math.random(target.ch_defense) then
-    return math.random(self.min_damage, self.max_damage)
+  -- prepare: apply modifiers
+  local attack = self.ch_attack
+  local defense = target.ch_defense
+  local max_damage = self.max_damage
+  local parry = false
+  --- attacker modifiers
+  if xtype.is(self, Client) then
+    local class_data = server.project.classes[self.class]
+    if self.orientation == target.orientation then
+      -- in the back: 20% dexterity bonus
+      attack = attack + math.floor(self.dexterity*5 * class_data.off_index/10 * 0.20)
+      max_damage = max_damage + math.floor(self.dexterity*1.5 * class_data.pow_index/10 * 0.20)
+    elseif target.orientation == utils.inverseOrientation(self.orientation) then
+      -- face to face: 5% dexterity malus
+      attack = attack - math.floor(self.dexterity*5 * class_data.off_index/10 * 0.05)
+      max_damage = max_damage - math.floor(self.dexterity*1.5 * class_data.pow_index/10 * 0.05)
+    end
+  end
+  --- target (if in defense mode) modifiers
+  if xtype.is(target, Client) and target.acting == "defend" then
+    local class_data = server.project.classes[target.class]
+    if target.orientation == utils.inverseOrientation(self.orientation) then
+      -- face to face: parry
+      parry = true
+    else
+      -- 20% dexterity bonus
+      defense = defense + math.floor(target.dexterity*2 * class_data.def_index/10 * 0.20)
+    end
+  end
+  -- compute damage
+  if math.random(attack) > math.random(defense) and not parry then
+    return math.random(self.min_damage, max_damage)
   end
 end
 

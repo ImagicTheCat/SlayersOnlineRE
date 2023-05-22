@@ -204,6 +204,7 @@ function utils.orientationVector(orientation)
   elseif orientation == 1 then return 1,0
   elseif orientation == 2 then return 0,1
   elseif orientation == 3 then return -1,0 end
+  error "invalid orientation"
 end
 
 -- return orientation
@@ -213,6 +214,15 @@ function utils.vectorOrientation(dx, dy)
   elseif dx > 0 and g_x then return 1
   elseif dy > 0 and not g_x then return 2
   else return 3 end
+end
+
+-- return the opposite orientation
+function utils.inverseOrientation(orientation)
+  if orientation == 0 then return 2
+  elseif orientation == 1 then return 3
+  elseif orientation == 2 then return 0
+  elseif orientation == 3 then return 1 end
+  error "invalid orientation"
 end
 
 return utils
