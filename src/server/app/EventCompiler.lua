@@ -39,6 +39,8 @@ expr_construct = lvar | function_var | input_string token
 ]]
 
 local lpeg = require "lpeg"
+local Event = require "app.entities.Event"
+local lfs = require "lfs"
 
 local M = {}
 
@@ -151,8 +153,90 @@ local function escape(str) return string.format("%q", str) end
 
 local gen = {}
 
+-- Check if an element is a static string and returns it, or nothing otherwise.
+local function get_static_string(ast)
+  if ast and ast[1] == "expr_string" and #ast == 2 and
+      type(ast[2]) == "string" then return ast[2] end
+end
+
+local function check_item(ast)
+  local sstr = get_static_string(ast)
+  if sstr and not server.project.objects_by_name[sstr] then
+    error("invalid item \""..sstr.."\"")
+  end
+end
+
+local function check_spell(ast)
+  local sstr = get_static_string(ast)
+  if sstr and not server.project.spells_by_name[sstr] then
+    error("invalid spell \""..sstr.."\"")
+  end
+end
+
+local function check_map(ast)
+  local sstr = get_static_string(ast)
+  if sstr and not server.project.maps[sstr] then
+    error("invalid map \""..sstr.."\"")
+  end
+end
+
+local function check_mob(ast)
+  local sstr = get_static_string(ast)
+  if sstr and not server.project.mobs_by_name[sstr] then
+    error("invalid mob \""..sstr.."\"")
+  end
+end
+
+local function check_resource(ast)
+  local sstr = get_static_string(ast)
+  if not sstr then return end
+  local path = "resources/project/"..sstr:gsub("\\", "/")
+  if lfs.attributes(path, "mode") ~= "file" then
+    error("missing resource \""..sstr.."\"")
+  end
+end
+
+-- Static analysis: check element.
+local function check(state, ast)
+  if ast[1] == "special_var" then
+    if not Event.special_vars[ast[2]] then
+      error("invalid special variable \""..ast[2].."\"")
+    end
+  elseif ast[1] == "function_var" then
+    if not Event.function_vars[ast[2]] then
+      error("invalid function variable \""..ast[2].."\"")
+    end
+  elseif ast[1] == "event_var" then
+    if not Event.event_vars[ast[3]] then
+      error("invalid event variable \""..ast[3].."\"")
+    end
+  elseif ast[1] == "call" then
+    local name = ast[2]
+    -- check built-ins
+    if name == "OnResultQuery" or name == "QueryEnd" then return end
+    -- check existing command
+    if not Event.command_functions[name] then
+      error("invalid command \""..name.."\"")
+    end
+    -- check arguments
+    if name == "AddObject" or name == "DelObject" then check_item(ast[3])
+    elseif name == "AddMagie" or name == "DelMagie" then check_spell(ast[3])
+    elseif name == "Teleport" or name == "ChangeResPoint" then check_map(ast[3])
+    elseif name == "GenereMonstre" then check_mob(ast[3])
+    elseif name == "ChangeSkin" or name == "ChAttaqueSound" or
+        name == "ChBlesseSound" or name == "PlayMusic" or name == "PlaySound" then
+      check_resource(ast[3])
+    end
+  elseif ast[1] == "condition_inv" then
+    check_item(ast[3])
+  end
+end
+
 -- Dispatch AST element to its specific handler.
-local function dispatch(state, ast) return gen[ast[1]](state, ast) end
+local function dispatch(state, ast)
+  check(state, ast)
+  return gen[ast[1]](state, ast)
+end
 
 function gen.command(state, ast) return dispatch(state, ast) end
 
@@ -188,8 +272,10 @@ function gen.assignment(state, ast)
   -- lhs: other
   local prefix
   if lhs[1] == "special_var" then
+    check(state, lhs)
     prefix = lhs[1].."("..escape(lhs[2])
   elseif lhs[1] == "event_var" then
+    check(state, lhs)
     prefix = lhs[1].."("..escape(lhs[2])..", "..escape(lhs[3])
   elseif lhs[1] == "server_var" then
     prefix = lhs[1].."("..dispatch(state, lhs[2])

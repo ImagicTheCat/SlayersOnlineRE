@@ -85,6 +85,9 @@ local function compileSpells(self)
 end
 
 function Server:__construct(cfg)
+  -- Setup global in constructor because the body depends on it.
+  server = self
+  --
   self.cfg = cfg
   -- load project
   print("load project \""..self.cfg.project_name.."\"...")

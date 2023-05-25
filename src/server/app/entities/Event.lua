@@ -926,6 +926,12 @@ function command_functions:PlaySound(path)
   self.client:playSound(string.sub(path, 7)) -- remove Sound\ part
 end
 
+-- expose definitions
+Event.special_vars = special_vars
+Event.function_vars = function_vars
+Event.event_vars = event_vars
+Event.command_functions = command_functions
+
 -- Event class
 
 -- page_index: specific state or nil
