@@ -721,41 +721,42 @@ local command_functions = {}
 function command_functions:AddObject(name, amount)
   amount = amount and checkInt(amount) or 1
   local id = server.project.objects_by_name[name]
-  if id and amount > 0 then
-    -- save
-    if not self.transaction.items[id] then
-      self.transaction.items[id] = self.client.inventory:get(id)
-    end
-    -- set
-    local count = 0
-    for i=1,amount do
-      if self.client.inventory:put(id) then count = count+1 end
-    end
-    if count > 0 then self.client:emitHint("+ "..name..(count > 1 and " x"..count or "")) end
+  assert(id, "couldn't find item")
+  assert(amount > 0, "invalid amount")
+  -- save
+  if not self.transaction.items[id] then
+    self.transaction.items[id] = self.client.inventory:get(id)
   end
+  -- set
+  local count = 0
+  for i=1,amount do
+    if self.client.inventory:put(id) then count = count+1 end
+  end
+  if count > 0 then self.client:emitHint("+ "..name..(count > 1 and " x"..count or "")) end
 end
 
 function command_functions:DelObject(name, amount)
   amount = amount and checkInt(amount) or 1
   local id = server.project.objects_by_name[name]
-  if id and amount > 0 then
-    -- save
-    if not self.transaction.items[id] then
-      self.transaction.items[id] = self.client.inventory:get(id)
-    end
-    -- set
-    local count = 0
-    for i=1,amount do
-      if self.client.inventory:take(id) then count = count+1 end
-    end
-    if count > 0 then self.client:emitHint("- "..name..(count > 1 and " x"..count or "")) end
+  assert(id, "couldn't find item")
+  assert(amount > 0, "invalid amount")
+  -- save
+  if not self.transaction.items[id] then
+    self.transaction.items[id] = self.client.inventory:get(id)
   end
+  -- set
+  local count = 0
+  for i=1,amount do
+    if self.client.inventory:take(id) then count = count+1 end
+  end
+  if count > 0 then self.client:emitHint("- "..name..(count > 1 and " x"..count or "")) end
 end
 
 function command_functions:Teleport(map_name, cx, cy)
   local cx, cy = checkInt(cx), checkInt(cy)
+  assert(type(map_name) == "string", "invalid map name")
   local map = server:getMap(map_name)
-  assert(map, "teleport: invalid map")
+  assert(map, "couldn't find map")
   self.client.prevent_next_contact = true -- prevent teleport loop
   map:addEntity(self.client)
   self.client:teleport(cx*16, cy*16)
@@ -830,7 +831,7 @@ function command_functions:GenereMonstre(name, x, y, amount)
   x, y, amount = checkInt(x), checkInt(y), checkInt(amount)
   assert(amount > 0, "invalid amount")
   local mob_data = server.project.mobs[server.project.mobs_by_name[name]]
-  assert(mob_data, "missing mob data")
+  assert(mob_data, "couldn't find mob data")
   for i=1,amount do
     local mob = Mob(mob_data)
     self.map:addEntity(mob)
