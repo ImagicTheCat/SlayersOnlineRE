@@ -153,6 +153,8 @@ local function escape(str) return string.format("%q", str) end
 
 local gen = {}
 
+--- Check functions (static analysis)
+
 -- Check if an element is a static string and returns it, or nothing otherwise.
 local function get_static_string(ast)
   if ast and ast[1] == "expr_string" and #ast == 2 and
@@ -196,7 +198,7 @@ local function check_resource(ast)
   end
 end
 
--- Static analysis: check element.
+-- Check element.
 local function check(state, ast)
   if ast[1] == "special_var" then
     if not Event.special_vars[ast[2]] then
@@ -226,11 +228,15 @@ local function check(state, ast)
     elseif name == "ChangeSkin" or name == "ChAttaqueSound" or
         name == "ChBlesseSound" or name == "PlayMusic" or name == "PlaySound" then
       check_resource(ast[3])
+    elseif name == "Magasin" then
+      for i=4, #ast do check_item(ast[i]) end
     end
   elseif ast[1] == "condition_inv" then
     check_item(ast[3])
   end
 end
+
+--- Browsing functions
 
 -- Dispatch AST element to its specific handler.
 local function dispatch(state, ast)
