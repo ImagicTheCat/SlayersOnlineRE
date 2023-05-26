@@ -10,7 +10,8 @@ return {
   quotas = { -- {amount, period in seconds}
     packets = {250, 5}, -- input packets
     data = {5e3, 10}, -- input bytes
-    chat_all = {3, 24} -- global chat messages
+    chat_all = {3, 24}, -- global chat messages
+    event_errors = {1, 30} -- event error notifications
   },
   inventory_size = 100,
   spell_inventory_size = 100,

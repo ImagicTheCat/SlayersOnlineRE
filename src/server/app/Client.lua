@@ -757,6 +757,7 @@ function Client:__construct(peer)
       self:kick("Quota de données entrantes atteint (anti-flood).")
     end)
     self.chat_quota = Quota(quotas.chat_all[1], quotas.chat_all[2])
+    self.event_errors_quota = Quota(quotas.event_errors[1], quotas.event_errors[2])
   end
 
   self.entities = {} -- bound map entities, map of entity
@@ -862,6 +863,13 @@ function Client:swipeEvents()
   end
 end
 
+function Client:notifyEventError()
+  if self.event_errors_quota:check() then
+    self:print("Une erreur est survenue dans un événement et peut bloquer la progression du personnage.")
+    self.event_errors_quota:add(1)
+  end
+end
+
 -- event handling
 function Client:eventTick(timer_ticks)
   if self.status == "logged" and self.map and not self.running_event then
@@ -905,6 +913,7 @@ function Client:eventTick(timer_ticks)
           self.last_idle_swipe = loop:now() -- reset next idle swipe
         else -- rollback on error
           event:rollback()
+          self:notifyEventError()
         end
         self.running_event = nil
         self:setMovement(unpack(self.input_move)) -- resume movement

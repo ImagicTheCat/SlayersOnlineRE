@@ -1049,6 +1049,7 @@ end
 function Event:checkConditions(page)
   if page.conditions_func then
     local ok, r = xpcall(page.conditions_func, error_handler, nil, unpack(self.env))
+    if not ok then self.client:notifyEventError() end
     return ok and r
   end
   return false
