@@ -631,7 +631,7 @@ end, "", "se suicider"}
 -- global chat
 commands.all = {10, "client", function(self, client, args)
   if client.user_id and client:canChat() then
-    if client.chat_quota.exceeded then
+    if not client.chat_quota:check() then
       local max, period = unpack(self.cfg.quotas.chat_all)
       client:print("Quota de chat global atteint ("..max.." message(s) / "..period.."s).")
       return

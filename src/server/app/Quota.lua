@@ -5,6 +5,7 @@
 -- Copyright (c) 2019 ImagicTheCat
 
 -- Simple quota system.
+-- Used to allow a certain amount of items per period.
 local Quota = class("Quota")
 
 -- max: maximum allowed value
@@ -16,29 +17,34 @@ function Quota:__construct(max, period, callback)
   self.period = period
   self.callback = callback
   self.exceeded = false
+  self.last_time = loop:now()
 end
 
+local function update(self)
+  local time = loop:now()
+  if time - self.last_time >= self.period then
+    self.value, self.exceeded = 0, false
+    self.last_time = time
+  end
+end
+
+-- Add value.
+-- Return false if exceeded, true otherwise.
 function Quota:add(value)
+  update(self)
   self.value = self.value+value
   if not self.exceeded and self.value >= self.max then --- exceeded
     self.exceeded = true
     if self.callback then self:callback() end
   end
+  return not self.exceeded
 end
 
-function Quota:start()
-  if self.timer then return end -- already started
-  self.timer = itimer(self.period, function()
-    self.value = 0
-    self.exceeded = false
-  end)
-end
-
-function Quota:stop()
-  if self.timer then
-    self.timer:close()
-    self.timer = nil
-  end
+-- Check if exceeded.
+-- Return false if exceeded, true otherwise.
+function Quota:check()
+  update(self)
+  return not self.exceeded
 end
 
 return Quota

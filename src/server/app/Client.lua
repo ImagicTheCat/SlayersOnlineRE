@@ -752,14 +752,11 @@ function Client:__construct(peer)
       print("client packet quota reached "..tostring(self.peer))
       self:kick("Quota de paquets atteint (anti-spam).")
     end)
-    self.packets_quota:start()
     self.data_quota = Quota(quotas.data[1], quotas.data[2], function()
       print("client data quota reached "..tostring(self.peer))
       self:kick("Quota de données entrantes atteint (anti-flood).")
     end)
-    self.data_quota:start()
     self.chat_quota = Quota(quotas.chat_all[1], quotas.chat_all[2])
-    self.chat_quota:start()
   end
 
   self.entities = {} -- bound map entities, map of entity
@@ -1216,10 +1213,6 @@ function Client:onDisconnect()
     if self.map then
       self.map:removeEntity(self)
     end
-    -- quotas
-    self.packets_quota:stop()
-    self.data_quota:stop()
-    self.chat_quota:stop()
     -- unreference
     if self.pseudo then server.clients_by_pseudo[self.pseudo:lower()] = nil end
     server.clients_by_id[self.user_id] = nil
