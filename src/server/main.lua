@@ -4,6 +4,10 @@
 --
 -- Copyright (c) 2019 ImagicTheCat
 
+io.stdout:setvbuf("line")
+io.stderr:setvbuf("line")
+math.randomseed(os.time())
+
 local ljuv = require "ljuv"
 local Luaoop = require "Luaoop"
 class = Luaoop.class
@@ -13,7 +17,6 @@ async = Luaseq.async
 local utils = require "app.utils"
 asyncR, wpcall, warn = utils.asyncR, utils.wpcall, utils.warn
 local config = require "config"
-math.randomseed(os.time())
 
 -- global utils
 
