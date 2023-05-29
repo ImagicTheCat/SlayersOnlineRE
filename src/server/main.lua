@@ -43,7 +43,7 @@ end
 -- delay: seconds
 function wait(delay)
   local task = async()
-  timer(delay, task)
+  timer(delay, function() task:complete() end)
   task:wait()
 end
 
