@@ -11,15 +11,22 @@ return function(db)
   db:prepare("begin", "BEGIN")
   db:prepare("commit", "COMMIT")
   db:prepare("rollback", "ROLLBACK")
-  db:prepare("server/setVar", "INSERT INTO server_vars(id, value) VALUES({1}, {2}) ON CONFLICT(id) DO UPDATE SET value = {2}")
+  db:prepare("server/setVar", [[
+    INSERT INTO server_vars(id, value)
+    VALUES({1}, {2})
+    ON CONFLICT(id) DO UPDATE SET value = {2}
+  ]])
   db:prepare("server/getVars", "SELECT id, value FROM server_vars")
   db:prepare("user/createAccount", [[
-INSERT INTO users(pseudo, salt, password, rank, creation_timestamp, ban_timestamp, class)
-  VALUES({pseudo}, {salt}, {password}, {rank}, {timestamp}, 0, 1)
-]])
+    INSERT INTO users(pseudo, salt, password, rank, creation_timestamp, ban_timestamp, class)
+    VALUES({pseudo}, {salt}, {password}, {rank}, {timestamp}, 0, 1)
+  ]])
   db:prepare("user/deleteAccount", "DELETE FROM users WHERE pseudo = {1}")
   db:prepare("user/setRank", "UPDATE users SET rank = {rank} WHERE pseudo = {pseudo}")
-  db:prepare("user/setGuild", "UPDATE users SET guild = {guild}, guild_rank = {rank}, guild_rank_title = {title} WHERE pseudo = {pseudo}")
+  db:prepare("user/setGuild", [[
+    UPDATE users SET guild = {guild}, guild_rank = {rank}, guild_rank_title = {title}
+    WHERE pseudo = {pseudo}
+  ]])
   db:prepare("user/setBan", "UPDATE users SET ban_timestamp = {timestamp} WHERE pseudo = {pseudo}")
   db:prepare("server/getFreeSkins", "SELECT name FROM skins WHERE free = TRUE")
   -- user
@@ -28,8 +35,16 @@ INSERT INTO users(pseudo, salt, password, rank, creation_timestamp, ban_timestam
   db:prepare("user/login", "SELECT * FROM users WHERE pseudo = {1} AND password = {2}")
   db:prepare("user/getVars", "SELECT id,value FROM users_vars WHERE user_id = {1}")
   db:prepare("user/getBoolVars", "SELECT id,value FROM users_bool_vars WHERE user_id = {1}")
-  db:prepare("user/setVar", "INSERT INTO users_vars(user_id, id, value) VALUES({1},{2},{3}) ON CONFLICT(user_id, id) DO UPDATE SET value = {3}")
-  db:prepare("user/setBoolVar", "INSERT INTO users_bool_vars(user_id, id, value) VALUES({1},{2},{3}) ON CONFLICT(id, user_id) DO UPDATE SET value = {3}")
+  db:prepare("user/setVar", [[
+    INSERT INTO users_vars(user_id, id, value)
+    VALUES({1},{2},{3})
+    ON CONFLICT(user_id, id) DO UPDATE SET value = {3}
+  ]])
+  db:prepare("user/setBoolVar", [[
+    INSERT INTO users_bool_vars(user_id, id, value)
+    VALUES({1},{2},{3})
+    ON CONFLICT(id, user_id) DO UPDATE SET value = {3}
+  ]])
   db:prepare("user/setConfig", "UPDATE users SET config = {2} WHERE id = {1}")
   db:prepare("user/setState", "UPDATE users SET state = {2} WHERE id = {1}")
   db:prepare("user/getState", "SELECT state FROM users WHERE id = {1}")
@@ -70,6 +85,10 @@ INSERT INTO users(pseudo, salt, password, rank, creation_timestamp, ban_timestam
   db:prepare("user/deleteItems", "DELETE FROM users_items WHERE user_id = {1}")
   -- inventory
   db:prepare("inventory/getItems", "SELECT id, amount FROM users_items WHERE user_id = {1} AND inventory = {2}")
-  db:prepare("inventory/setItem", "INSERT INTO users_items(user_id, inventory, id, amount) VALUES({1},{2},{3},{4}) ON CONFLICT(id, user_id, inventory) DO UPDATE SET amount = {4}")
+  db:prepare("inventory/setItem", [[
+    INSERT INTO users_items(user_id, inventory, id, amount)
+    VALUES({1},{2},{3},{4}) ON CONFLICT(id, user_id, inventory)
+    DO UPDATE SET amount = {4}
+  ]])
   db:prepare("inventory/removeItem", "DELETE FROM users_items WHERE user_id = {1} AND inventory = {2} AND id = {3}")
 end
