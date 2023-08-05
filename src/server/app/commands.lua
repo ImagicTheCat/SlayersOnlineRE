@@ -342,30 +342,51 @@ CREATE TABLE events_pages(
   commands TEXT
 );
   ]]))
+  -- statement builder
+  local function prepare_insert(table, val_count)
+    assert(val_count > 0, "invalid number of values")
+    return db:prepare("INSERT INTO "..table.." VALUES(?"..string.rep(",?", val_count-1)..")")
+  end
   -- insert data
   sql_assert(db:execute("BEGIN"))
   do -- classes
-    local stmt = db:prepare("INSERT INTO classes VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+    local stmt = prepare_insert("classes", 20)
     for i, t in ipairs(self.project.classes) do
       stmt:reset()
-      sql_assert(stmt:bind_values(i, t.name, t.attack_sound, t.hurt_sound, t.focus_sound, t.max_strength, t.max_dexterity, t.max_constitution, t.max_magic, t.max_level, t.level_up_points, t.strength, t.dexterity, t.constitution, t.magic, t.off_index, t.def_index, t.pow_index, t.health_index, t.mag_index))
+      sql_assert(stmt:bind_values(
+        i, t.name, t.attack_sound, t.hurt_sound, t.focus_sound, t.max_strength,
+        t.max_dexterity, t.max_constitution, t.max_magic, t.max_level,
+        t.level_up_points, t.strength, t.dexterity, t.constitution, t.magic,
+        t.off_index, t.def_index, t.pow_index, t.health_index, t.mag_index
+      ))
       sql_assert(stmt:step())
     end
   end
   do -- objects
-    local stmt = db:prepare("INSERT INTO objects VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+    local stmt = prepare_insert("objects", 21)
     for i, t in ipairs(self.project.objects) do
       stmt:reset()
-      sql_assert(stmt:bind_values(i, t.name, t.description, t.type, t.price, t.usable_class, t.spell, t.mod_strength, t.mod_dexterity, t.mod_constitution, t.mod_magic, t.mod_attack_a, t.mod_attack_b, t.mod_defense, t.mod_hp, t.mod_mp, t.req_strength, t.req_dexterity, t.req_constitution, t.req_magic, t.req_level))
+      sql_assert(stmt:bind_values(
+        i, t.name, t.description, t.type, t.price, t.usable_class, t.spell,
+        t.mod_strength, t.mod_dexterity, t.mod_constitution, t.mod_magic,
+        t.mod_attack_a, t.mod_attack_b, t.mod_defense, t.mod_hp, t.mod_mp,
+        t.req_strength, t.req_dexterity, t.req_constitution, t.req_magic,
+        t.req_level
+      ))
       sql_assert(stmt:step())
     end
   end
   do -- mobs
-    local stmt = db:prepare("INSERT INTO mobs VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
-    local stmt2 = db:prepare("INSERT INTO mobs_spells VALUES(?,?,?,?)")
+    local stmt = prepare_insert("mobs", 24)
+    local stmt2 = prepare_insert("mobs_spells", 4)
     for i, t in ipairs(self.project.mobs) do
       stmt:reset()
-      sql_assert(stmt:bind_values(i, t.name, t.type, t.obstacle, t.level, t.charaset, t.w, t.h, t.attack_sound, t.hurt_sound, t.focus_sound, t.speed, t.attack, t.defense, t.damage, t.health, t.xp_min, t.xp_max, t.gold_min, t.gold_max, t.loot_object, t.loot_chance, t.var_id, t.var_increment))
+      sql_assert(stmt:bind_values(
+        i, t.name, t.type, t.obstacle, t.level, t.charaset, t.w, t.h,
+        t.attack_sound, t.hurt_sound, t.focus_sound, t.speed, t.attack,
+        t.defense, t.damage, t.health, t.xp_min, t.xp_max, t.gold_min,
+        t.gold_max, t.loot_object, t.loot_chance, t.var_id, t.var_increment
+      ))
       sql_assert(stmt:step())
       -- spells
       for spell_i, spell in ipairs(t.spells) do
@@ -376,28 +397,40 @@ CREATE TABLE events_pages(
     end
   end
   do -- spells
-    local stmt = db:prepare("INSERT INTO spells VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+    local stmt = prepare_insert("spells", 23)
     for i, t in ipairs(self.project.spells) do
       stmt:reset()
-      sql_assert(stmt:bind_values(i, t.name, t.description, t.set, t.sound, t.area_expr, t.aggro_expr, t.duration_expr, t.hit_expr, t.effect_expr, t.x, t.y, t.w, t.h, t.opacity, t.anim_duration, t.usable_class, t.mp, t.req_level, t.cast_duration, t.type, t.position_type, t.target_type))
+      sql_assert(stmt:bind_values(
+        i, t.name, t.description, t.set, t.sound, t.area_expr, t.aggro_expr,
+        t.duration_expr, t.hit_expr, t.effect_expr, t.x, t.y, t.w, t.h,
+        t.opacity, t.anim_duration, t.usable_class, t.mp, t.req_level,
+        t.cast_duration, t.type, t.position_type, t.target_type
+      ))
       sql_assert(stmt:step())
     end
   end
   do -- maps
-    local stmt = db:prepare("INSERT INTO maps VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
-    local stmt_area = db:prepare("INSERT INTO maps_mob_areas VALUES(?,?,?,?,?,?,?,?,?,?)")
-    local stmt_event = db:prepare("INSERT INTO maps_events VALUES(?,?,?)")
-    local stmt_event_page = db:prepare("INSERT INTO events_pages VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+    local stmt = prepare_insert("maps", 14)
+    local stmt_area = prepare_insert("maps_mob_areas", 10)
+    local stmt_event = prepare_insert("maps_events", 3)
+    local stmt_event_page = prepare_insert("events_pages", 18)
     for _, map in pairs(self.project.maps) do
       stmt:reset()
-      sql_assert(stmt:bind_names{map.name, map.type, map.effect, map.background, map.music, map.tileset, map.width, map.height, map.disconnect_respawn, map.si_v, map.v_c, map.svar, map.sval})
+      sql_assert(stmt:bind_names{
+        map.name, map.type, map.effect, map.background, map.music, map.tileset,
+        map.width, map.height, map.disconnect_respawn, map.si_v, map.v_c,
+        map.svar, map.sval
+      })
       sql_assert(stmt:bind_blob(14, msgpack.pack(map.tiledata)))
       sql_assert(stmt:step())
       local map_rowid = stmt:last_insert_rowid()
       -- mob areas
       for _, area in ipairs(map.mob_areas) do
         stmt_area:reset()
-        sql_assert(stmt_area:bind_values(map_rowid, area.x1, area.x2, area.y1, area.y2, area.max_mobs, area.type+1, area.spawn_speed, area.server_var, area.server_var_expr))
+        sql_assert(stmt_area:bind_values(
+          map_rowid, area.x1, area.x2, area.y1, area.y2, area.max_mobs,
+          area.type+1, area.spawn_speed, area.server_var, area.server_var_expr
+        ))
         sql_assert(stmt_area:step())
       end
       -- events
@@ -409,7 +442,13 @@ CREATE TABLE events_pages(
         -- pages
         for page_i, page in ipairs(event.pages) do
           stmt_event_page:reset()
-          sql_assert(stmt_event_page:bind_values(event_rowid, page.name, page.set, page.position_type, page.x, page.y, page.w, page.h, page.animation_number, page.active, page.obstacle, page.transparent, page.follow, page.animation_type, page.animation_mod, page.speed, table.concat(page.conditions, "\n"), table.concat(page.commands, "\n")))
+          sql_assert(stmt_event_page:bind_values(
+            event_rowid, page.name, page.set, page.position_type, page.x, page.y,
+            page.w, page.h, page.animation_number, page.active, page.obstacle,
+            page.transparent, page.follow, page.animation_type,
+            page.animation_mod, page.speed,
+            table.concat(page.conditions, "\n"), table.concat(page.commands, "\n")
+          ))
           sql_assert(stmt_event_page:step())
         end
       end
